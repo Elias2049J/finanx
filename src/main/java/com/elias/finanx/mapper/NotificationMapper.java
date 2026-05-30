@@ -1,0 +1,49 @@
+package com.elias.finanx.mapper;
+
+import com.elias.finanx.dto.notification.NotificationDTO;
+import com.elias.finanx.entity.Budget;
+import com.elias.finanx.entity.Notification;
+import com.elias.finanx.entity.Transaction;
+import com.elias.finanx.entity.User;
+import org.mapstruct.*;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
+@Mapper(componentModel = "spring")
+public interface NotificationMapper {
+
+    @Mapping(source = "user.id", target = "userId")
+    @Mapping(source = "user.email", target = "userEmail")
+    @Mapping(source = "transaction.id", target = "transactionId")
+    @Mapping(source = "budget.description", target = "budgetDescription")
+    @Mapping(target = "createdAt", expression = "java(mapDateTime(entity.getCreatedAt(), entity.getUser().getTimeZone().toZoneId()))")
+    @Mapping(target = "scheduledAt", expression = "java(entity.getScheduledAt() != null ? mapDateTime(entity.getScheduledAt(), entity.getUser().getTimeZone().toZoneId()) : null)")
+    NotificationDTO toResponse(Notification entity);
+
+    default User mapUserId(Long id) {
+        if (id == null) return null;
+        User u = new User();
+        u.setId(id);
+        return u;
+    }
+
+    default Transaction mapTransactionId(Long id) {
+        if (id == null) return null;
+        Transaction t = new Transaction();
+        t.setId(id);
+        return t;
+    }
+
+    default Budget mapBudgetId(Long id) {
+        if (id == null) return null;
+        Budget b = new Budget();
+        b.setId(id);
+        return b;
+    }
+
+    default ZonedDateTime mapDateTime(OffsetDateTime value, ZoneId zoneId) {
+        return value.atZoneSameInstant(zoneId);
+    }
+}
