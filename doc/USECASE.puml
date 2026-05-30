@@ -1,0 +1,72 @@
+@startuml
+actor "User" as usr
+actor "Admin" as adm
+
+left to right direction
+
+package "Transactions" {
+usecase "Register Transaction" as regt
+usecase "Register Category" as regc
+usecase "Register Scheduled Transaction" as regst
+usecase "See Analytics" as sum
+usecase "Balance Report" as bar
+usecase "List Transactions" as  list
+usecase "Delete" as delt
+usecase "See Insights" as insi 
+usecase "List Scheduled" as lists
+usecase "Cancel" as cancel
+}
+
+package "Budgets" {
+}
+
+package "Schedule" {
+}
+
+package "Users" {
+usecase "Register" as regu
+usecase "Block Account" as block
+usecase "Enable Account" as enable
+usecase "Disable Account" as disa
+}
+
+
+package "Notifications" {
+usecase "See Notifications" as seen
+usecase "Discard" as disc
+usecase "Clean before..." as clean
+}
+
+
+package "Security" {
+usecase "Login" as login
+    usecase "Login with Google" as loging
+    usecase "Login with Email" as logini
+} 
+
+
+usr --> regt
+usr --> regc
+        regt .. regst
+usr --> bar
+usr --> regu
+usr --> login
+usr --> sum
+        sum .. insi
+usr --> seen
+usr --> disa
+usr --> list
+        list .. delt: <<extend>>
+        list .. lists
+                lists .. cancel
+         
+
+seen .. disc
+seen .. clean
+       
+login .. loging
+login .. logini
+
+adm -> block
+adm -> enable
+@enduml
