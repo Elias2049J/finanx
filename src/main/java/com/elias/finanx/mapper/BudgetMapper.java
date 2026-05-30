@@ -7,7 +7,7 @@ import com.elias.finanx.entity.Category;
 import com.elias.finanx.entity.User;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = RecurrenceRuleMapper.class)
 public interface BudgetMapper {
 
     @Mapping(source = "user.id", target = "userId")
@@ -17,7 +17,6 @@ public interface BudgetMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(source = "userId", target = "user")
     @Mapping(source = "categoryId", target = "category")
-    @Mapping(target = "recurrenceRule", ignore = true)
     Budget toEntity(BudgetRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

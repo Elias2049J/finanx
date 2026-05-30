@@ -1,6 +1,8 @@
 package com.elias.finanx.adapter.auth;
 
+import com.auth0.jwt.algorithms.Algorithm;
 import com.elias.finanx.dto.auth.GoogleIdTokenPayload;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -17,12 +19,21 @@ public class GoogleIdTokenVerifier {
     @Value("${app.google.issuer}")
     private String googleIssuer;
     @Value("${app.google.jwks}")
-    private String GOOGLE_JWKS;
+    private String googleJwks;
 
-    private final JwtDecoder googleJwtDecoder;
+    private JwtDecoder googleJwtDecoder;
 
-    public GoogleIdTokenVerifier() {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(GOOGLE_JWKS).build();
+    @PostConstruct
+    void init() {
+        if (googleIssuer == null || googleIssuer.isBlank()) {
+            throw new IllegalStateException("Google issuer is missing (app.google.issuer)");
+        }
+
+        if (googleJwks == null || googleJwks.isBlank()) {
+            throw new IllegalStateException("Google jwks is missing (app.google.jwks)");
+        }
+
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(googleJwks).build();
         OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(googleIssuer);
         decoder.setJwtValidator(issuerValidator);
         this.googleJwtDecoder = decoder;

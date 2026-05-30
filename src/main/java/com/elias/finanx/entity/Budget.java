@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "presupuestos")
@@ -21,7 +20,7 @@ public class Budget {
     private Long id;
 
     @Column(name = "notificable")
-    private Boolean notifiable;
+    private Boolean alertable;
 
     @Column(name = "porcentaje_alerta")
     private Integer percentAlert;
@@ -31,12 +30,6 @@ public class Budget {
 
     @Column(name = "descripcion")
     private String description;
-
-    @Column(nullable = false, name = "inicio")
-    private LocalDate start;
-
-    @Column(nullable = false, name = "fin")
-    private LocalDate end;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, name = "estado")

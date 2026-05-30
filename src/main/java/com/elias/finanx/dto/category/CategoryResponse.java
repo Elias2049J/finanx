@@ -2,7 +2,7 @@ package com.elias.finanx.dto.category;
 
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 @Data
 public class CategoryResponse {
@@ -10,5 +10,5 @@ public class CategoryResponse {
     private String name;
     private String description;
     private Boolean active;
-    private LocalDateTime disabledAt;
+    private ZonedDateTime disabledAt;
 }

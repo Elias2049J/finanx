@@ -47,13 +47,13 @@ public class BudgetController {
         return ResponseEntity.ok(budgetService.update(id, request));
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/cancel")
     public ResponseEntity<Void> cancel(@PathVariable Long id) {
         budgetService.cancel(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/disable")
     public ResponseEntity<Void> disable(@PathVariable Long id) {
         budgetService.disable(id);
         return ResponseEntity.noContent().build();

@@ -2,8 +2,7 @@ package com.elias.finanx.adapter.auth;
 
 import com.elias.finanx.dto.auth.LoginRequest;
 import com.elias.finanx.dto.auth.LoginResponse;
-import com.elias.finanx.dto.user.UserRequest;
-import com.elias.finanx.dto.user.UserResponseDTO;
+import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.mapper.UserMapper;
 import com.elias.finanx.service.AuthService;
@@ -34,7 +33,7 @@ public class LocalAuthServiceImpl implements AuthService {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtTokenService.generateToken(userDetails);
 
-        UserResponseDTO userDto = null;
+        UserResponse userDto = null;
         if (userDetails instanceof User u) {
             userDto = userMapper.toResponse(u);
         }

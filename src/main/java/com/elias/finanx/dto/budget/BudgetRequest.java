@@ -5,8 +5,6 @@ import jakarta.validation.Valid;
 import lombok.Data;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import com.elias.finanx.entity.enums.BudgetState;
 
 @Data
 public class BudgetRequest {
@@ -20,7 +18,6 @@ public class BudgetRequest {
     private BigDecimal limitAmount;
     @NotBlank
     private String description;
-    private BudgetState state;
     @NotNull
     private Long userId;
     @NotNull

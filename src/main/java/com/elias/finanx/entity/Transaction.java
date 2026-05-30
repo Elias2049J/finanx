@@ -58,6 +58,10 @@ public class Transaction {
     @JoinColumn(name = "id_programacion")
     private TransactionSchedule schedule;
 
+    @ManyToOne
+    @JoinColumn(name = "id_meta_ahorro")
+    private SavingGoal savingGoal;
+
     @PrePersist
     private void onCreate() {
         if (createdAt == null) {

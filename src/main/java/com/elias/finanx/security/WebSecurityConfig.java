@@ -53,7 +53,7 @@ public class WebSecurityConfig {
                         .requestMatchers(
                                 "/auth/login",
                                 "/auth/google",
-                                "/users/register"
+                                "/auth/register"
                         ).permitAll()
 
                         .requestMatchers("/users/**").hasAnyRole("SYSTEM")

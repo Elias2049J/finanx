@@ -2,7 +2,7 @@ package com.elias.finanx.service.impl;
 
 import com.elias.finanx.dto.auth.LoginResponse;
 import com.elias.finanx.dto.user.UserRequest;
-import com.elias.finanx.dto.user.UserResponseDTO;
+import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.enums.TimeZone;
 import com.elias.finanx.entity.enums.UserState;
 import com.elias.finanx.entity.User;
@@ -10,7 +10,6 @@ import com.elias.finanx.mapper.UserMapper;
 import com.elias.finanx.repository.UserRepository;
 import com.elias.finanx.service.UserService;
 import com.elias.finanx.service.JwtTokenService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -51,7 +50,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public List<UserResponseDTO> findAll() {
+    public List<UserResponse> findAll() {
         return userRepository.findAll()
                 .stream()
                 .map(userMapper::toResponse)
@@ -64,26 +63,26 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public UserResponseDTO findById(Long aLong) {
+    public UserResponse findById(Long aLong) {
         return userMapper.toResponse(getEntityById(aLong));
     }
 
     @Override
-    public UserResponseDTO disable(Long id) {
+    public UserResponse disable(Long id) {
         User user = getEntityById(id);
         user.disable();
         return userMapper.toResponse(userRepository.save(user));
     }
 
     @Override
-    public UserResponseDTO enable(Long id) {
+    public UserResponse enable(Long id) {
         User user = getEntityById(id);
         user.setState(UserState.ENABLED);
         return userMapper.toResponse(userRepository.save(user));
     }
 
     @Override
-    public UserResponseDTO block(Long id) {
+    public UserResponse block(Long id) {
         User user = getEntityById(id);
         user.block();
         return userMapper.toResponse(userRepository.save(user));
@@ -91,7 +90,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public UserResponseDTO update(Long id, UserRequest request) {
+    public UserResponse update(Long id, UserRequest request) {
         User existing = userRepository.findById(id).orElseThrow();
         userMapper.updateFromDto(request, existing);
         existing.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -99,7 +98,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public List<UserResponseDTO> searchByName(String q) {
+    public List<UserResponse> searchByName(String q) {
         return userRepository.findAllByNameContainingIgnoreCase(q)
                 .stream()
                 .map(userMapper::toResponse)

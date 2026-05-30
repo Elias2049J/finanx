@@ -35,8 +35,8 @@ public interface TransactionScheduleMapper {
     @Mapping(source = "transaction.amount", target = "amount")
     @Mapping(source = "transaction.paymentMethod", target = "paymentMethod")
     @Mapping(source = "transaction.type", target = "type")
-    @Mapping(target = "nextRunAt", expression = "java(mapLocalDateToOffset(dto.getNextRunAt(), dto.getZone()))")
-    @Mapping(target = "endAt", expression = "java((dto.getEndAt() != null) ? mapLocalDateToOffset(dto.getEndAt(), dto.getZone()) : null)")
+    @Mapping(target = "nextRunAt", ignore = true)
+    @Mapping(target = "endAt", ignore = true)
     TransactionSchedule toEntity(TransactionScheduleRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -46,8 +46,8 @@ public interface TransactionScheduleMapper {
     @Mapping(source = "transaction.amount", target = "amount")
     @Mapping(source = "transaction.paymentMethod", target = "paymentMethod")
     @Mapping(source = "transaction.type", target = "type")
-    @Mapping(target = "nextRunAt", expression = "java(mapLocalDateToOffset(dto.getNextRunAt(), dto.getZone()))")
-    @Mapping(target = "endAt", expression = "java((dto.getEndAt() != null) ? mapLocalDateToOffset(dto.getEndAt(), dto.getZone()) : null)")
+    @Mapping(target = "nextRunAt", ignore = true)
+    @Mapping(target = "endAt", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "reason", ignore = true)

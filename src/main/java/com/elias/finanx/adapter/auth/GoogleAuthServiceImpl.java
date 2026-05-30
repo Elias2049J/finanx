@@ -3,7 +3,7 @@ package com.elias.finanx.adapter.auth;
 import com.elias.finanx.dto.auth.GoogleIdTokenPayload;
 import com.elias.finanx.dto.auth.GoogleLoginRequest;
 import com.elias.finanx.dto.auth.LoginResponse;
-import com.elias.finanx.dto.user.UserResponseDTO;
+import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.Role;
 import com.elias.finanx.entity.enums.TimeZone;
@@ -67,7 +67,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
         }
 
         String token = jwtTokenService.generateToken(user);
-        UserResponseDTO userDto = userMapper.toResponse(user);
+        UserResponse userDto = userMapper.toResponse(user);
         return new LoginResponse(userDto, token);
     }
 
@@ -92,7 +92,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
         User saved = userRepository.save(u);
 
         String token = jwtTokenService.generateToken(saved);
-        UserResponseDTO userDto = userMapper.toResponse(saved);
+        UserResponse userDto = userMapper.toResponse(saved);
         return new LoginResponse(userDto, token);
     }
 

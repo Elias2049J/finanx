@@ -46,13 +46,13 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.update(id, request));
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/disable")
     public ResponseEntity<Void> disable(@PathVariable Long id) {
         categoryService.disable(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/activate")
     public ResponseEntity<CategoryResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.activate(id));
     }

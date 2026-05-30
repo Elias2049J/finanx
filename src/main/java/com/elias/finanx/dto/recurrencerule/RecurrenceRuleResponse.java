@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 
 import com.elias.finanx.entity.enums.RecurrenceType;
 
@@ -14,7 +15,7 @@ public class RecurrenceRuleResponse {
     private RecurrenceType recurrenceType;
     private int interval;
     private DayOfWeek dayOfWeek;
-    private LocalDate start;
-    private LocalDate end;
+    private ZonedDateTime start;
+    private ZonedDateTime end;
     private long durationDays;
 }

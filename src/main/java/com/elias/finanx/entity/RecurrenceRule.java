@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.DayOfWeek;
-import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 
 @Entity
@@ -34,10 +34,14 @@ public class RecurrenceRule {
     private DayOfWeek dayOfWeek;
 
     @Column(name = "start_date", nullable = false)
-    private LocalDate start;
+    private OffsetDateTime start;
 
     @Column(name = "end_date")
-    private LocalDate end;
+    private OffsetDateTime end;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_usuario", nullable = false)
+    private User user;
 
     public long getDurationDays() {
         if (start == null || end == null) {

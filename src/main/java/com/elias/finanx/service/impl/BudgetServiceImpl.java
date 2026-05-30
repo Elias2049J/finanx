@@ -32,15 +32,9 @@ public class BudgetServiceImpl implements BudgetService {
         Budget b = budgetMapper.toEntity(request);
         b.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
         b.setUser(userRepository.getReferenceById(request.getUserId()));
+        resolveRecurrence(b, request.getRecurrenceRule());
 
-        Budget saved = budgetRepository.save(b);
-
-        if (request.getRecurrenceRule() != null) {
-            resolveRecurrence(saved, request.getRecurrenceRule());
-            saved = budgetRepository.save(saved);
-        }
-
-        return budgetMapper.toResponse(saved);
+        return budgetMapper.toResponse(budgetRepository.save(b));
     }
 
     @Override
@@ -72,7 +66,7 @@ public class BudgetServiceImpl implements BudgetService {
         toCreate.setStart(rrReq.getStart());
         toCreate.setEnd(rrReq.getEnd());
 
-        RecurrenceRule rr = recurrenceService.create(toCreate);
+        RecurrenceRule rr = recurrenceService.create(budget.getUser().getId(), toCreate);
         budget.setRecurrenceRule(rr);
     }
 

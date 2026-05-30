@@ -1,0 +1,42 @@
+package com.elias.finanx.mapper;
+
+import com.elias.finanx.dto.saving.SavingGoalRequest;
+import com.elias.finanx.dto.saving.SavingGoalResponse;
+import com.elias.finanx.entity.SavingGoal;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
+@Mapper(componentModel = "spring")
+public interface SavingGoalMapper {
+    @Mapping(source = "user.id", target = "userId")
+    @Mapping(target = "progressPercentage", expression = "java(entity.getProgressPercentage())")
+    @Mapping(
+            target = "deadline",
+            expression = "java(mapOffsetToZoned(entity.getDeadline(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
+    )
+    @Mapping(
+            target = "createdAt",
+            expression = "java(mapOffsetToZoned(entity.getCreatedAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
+    )
+    SavingGoalResponse toResponse(SavingGoal entity);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "accumulated", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "active", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "transactions", ignore = true)
+    @Mapping(target = "deadline", ignore = true)
+    SavingGoal toEntity(SavingGoalRequest request);
+
+    default ZonedDateTime mapOffsetToZoned(OffsetDateTime value, ZoneId zoneId) {
+        if (value == null || zoneId == null) {
+            return null;
+        }
+        return value.atZoneSameInstant(zoneId);
+    }
+}

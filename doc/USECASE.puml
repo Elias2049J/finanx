@@ -7,20 +7,32 @@ left to right direction
 package "Transactions" {
 usecase "Register Transaction" as regt
 usecase "Register Category" as regc
-usecase "Register Scheduled Transaction" as regst
 usecase "See Analytics" as sum
 usecase "Balance Report" as bar
 usecase "List Transactions" as  list
 usecase "Delete" as delt
-usecase "See Insights" as insi 
-usecase "List Scheduled" as lists
+usecase "See Insights" as insi
 usecase "Cancel" as cancel
 }
 
-package "Budgets" {
+package "Schedule" {
+    usecase "List Scheduled" as lists
+    usecase "Schedule Transactions" as regst
+    usecase "Cancel" as cancelT
+    usecase "Delete" as deleteT
 }
 
-package "Schedule" {
+package "Budget" {
+    usecase "Add Budget" as addB
+    usecase "Delete" as deleteB
+    usecase "List Budgets" as listB
+}
+
+package "Savings" {
+    usecase "List Savings" as listG
+    usecase "Add Saving Goal" as addG
+    usecase "Delete" as deleteG
+    usecase "Update" as updateG
 }
 
 package "Users" {
@@ -57,8 +69,19 @@ usr --> seen
 usr --> disa
 usr --> list
         list .. delt: <<extend>>
+        list .. cancel
         list .. lists
-                lists .. cancel
+                lists .. deleteT: <<extend>>
+                lists .. cancelT
+
+usr --> addB
+usr --> listB
+        listB .. deleteB
+
+usr --> addG
+usr --> listG
+        listG .. deleteG
+        listG .. updateG
          
 
 seen .. disc

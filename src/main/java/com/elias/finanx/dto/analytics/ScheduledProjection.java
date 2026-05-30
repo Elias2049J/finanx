@@ -12,13 +12,13 @@ import java.time.OffsetDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ScheduledProjectionDTO {
+public class ScheduledProjection {
     private Long scheduledTransactionId;
     private TransactionType transactionType;
     private BigDecimal transactionAmount;
 
-    private CategorySummaryDTO category;
-    private ReasonSummaryDTO reason;
+    private CategorySummary category;
+    private ReasonSummary reason;
 
     private RecurrenceType recurrenceType;
     private OffsetDateTime nextRunAt;

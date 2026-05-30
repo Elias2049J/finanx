@@ -18,8 +18,6 @@ public class TransactionScheduleRequest {
     private LocalDateTime nextRunAt;
     @NotNull
     private LocalDateTime endAt;
-    @NotNull
-    private TimeZone zone;
 
     @Valid
     private RecurrenceRuleRequest recurrenceRule;

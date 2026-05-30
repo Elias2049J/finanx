@@ -2,7 +2,7 @@ package com.elias.finanx.controller;
 
 import com.elias.finanx.dto.auth.LoginResponse;
 import com.elias.finanx.dto.user.UserRequest;
-import com.elias.finanx.dto.user.UserResponseDTO;
+import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.enums.TimeZone;
 import com.elias.finanx.service.UserService;
 import jakarta.validation.Valid;
@@ -21,12 +21,12 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public ResponseEntity<List<UserResponseDTO>> findAll() {
+    public ResponseEntity<List<UserResponse>> findAll() {
         return ResponseEntity.ok(userService.findAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> findById(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.findById(id));
     }
 
@@ -37,7 +37,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> update(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
+    public ResponseEntity<UserResponse> update(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
         return ResponseEntity.ok(userService.update(id, request));
     }
 
@@ -48,22 +48,22 @@ public class UserController {
     }
 
     @PostMapping("/{id}/deactivate")
-    public ResponseEntity<UserResponseDTO> disable(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> disable(@PathVariable Long id) {
         return ResponseEntity.ok(userService.disable(id));
     }
 
     @PostMapping("/{id}/activate")
-    public ResponseEntity<UserResponseDTO> enable(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> enable(@PathVariable Long id) {
         return ResponseEntity.ok(userService.enable(id));
     }
 
     @PostMapping("/{id}/block")
-    public ResponseEntity<UserResponseDTO> block(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> block(@PathVariable Long id) {
         return ResponseEntity.ok(userService.block(id));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<UserResponseDTO>> searchByName(
+    public ResponseEntity<List<UserResponse>> searchByName(
             @RequestParam("string") String q) {
         return ResponseEntity.ok(userService.searchByName(q));
     }

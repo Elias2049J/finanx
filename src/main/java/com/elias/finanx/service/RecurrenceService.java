@@ -5,7 +5,7 @@ import com.elias.finanx.dto.recurrencerule.RecurrenceRuleResponse;
 import com.elias.finanx.entity.RecurrenceRule;
 
 public interface RecurrenceService {
-    RecurrenceRule create(RecurrenceRuleRequest request);
+    RecurrenceRule create(Long userId, RecurrenceRuleRequest request);
 
     RecurrenceRuleResponse update(Long id, RecurrenceRuleRequest request);
 

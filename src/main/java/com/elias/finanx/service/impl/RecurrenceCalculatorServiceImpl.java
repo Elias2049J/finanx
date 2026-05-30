@@ -36,16 +36,11 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
             case MONTHLY -> nextMonthly(base, interval);
             case YEARLY -> nextYearly(base, interval);
         };
-        
-        if (st.getEndAt() != null) {
-            Instant endInstant = st.getEndAt().toInstant();
-            if (candidate.toInstant().isAfter(endInstant)) return Optional.empty();
-        }
 
-        if (rule.getEnd() != null) {
-            if (candidate.toLocalDate().isAfter(rule.getEnd())) return Optional.empty();
-        }
-
+        Instant endInstant = st.getEndAt().toInstant();
+        if (candidate.toInstant().isAfter(endInstant)) return Optional.empty();
+        LocalDate ruleEndDate = rule.getEnd().toInstant().atZone(zone).toLocalDate();
+        if (candidate.toLocalDate().isAfter(ruleEndDate)) return Optional.empty();
         return Optional.of(candidate.toOffsetDateTime());
     }
 
@@ -60,7 +55,6 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
         int targetVal = target.getValue();
         int delta = targetVal - baseVal;
 
-        // Si el día objetivo ya pasó (o es hoy), saltamos al siguiente bloque de semanas según interval.
         if (delta <= 0) {
             delta += 7 * interval;
         }

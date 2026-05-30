@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.ZoneId;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +45,8 @@ public class TransactionScheduleServiceImpl implements TransactionScheduleServic
 
         ts.setUser(userRepository.getReferenceById(tr.getUserId()));
         ts.setCategory(categoryRepository.getReferenceById(tr.getCategoryId()));
+
+        applyRequestDateTimes(request, ts);
 
         Reason reason = reasonResolver
                 .resolveOrCreate(tr.getUserId(), tr.getReasonId(), tr.getDescription())
@@ -77,6 +80,8 @@ public class TransactionScheduleServiceImpl implements TransactionScheduleServic
         existing.setCategory(categoryRepository.getReferenceById(tr.getCategoryId()));
         existing.setUser(userRepository.getReferenceById(tr.getUserId()));
 
+        applyRequestDateTimes(request, existing);
+
         if (reasonResolver.hasInput(tr.getReasonId(), tr.getDescription())) {
             existing.setReason(
                     reasonResolver
@@ -103,15 +108,23 @@ public class TransactionScheduleServiceImpl implements TransactionScheduleServic
         return response;
     }
 
+    private void applyRequestDateTimes(TransactionScheduleRequest request, TransactionSchedule ts) {
+        ZoneId zoneId = ts.getUser().getTimeZone().toZoneId();
+
+        ts.setNextRunAt(request.getNextRunAt().atZone(zoneId).toOffsetDateTime());
+        ts.setEndAt(request.getEndAt().atZone(zoneId).toOffsetDateTime());
+    }
+
     private void resolveRecurrence(TransactionSchedule existing, RecurrenceRuleRequest rrReq) {
         RecurrenceRuleRequest toCreate = new RecurrenceRuleRequest();
         toCreate.setTransactionId(existing.getId());
         toCreate.setRecurrenceType(rrReq.getRecurrenceType());
+        toCreate.setInterval(rrReq.getInterval());
         toCreate.setDayOfWeek(rrReq.getDayOfWeek());
         toCreate.setStart(rrReq.getStart());
         toCreate.setEnd(rrReq.getEnd());
 
-        RecurrenceRule rr = recurrenceService.create(toCreate);
+        RecurrenceRule rr = recurrenceService.create(existing.getUser().getId(), toCreate);
         existing.setRecurrenceRule(rr);
     }
 

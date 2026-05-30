@@ -4,7 +4,8 @@ import lombok.Data;
 import jakarta.validation.constraints.*;
 
 import java.time.DayOfWeek;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import com.elias.finanx.entity.enums.RecurrenceType;
 
 @Data
@@ -18,7 +19,7 @@ public class RecurrenceRuleRequest {
     @NotNull
     private DayOfWeek dayOfWeek;
     @NotNull
-    private LocalDate start;
+    private LocalDateTime start;
     @NotNull
-    private LocalDate end;
+    private LocalDateTime end;
 }

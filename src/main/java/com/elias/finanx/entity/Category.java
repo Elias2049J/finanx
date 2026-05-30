@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(
@@ -36,7 +36,7 @@ public class Category {
     private Boolean active = true;
 
     @Column(name = "fecha_desactivacion")
-    private LocalDateTime disabledAt;
+    private OffsetDateTime disabledAt;
 
     @ManyToOne
     private User user;
