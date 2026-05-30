@@ -92,6 +92,8 @@ public class User implements UserDetails {
         if (moneyBalance == null) {
             moneyBalance = BigDecimal.ZERO;
         }
+        if (role == null)
+            role = Role.USER;
     }
 
     @Override
