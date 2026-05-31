@@ -109,7 +109,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         String emailClean = email.trim().toLowerCase();
         if (email.isBlank()) {
-            throw new UsernameNotFoundException("Bad credentials");
+            throw new IllegalArgumentException("Bad credentials");
         }
         return userRepository.findByEmail(emailClean)
                 .orElseThrow(() -> new UsernameNotFoundException("Bad credentials"));
