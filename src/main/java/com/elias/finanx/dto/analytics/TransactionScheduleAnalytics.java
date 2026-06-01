@@ -10,9 +10,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Analytics y proyecciones basadas en movimientos programados.
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

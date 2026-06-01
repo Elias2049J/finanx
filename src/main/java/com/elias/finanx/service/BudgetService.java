@@ -16,5 +16,7 @@ public interface BudgetService {
 
     void cancel(Long id);
     void disable(Long id );
+
+    void checkAllBudgets(Long userId);
 }
 

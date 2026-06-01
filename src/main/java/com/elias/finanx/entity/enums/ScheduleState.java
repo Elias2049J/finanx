@@ -1,9 +1,9 @@
 package com.elias.finanx.entity.enums;
 
-public enum TransactionState {
+public enum ScheduleState {
     RUNNING,
     PAUSED,
-    COMPLETED,
+    FINALIZED,
     CANCELLED,
     CREATED,
     ERROR

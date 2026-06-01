@@ -1,6 +1,7 @@
 package com.elias.finanx.entity.enums;
 
 public enum RecurrenceType {
+    NONE,
     DAILY,
     WEEKLY,
     MONTHLY,

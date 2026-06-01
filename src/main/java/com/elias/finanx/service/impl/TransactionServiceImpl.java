@@ -29,6 +29,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final UserRepository userRepository;
     private final TransactionMapper transactionMapper;
     private final ReasonResolver reasonResolver;
+    private final BudgetService budgetService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -40,9 +41,11 @@ public class TransactionServiceImpl implements TransactionService {
 
         Reason reason = reasonResolver
                 .resolveOrCreate(request.getUserId(), request.getReasonId(), request.getDescription())
-                .orElse(null);
+                .orElseThrow();
         transaction.setReason(reason);
-        return transactionMapper.toResponse(transactionRepository.save(transaction));
+        Transaction saved = transactionRepository.save(transaction);
+        budgetService.checkAllBudgets(request.getUserId());
+        return transactionMapper.toResponse(saved);
     }
 
     @Override
@@ -61,7 +64,9 @@ public class TransactionServiceImpl implements TransactionService {
             );
         }
 
-        return transactionMapper.toResponse(transactionRepository.save(existing));
+        Transaction saved =  transactionRepository.save(existing);
+        budgetService.checkAllBudgets(request.getUserId());
+        return transactionMapper.toResponse(saved);
     }
 
     @Override

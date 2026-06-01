@@ -36,7 +36,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public NotificationDTO generate(Consumer<Notification.NotificationBuilder> builderConsumer) {
+    public void generate(Consumer<Notification.NotificationBuilder> builderConsumer) {
         Notification.NotificationBuilder builder = Notification.builder();
         builderConsumer.accept(builder);
 
@@ -51,7 +51,6 @@ public class NotificationServiceImpl implements NotificationService {
                 .createdAt(OffsetDateTime.now())
                 .build());
 
-        return dto;
     }
 
     private String toJson(NotificationDTO dto) {
@@ -92,14 +91,16 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void discard(Long id) {
         Notification n = notificationRepository.findById(id).orElseThrow();
-        n.setState(NotificationState.READ);
+        n.setState(NotificationState.DISCARD);
         notificationRepository.save(n);
     }
 
     @Override
     public void purgeOlderThan(LocalDateTime threshold, long userId) {
         User u = userRepository.findById(userId).orElseThrow();
-        notificationRepository.findAllByUser_IdAndStateAndSentAtBefore(userId, NotificationState.SENT, OffsetDateTime.now(u.getTimeZone().toZoneId()));
+        List<Notification> nList = notificationRepository.findAllByUser_IdAndStateAndSentAtBefore(userId, NotificationState.SENT, OffsetDateTime.now(u.getTimeZone().toZoneId()));
+        nList.forEach(n -> n.setState(NotificationState.DISCARD));
+        notificationRepository.saveAll(nList);
     }
 
     @Override

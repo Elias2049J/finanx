@@ -10,13 +10,10 @@ import com.elias.finanx.entity.enums.RecurrenceType;
 
 @Data
 public class RecurrenceRuleRequest {
-    private Long transactionId;
-
     @NotNull
     private RecurrenceType recurrenceType;
     @NotNull
     private int interval;
-    @NotNull
     private DayOfWeek dayOfWeek;
     @NotNull
     private LocalDateTime start;

@@ -11,7 +11,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class ReasonResponseDTO {
+public class ReasonResponse {
     private Long id;
 
     private String description;

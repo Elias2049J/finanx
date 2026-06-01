@@ -1,6 +1,5 @@
 package com.elias.finanx.repository;
 
-import com.elias.finanx.dto.reason.ReasonResponseDTO;
 import com.elias.finanx.entity.Reason;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

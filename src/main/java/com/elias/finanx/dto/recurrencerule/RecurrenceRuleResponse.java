@@ -11,7 +11,6 @@ import com.elias.finanx.entity.enums.RecurrenceType;
 @Data
 public class RecurrenceRuleResponse {
     private Long id;
-    private Long transactionId;
     private RecurrenceType recurrenceType;
     private int interval;
     private DayOfWeek dayOfWeek;

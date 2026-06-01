@@ -30,6 +30,7 @@ public class Reason {
     private Boolean active;
 
     @ManyToOne
+    @JoinColumn(name = "id_usuario")
     private User user;
 
     @PrePersist

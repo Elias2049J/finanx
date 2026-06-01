@@ -5,7 +5,11 @@ import com.elias.finanx.dto.budget.BudgetResponse;
 import com.elias.finanx.entity.Budget;
 import com.elias.finanx.entity.Category;
 import com.elias.finanx.entity.User;
+import com.elias.finanx.entity.enums.TimeZone;
 import org.mapstruct.*;
+
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Mapper(componentModel = "spring", uses = RecurrenceRuleMapper.class)
 public interface BudgetMapper {
@@ -17,13 +21,16 @@ public interface BudgetMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(source = "userId", target = "user")
     @Mapping(source = "categoryId", target = "category")
+    @Mapping(target = "start", ignore = true)
+    @Mapping(target = "end", ignore = true)
     Budget toEntity(BudgetRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "category", ignore = true)
-    @Mapping(target = "recurrenceRule", ignore = true)
+    @Mapping(target = "start", ignore = true)
+    @Mapping(target = "end", ignore = true)
     void updateFromDto(BudgetRequest dto, @MappingTarget Budget entity);
 
     default User mapUserId(Long id) {
@@ -38,5 +45,10 @@ public interface BudgetMapper {
         Category c = new Category();
         c.setId(id);
         return c;
+    }
+
+
+    default OffsetDateTime mapLocalDateToOffset(LocalDateTime value, TimeZone zone) {
+        return value.atZone(zone.toZoneId()).toOffsetDateTime();
     }
 }

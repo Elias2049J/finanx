@@ -9,6 +9,7 @@ import com.elias.finanx.repository.UserRepository;
 import com.elias.finanx.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 @Service
@@ -20,12 +21,14 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryMapper categoryMapper;
 
     @Override
+    @Transactional
     public CategoryResponse create(CategoryRequest request) {
         Category category = categoryMapper.toEntity(request);
         category.setUser(userRepository.getReferenceById(request.getUserId()));
         return categoryMapper.toResponse(categoryRepository.save(category));
     }
 
+    @Transactional
     @Override
     public CategoryResponse update(Long id, CategoryRequest request) {
         Category existing = categoryRepository.findById(id).orElseThrow();
@@ -33,6 +36,7 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryMapper.toResponse(categoryRepository.save(existing));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public CategoryResponse findById(Long id) {
         return categoryMapper.toResponse(
@@ -40,6 +44,7 @@ public class CategoryServiceImpl implements CategoryService {
         );
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<CategoryResponse> findAllByUser(Long idUser) {
         return categoryRepository.findAllByUser_Id(idUser)
@@ -48,6 +53,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<CategoryResponse> findAllByUserAndActive(Long idUser, boolean active) {
         return categoryRepository.findAllByUser_IdAndActive(idUser, active)
@@ -63,6 +69,7 @@ public class CategoryServiceImpl implements CategoryService {
         categoryRepository.save(existing);
     }
 
+    @Transactional
     @Override
     public CategoryResponse activate(Long id) {
         Category existing = categoryRepository.findById(id).orElseThrow();

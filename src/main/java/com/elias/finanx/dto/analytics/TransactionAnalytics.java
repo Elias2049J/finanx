@@ -10,9 +10,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Analytics de transacciones reales (movimientos) para un usuario.
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

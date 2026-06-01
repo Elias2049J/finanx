@@ -36,7 +36,7 @@ public class RecurrenceServiceImpl implements RecurrenceService {
     }
 
     @Override
-    public RecurrenceRuleResponse update(Long id, RecurrenceRuleRequest request) {
+    public RecurrenceRule update(Long id, RecurrenceRuleRequest request) {
         RecurrenceRule existing = recurrenceRuleRepository.findById(id).orElseThrow();
         recurrenceRuleMapper.updateFromDto(request, existing);
 
@@ -45,7 +45,7 @@ public class RecurrenceServiceImpl implements RecurrenceService {
         existing.setStart(request.getStart().atZone(userZone).toOffsetDateTime());
         existing.setEnd(request.getEnd().atZone(userZone).toOffsetDateTime());
 
-        return recurrenceRuleMapper.toResponse(recurrenceRuleRepository.save(existing));
+        return recurrenceRuleRepository.save(existing);
     }
 
     @Override

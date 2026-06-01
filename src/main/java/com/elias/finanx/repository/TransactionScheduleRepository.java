@@ -1,7 +1,7 @@
 package com.elias.finanx.repository;
 
 import com.elias.finanx.entity.TransactionSchedule;
-import com.elias.finanx.entity.enums.TransactionState;
+import com.elias.finanx.entity.enums.ScheduleState;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -15,13 +15,6 @@ import java.util.List;
 @Repository
 public interface TransactionScheduleRepository extends JpaRepository<TransactionSchedule, Long> {
     List<TransactionSchedule> findAllByUser_Id(Long userId);
-    List<TransactionSchedule> findAllByActiveTrueAndState(TransactionState state);
+    List<TransactionSchedule> findAllByActiveTrueAndState(ScheduleState state);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select st from TransactionSchedule st " +
-            "where st.active = true and st.state = :state and st.nextRunAt <= :upTo")
-    List<TransactionSchedule> findDueUpToForUpdate(
-            @Param("state") TransactionState state,
-            @Param("upTo") OffsetDateTime upTo
-    );
 }

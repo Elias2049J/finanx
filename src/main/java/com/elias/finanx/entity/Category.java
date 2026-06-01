@@ -39,6 +39,7 @@ public class Category {
     private OffsetDateTime disabledAt;
 
     @ManyToOne
+    @JoinColumn(name = "id_usuario")
     private User user;
 
     @PrePersist

@@ -1,7 +1,7 @@
 package com.elias.finanx.mapper;
 
 import com.elias.finanx.dto.reason.ReasonRequest;
-import com.elias.finanx.dto.reason.ReasonResponseDTO;
+import com.elias.finanx.dto.reason.ReasonResponse;
 import com.elias.finanx.entity.Reason;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -18,7 +18,7 @@ public interface ReasonMapper {
     Reason toEntity(ReasonRequest dto);
 
     @Mapping(source = "user.id", target = "userId")
-    ReasonResponseDTO toResponse(Reason entity);
+    ReasonResponse toResponse(Reason entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)

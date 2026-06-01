@@ -3,8 +3,10 @@ package com.elias.finanx.entity;
 import com.elias.finanx.entity.enums.BudgetState;
 import jakarta.persistence.*;
 import lombok.*;
+import org.apache.poi.ss.formula.functions.Offset;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "presupuestos")
@@ -46,9 +48,15 @@ public class Budget {
     @JoinColumn(name = "id_categoria", nullable = false)
     private Category category;
 
-    @OneToOne(fetch = FetchType.LAZY, orphanRemoval = true)
-    @JoinColumn(name = "id_regla_recurrencia")
-    private RecurrenceRule recurrenceRule;
+    @Column(name = "fecha_inicio")
+    private OffsetDateTime start;
+
+    @Column(name = "fecha_final")
+    private OffsetDateTime end;
+
+    @ManyToOne
+    @JoinColumn(name = "id_programacion")
+    private BudgetSchedule schedule;
 
     @PrePersist
     private void onCreate() {

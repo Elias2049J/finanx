@@ -1,6 +1,5 @@
 package com.elias.finanx.dto.budget;
 
-import com.elias.finanx.dto.recurrencerule.RecurrenceRuleResponse;
 import lombok.Data;
 import java.math.BigDecimal;
 import com.elias.finanx.entity.enums.BudgetState;
@@ -15,5 +14,5 @@ public class BudgetResponse {
     private BudgetState state;
     private Long userId;
     private Long categoryId;
-    private RecurrenceRuleResponse recurrenceRule;
+    private Long categoryName;
 }

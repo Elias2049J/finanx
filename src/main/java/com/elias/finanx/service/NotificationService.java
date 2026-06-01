@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 
 public interface NotificationService {
 
-    NotificationDTO generate(Consumer<Notification.NotificationBuilder> builderConsumer);
+    void generate(Consumer<Notification.NotificationBuilder> builderConsumer);
 
     NotificationDTO findById(Long id);
 

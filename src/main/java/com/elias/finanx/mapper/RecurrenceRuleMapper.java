@@ -11,7 +11,6 @@ import java.time.ZonedDateTime;
 
 @Mapper(componentModel = "spring")
 public interface RecurrenceRuleMapper{
-    @Mapping(target = "transactionId", ignore = true)
     @Mapping(target = "durationDays", expression = "java(entity.getDurationDays())")
     @Mapping(
             target = "start",
