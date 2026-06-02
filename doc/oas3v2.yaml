@@ -2251,6 +2251,15 @@ components:
         createdAt:
           type: string
           format: date-time
+        disabledAt:
+          type: string
+          format: date-time
+        state:
+          type: string
+          enum:
+            - RUNNING
+            - COMPLETED
+            - CANCELLED
         active:
           type: boolean
         userId:
@@ -2259,6 +2268,21 @@ components:
         progressPercentage:
           type: number
           format: double
+        transactionsCount:
+          type: integer
+          format: int32
+        outstanding:
+          type: number
+        daysRemaining:
+          type: integer
+          format: int64
+        averageContribution:
+          type: number
+        completed:
+          type: boolean
+        estimatedCompletionDate:
+          type: string
+          format: date-time
     ReasonRequest:
       type: object
       properties:
@@ -2816,15 +2840,19 @@ components:
         type:
           type: string
           enum:
-            - BUDGET_ALERT
-            - EXPIRATION
-            - REMINDER
+            - WARNING
+            - SUCCESS
+            - ERROR
+            - INFO
         message:
           type: string
         createdAt:
           type: string
           format: date-time
         scheduledAt:
+          type: string
+          format: date-time
+        sentAt:
           type: string
           format: date-time
         state:
@@ -2834,7 +2862,10 @@ components:
             - SENT
             - READ
             - DISCARD
-        transactionId:
+        scheduleId:
+          type: integer
+          format: int64
+        budgetId:
           type: integer
           format: int64
         budgetDescription:
@@ -2846,9 +2877,11 @@ components:
             - ACTIVE
             - CANCELLED
             - FINALIZED
-        categoryName:
+        savingGoalId:
           type: integer
           format: int64
+        savingGoalDescription:
+          type: string
     AnalyticsDashboard:
       type: object
       properties:

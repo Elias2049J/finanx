@@ -53,7 +53,9 @@ public class WebSecurityConfig {
                         .requestMatchers(
                                 "/auth/login",
                                 "/auth/google",
-                                "/auth/register"
+                                "/auth/register",
+                                "/v3/api-docs.yaml",
+                                "/swagger-ui.html"
                         ).permitAll()
 
                         .requestMatchers("/users/**").hasAnyRole("SYSTEM")
