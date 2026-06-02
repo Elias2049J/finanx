@@ -123,7 +123,7 @@ paths:
   /schedule/{id}:
     get:
       tags:
-        - transaction-schedule-controller
+        - schedule-controller
       operationId: findById_2
       parameters:
         - name: id
@@ -138,10 +138,13 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/TransactionScheduleResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/ScheduleResponse"
+                  - $ref: "#/components/schemas/BudgetScheduleResponse"
+                  - $ref: "#/components/schemas/TransactionScheduleResponse"
     put:
       tags:
-        - transaction-schedule-controller
+        - schedule-controller
       operationId: update_2
       parameters:
         - name: id
@@ -154,7 +157,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransactionScheduleRequest"
+              oneOf:
+                - $ref: "#/components/schemas/ScheduleRequest"
+                - $ref: "#/components/schemas/BudgetScheduleRequest"
+                - $ref: "#/components/schemas/TransactionScheduleRequest"
         required: true
       responses:
         "200":
@@ -162,7 +168,10 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/TransactionScheduleResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/ScheduleResponse"
+                  - $ref: "#/components/schemas/BudgetScheduleResponse"
+                  - $ref: "#/components/schemas/TransactionScheduleResponse"
   /savings/{id}:
     get:
       tags:
@@ -238,7 +247,7 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ReasonResponseDTO"
+                $ref: "#/components/schemas/ReasonResponse"
     put:
       tags:
         - reason-controller
@@ -262,7 +271,7 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ReasonResponseDTO"
+                $ref: "#/components/schemas/ReasonResponse"
     post:
       tags:
         - reason-controller
@@ -459,13 +468,16 @@ paths:
   /schedule:
     post:
       tags:
-        - transaction-schedule-controller
+        - schedule-controller
       operationId: create_1
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransactionScheduleRequest"
+              oneOf:
+                - $ref: "#/components/schemas/ScheduleRequest"
+                - $ref: "#/components/schemas/BudgetScheduleRequest"
+                - $ref: "#/components/schemas/TransactionScheduleRequest"
         required: true
       responses:
         "200":
@@ -473,7 +485,10 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/TransactionScheduleResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/ScheduleResponse"
+                  - $ref: "#/components/schemas/BudgetScheduleResponse"
+                  - $ref: "#/components/schemas/TransactionScheduleResponse"
   /savings:
     post:
       tags:
@@ -557,7 +572,7 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ReasonResponseDTO"
+                $ref: "#/components/schemas/ReasonResponse"
   /notifications/discard:
     post:
       tags:
@@ -1586,7 +1601,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ReasonResponseDTO"
+                  $ref: "#/components/schemas/ReasonResponse"
   /notifications/{id}:
     get:
       tags:
@@ -1982,15 +1997,33 @@ components:
         createdAt:
           type: string
           format: date-time
+    BudgetScheduleRequest:
+      allOf:
+        - $ref: "#/components/schemas/ScheduleRequest"
+        - type: object
+          properties:
+            alertable:
+              type: boolean
+            percentAlert:
+              type: integer
+              format: int32
+            limitAmount:
+              type: number
+            description:
+              type: string
+              minLength: 1
+      required:
+        - alertable
+        - description
+        - limitAmount
+        - percentAlert
     RecurrenceRuleRequest:
       type: object
       properties:
-        transactionId:
-          type: integer
-          format: int64
         recurrenceType:
           type: string
           enum:
+            - NONE
             - DAILY
             - WEEKLY
             - MONTHLY
@@ -2015,40 +2048,83 @@ components:
           type: string
           format: date-time
       required:
-        - dayOfWeek
         - end
         - interval
         - recurrenceType
         - start
-    TransactionScheduleRequest:
+    ScheduleRequest:
       type: object
+      discriminator:
+        propertyName: type
       properties:
-        transaction:
-          $ref: "#/components/schemas/TransactionRequest"
-        nextRunAt:
-          type: string
-          format: date-time
-        endAt:
-          type: string
-          format: date-time
+        userId:
+          type: integer
+          format: int64
+        categoryId:
+          type: integer
+          format: int64
         recurrenceRule:
           $ref: "#/components/schemas/RecurrenceRuleRequest"
+        type:
+          type: string
       required:
-        - endAt
-        - nextRunAt
-        - transaction
+        - type
+    TransactionScheduleRequest:
+      allOf:
+        - $ref: "#/components/schemas/ScheduleRequest"
+        - type: object
+          properties:
+            reasonId:
+              type: integer
+              format: int64
+            description:
+              type: string
+            amount:
+              type: number
+              minimum: 0.00
+            paymentMethod:
+              type: string
+              enum:
+                - CASH
+                - CREDIT_CARD
+                - DEBIT_CARD
+                - BANK_TRANSFER
+                - YAPE
+                - PLIN
+                - OTHER
+            transactionType:
+              type: string
+              enum:
+                - SPENT
+                - INCOME
+      required:
+        - amount
+        - paymentMethod
+        - transactionType
+    BudgetScheduleResponse:
+      allOf:
+        - $ref: "#/components/schemas/ScheduleResponse"
+        - type: object
+          properties:
+            alertable:
+              type: boolean
+            percentAlert:
+              type: integer
+              format: int32
+            limitAmount:
+              type: number
+            description:
+              type: string
     RecurrenceRuleResponse:
       type: object
       properties:
         id:
           type: integer
           format: int64
-        transactionId:
-          type: integer
-          format: int64
         recurrenceType:
           type: string
           enum:
+            - NONE
             - DAILY
             - WEEKLY
             - MONTHLY
@@ -2075,18 +2151,23 @@ components:
         durationDays:
           type: integer
           format: int64
-    TransactionScheduleResponse:
+    ScheduleResponse:
       type: object
+      discriminator:
+        propertyName: type
       properties:
         id:
           type: integer
           format: int64
-        transaction:
-          $ref: "#/components/schemas/TransactionResponse"
-        nextRunAt:
+        userId:
+          type: integer
+          format: int64
+        categoryId:
+          type: integer
+          format: int64
+        categoryName:
           type: string
-          format: date-time
-        endAt:
+        nextRunAt:
           type: string
           format: date-time
         createdAt:
@@ -2097,8 +2178,48 @@ components:
           format: date-time
         active:
           type: boolean
+        state:
+          type: string
+          enum:
+            - RUNNING
+            - PAUSED
+            - FINALIZED
+            - CANCELLED
+            - CREATED
+            - ERROR
         recurrenceRule:
           $ref: "#/components/schemas/RecurrenceRuleResponse"
+        type:
+          type: string
+      required:
+        - type
+    TransactionScheduleResponse:
+      allOf:
+        - $ref: "#/components/schemas/ScheduleResponse"
+        - type: object
+          properties:
+            reasonId:
+              type: integer
+              format: int64
+            reasonDesc:
+              type: string
+            amount:
+              type: number
+            paymentMethod:
+              type: string
+              enum:
+                - CASH
+                - CREDIT_CARD
+                - DEBIT_CARD
+                - BANK_TRANSFER
+                - YAPE
+                - PLIN
+                - OTHER
+            transactionType:
+              type: string
+              enum:
+                - SPENT
+                - INCOME
     SavingGoalRequest:
       type: object
       properties:
@@ -2149,7 +2270,7 @@ components:
           format: int64
       required:
         - description
-    ReasonResponseDTO:
+    ReasonResponse:
       type: object
       properties:
         id:
@@ -2210,14 +2331,19 @@ components:
         categoryId:
           type: integer
           format: int64
-        recurrenceRule:
-          $ref: "#/components/schemas/RecurrenceRuleRequest"
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
       required:
         - alertable
         - categoryId
         - description
+        - end
         - limitAmount
-        - recurrenceRule
+        - start
         - userId
     BudgetResponse:
       type: object
@@ -2246,8 +2372,9 @@ components:
         categoryId:
           type: integer
           format: int64
-        recurrenceRule:
-          $ref: "#/components/schemas/RecurrenceRuleResponse"
+        categoryName:
+          type: integer
+          format: int64
     LoginResponse:
       type: object
       properties:
@@ -2465,6 +2592,7 @@ components:
         recurrenceType:
           type: string
           enum:
+            - NONE
             - DAILY
             - WEEKLY
             - MONTHLY

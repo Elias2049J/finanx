@@ -8,9 +8,7 @@ import java.time.ZoneId;
 
 @Getter
 @AllArgsConstructor
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum TimeZone {
-
     AMERICA_LIMA("America/Lima"),
     AMERICA_BOGOTA("America/Bogota"),
     AMERICA_MEXICO_CITY("America/Mexico_City"),
