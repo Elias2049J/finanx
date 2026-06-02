@@ -45,8 +45,12 @@ public class Notification {
     private NotificationState state;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_movimiento")
-    private TransactionSchedule transaction;
+    @JoinColumn(name = "id_programacion")
+    private Schedule schedule;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_meta_ahorro")
+    private SavingGoal savingGoal;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_presupuesto")

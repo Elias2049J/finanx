@@ -16,8 +16,12 @@ public interface NotificationMapper {
 
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "user.email", target = "userEmail")
-    @Mapping(source = "transaction.id", target = "transactionId")
+    @Mapping(source = "schedule.id", target = "scheduleId")
+    @Mapping(source = "budget.id", target = "budgetId")
     @Mapping(source = "budget.description", target = "budgetDescription")
+    @Mapping(source = "budget.state", target = "budgetState")
+    @Mapping(source = "savingGoal.id", target = "savingGoalId")
+    @Mapping(source = "savingGoal.description", target = "savingGoalDescription")
     @Mapping(
             target = "createdAt",
             expression = "java(mapDateTime(entity.getCreatedAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
@@ -25,6 +29,10 @@ public interface NotificationMapper {
     @Mapping(
             target = "scheduledAt",
             expression = "java(mapDateTime(entity.getScheduledAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
+    )
+    @Mapping(
+            target = "sentAt",
+            expression = "java(mapDateTime(entity.getSentAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
     )
     NotificationDTO toResponse(Notification entity);
 

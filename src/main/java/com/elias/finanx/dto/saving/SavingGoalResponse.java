@@ -1,5 +1,6 @@
 package com.elias.finanx.dto.saving;
 
+import com.elias.finanx.entity.enums.SavingGoalState;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,7 +14,15 @@ public class SavingGoalResponse {
     private BigDecimal accumulated;
     private ZonedDateTime deadline;
     private ZonedDateTime createdAt;
+    private ZonedDateTime disabledAt;
+    private SavingGoalState state;
     private Boolean active;
     private Long userId;
-    public double progressPercentage;
+    private double progressPercentage;
+    private int transactionsCount;
+    private BigDecimal outstanding;
+    private long daysRemaining;
+    private BigDecimal averageContribution;
+    private boolean completed;
+    private ZonedDateTime estimatedCompletionDate;
 }

@@ -13,6 +13,7 @@ import com.elias.finanx.repository.TransactionRepository;
 import com.elias.finanx.repository.UserRepository;
 import com.elias.finanx.service.BudgetService;
 import com.elias.finanx.service.ReasonResolver;
+import com.elias.finanx.service.SavingGoalService;
 import com.elias.finanx.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionMapper transactionMapper;
     private final ReasonResolver reasonResolver;
     private final BudgetService budgetService;
+    private final SavingGoalService savingGoalService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -45,6 +47,7 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setReason(reason);
         Transaction saved = transactionRepository.save(transaction);
         budgetService.checkAllBudgets(request.getUserId());
+        savingGoalService.checkAllSavingGoals(request.getUserId());
         return transactionMapper.toResponse(saved);
     }
 
@@ -66,6 +69,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         Transaction saved =  transactionRepository.save(existing);
         budgetService.checkAllBudgets(request.getUserId());
+        savingGoalService.checkAllSavingGoals(request.getUserId());
         return transactionMapper.toResponse(saved);
     }
 

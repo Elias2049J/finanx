@@ -44,6 +44,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final ReasonResolver reasonResolver;
     private final RecurrenceService recurrenceService;
     private final BudgetService budgetService;
+    private final SavingGoalService savingGoalService;
 
     // ─── CRUD ────────────────────────────────────────────────────────────────────
 
@@ -177,7 +178,10 @@ public class ScheduleServiceImpl implements ScheduleService {
                 },
                 created -> {
                     transactionRepository.saveAll((List<Transaction>) created);
-                    affectedUsers.forEach(budgetService::checkAllBudgets);
+                    affectedUsers.forEach(userId -> {
+                        budgetService.checkAllBudgets(userId);
+                        savingGoalService.checkAllSavingGoals(userId);
+                    });
                 }
         );
     }
@@ -272,15 +276,15 @@ public class ScheduleServiceImpl implements ScheduleService {
         int completed = 0;
         int errored   = 0;
 
-        for (S st : dueList) {
+        for (S sc : dueList) {
             try {
-                created.add(executor.apply(st));
-                if (st.getState() == ScheduleState.FINALIZED) completed++;
+                created.add(executor.apply(sc));
+                if (sc.getState() == ScheduleState.FINALIZED) completed++;
             } catch (Exception e) {
                 log.error("Error processing {}: id={} userId={} nextRunAt={}",
-                        jobName, st.getId(), st.getUser().getId(), st.getNextRunAt(), e);
-                st.setActive(false);
-                st.setState(ScheduleState.ERROR);
+                        jobName, sc.getId(), sc.getUser().getId(), sc.getNextRunAt(), e);
+                sc.setActive(false);
+                sc.setState(ScheduleState.ERROR);
                 errored++;
             }
         }

@@ -156,7 +156,7 @@ public class BudgetServiceImpl implements BudgetService {
                     notificationService.generate(builder -> builder
                             .budget(b)
                             .user(u)
-                            .type(NotificationType.BUDGET_ALERT)
+                            .type(NotificationType.WARNING)
                             .message(
                                     "Has alcanzado tu porcentaje de alerta de presupuesto para: " + c.getName() +
                                             ".\n Total: " + finalSpent +

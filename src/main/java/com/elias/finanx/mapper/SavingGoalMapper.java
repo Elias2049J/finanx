@@ -22,11 +22,23 @@ public interface SavingGoalMapper {
             target = "createdAt",
             expression = "java(mapOffsetToZoned(entity.getCreatedAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
     )
+    @Mapping(
+            target = "disabledAt",
+            expression = "java(mapOffsetToZoned(entity.getDisabledAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
+    )
+    @Mapping(target = "accumulated", expression = "java(entity.getAccumulated())")
+    @Mapping(target = "outstanding", expression = "java(entity.getOutstanding())")
+    @Mapping(target = "transactionsCount", expression = "java(entity.getTransactionsCount())")
+    @Mapping(target = "daysRemaining", expression = "java(entity.getDaysRemaining())")
+    @Mapping(target = "averageContribution", expression = "java(entity.getAverageContribution())")
+    @Mapping(target = "completed", expression = "java(entity.isCompleted())")
+    @Mapping(target = "estimatedCompletionDate", expression = "java(entity.getEstimatedCompletionDate())")
     SavingGoalResponse toResponse(SavingGoal entity);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "accumulated", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "disabledAt", ignore = true)
     @Mapping(target = "active", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "transactions", ignore = true)
