@@ -1,0 +1,64 @@
+server:
+  port: 8080
+
+app:
+  google:
+    issuer: "https://accounts.google.com"
+    jwks: "https://www.googleapis.com/oauth2/v3/certs"
+  front-url: "http://localhost:4200"
+  front-url-https: "https://localhost:4200"
+
+spring:
+  application:
+    name: "finanx"
+
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/db_finanx"
+    username: postgres
+    password: "12345678"
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  security:
+    jwt:
+      secret: X9f!aPz7QwLmN2rT4vYbC6dE8hJkR0sU
+      issuer: finanx-api
+      expiration-seconds: 84600
+    oauth2:
+      resourceserver:
+        jwt:
+          audiences: "finanx-api"
+      client:
+        registration:
+          google:
+            client-id: "eo.apps.googleusercontent.com"
+            client-secret: "eo"
+            scope: openid, profile, email
+        provider:
+          google:
+            issuer-uri: "https://accounts.google.com"
+
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+logging:
+  level:
+    org.springframework.boot.context.config: INFO
+    org.springframework.core.env: INFO
+    com.zaxxer.hikari: INFO
+
+gmail:
+  host: smtp.gmail.com
+  port: 587
+  from: ${GMAIL_FROM:eo@gmail.com}
+  username: ${GMAIL_USERNAME:eo@gmail.com}
+  app-password: ${GMAIL_APP_PASSWORD:eo}
