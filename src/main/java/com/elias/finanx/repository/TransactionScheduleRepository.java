@@ -16,5 +16,6 @@ import java.util.List;
 public interface TransactionScheduleRepository extends JpaRepository<TransactionSchedule, Long> {
     List<TransactionSchedule> findAllByUser_Id(Long userId);
     List<TransactionSchedule> findAllByActiveTrueAndState(ScheduleState state);
+    List<TransactionSchedule> findAllByUser_IdAndActiveAndState(Long userId, boolean active, ScheduleState state);
 
 }

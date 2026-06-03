@@ -11,5 +11,7 @@ import java.util.List;
 public interface BudgetScheduleRepository extends JpaRepository<BudgetSchedule, Long> {
 
     List<BudgetSchedule> findAllByActiveTrueAndState(ScheduleState scheduleState);
+
+    List<BudgetSchedule> findAllByUser_IdAndActiveAndState(Long userId, boolean active, ScheduleState scheduleState);
 }
 

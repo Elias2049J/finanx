@@ -1,10 +1,7 @@
 package com.elias.finanx.service.impl;
 
-import com.elias.finanx.dto.recurrencerule.RecurrenceRuleResponse;
-import com.elias.finanx.dto.schedule.ScheduleRequest;
-import com.elias.finanx.dto.schedule.ScheduleResponse;
+import com.elias.finanx.dto.schedule.*;
 import com.elias.finanx.dto.recurrencerule.RecurrenceRuleRequest;
-import com.elias.finanx.dto.schedule.TransactionScheduleRequest;
 import com.elias.finanx.entity.*;
 import com.elias.finanx.entity.enums.RecurrenceType;
 import com.elias.finanx.entity.enums.ScheduleState;
@@ -16,8 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,8 +28,8 @@ import java.util.function.Function;
 public class ScheduleServiceImpl implements ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
-    private final TransactionScheduleRepository transactionScheduleRepository;
-    private final BudgetScheduleRepository budgetScheduleRepository;
+    private final TransactionScheduleRepository tsRepository;
+    private final BudgetScheduleRepository bsRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final ScheduleMapper tsMapper;
@@ -118,10 +113,27 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public List<ScheduleResponse> findAllByActiveAndState(ScheduleState state) {
-        return scheduleRepository.findAllByActiveAndState(true, state)
+    public List<ScheduleResponse> findAllActiveByUserAndState(Long userId, ScheduleState state) {
+        return scheduleRepository.findAllByUser_IdAndActiveAndState(userId, true, state)
                 .stream()
                 .map(tsMapper::toResponseDispatch)
+                .toList();
+    }
+
+    @Override
+    public List<BudgetScheduleResponse> findAllBScheduleActiveByUserAndState(Long userId, ScheduleState state) {
+        return bsRepository.findAllByUser_IdAndActiveAndState(userId, true, state)
+                .stream()
+                .map(tsMapper::toResponse)
+                .toList();
+
+    }
+
+    @Override
+    public List<TransactionScheduleResponse> findAllTScheduleActiveByUserAndState(Long userId, ScheduleState state) {
+        return tsRepository.findAllByUser_IdAndActiveAndState(userId, true, state)
+                .stream()
+                .map(tsMapper::toResponse)
                 .toList();
     }
 
@@ -161,7 +173,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional
     public void runDueTransactions() {
         List<TransactionSchedule> candidates =
-                transactionScheduleRepository.findAllByActiveTrueAndState(ScheduleState.RUNNING);
+                tsRepository.findAllByActiveTrueAndState(ScheduleState.RUNNING);
 
         List<TransactionSchedule> dueList = candidates.stream()
                 .filter(this::isDue)
@@ -190,7 +202,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional
     public void runDueBudgets() {
         List<BudgetSchedule> candidates =
-                budgetScheduleRepository.findAllByActiveTrueAndState(ScheduleState.RUNNING);
+                bsRepository.findAllByActiveTrueAndState(ScheduleState.RUNNING);
 
         List<BudgetSchedule> dueList = candidates.stream()
                 .filter(this::isDue)

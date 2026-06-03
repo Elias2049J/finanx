@@ -9,7 +9,7 @@ import java.util.List;
 
 @Repository
 public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
-    List<Schedule> findAllByActiveAndState(Boolean active, ScheduleState state);
+    List<Schedule> findAllByUser_IdAndActiveAndState(Long userId, Boolean active, ScheduleState state);
 
     List<Schedule> findAllByUser_Id(Long userId);
 }

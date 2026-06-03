@@ -1,11 +1,12 @@
 package com.elias.finanx.service;
 
+import com.elias.finanx.dto.schedule.BudgetScheduleResponse;
 import com.elias.finanx.dto.schedule.ScheduleRequest;
 import com.elias.finanx.dto.schedule.ScheduleResponse;
+import com.elias.finanx.dto.schedule.TransactionScheduleResponse;
 import com.elias.finanx.entity.enums.ScheduleState;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 
 public interface ScheduleService {
@@ -20,7 +21,11 @@ public interface ScheduleService {
     void cancel(Long id);
     void disable(Long id);
 
-    List<ScheduleResponse> findAllByActiveAndState(ScheduleState state);
+    List<ScheduleResponse> findAllActiveByUserAndState(Long userId, ScheduleState state);
+
+    List<BudgetScheduleResponse> findAllBScheduleActiveByUserAndState(Long userId, ScheduleState state);
+
+    List<TransactionScheduleResponse> findAllTScheduleActiveByUserAndState(Long userId, ScheduleState state);
 
     @Transactional
     void runDueTransactions();
