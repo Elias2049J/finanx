@@ -39,25 +39,25 @@ public class ScheduleController {
         return ResponseEntity.ok(scheduleService.findAllActiveByUserAndState(idUser, state));
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/pause")
     public ResponseEntity<Void> pause(@PathVariable Long id) {
         scheduleService.pause(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/resume")
     public ResponseEntity<Void> resume(@PathVariable Long id) {
         scheduleService.resume(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/cancel")
     public ResponseEntity<Void> cancel(@PathVariable Long id) {
         scheduleService.cancel(id);
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id}/disable")
     public ResponseEntity<Void> disable(@PathVariable Long id) {
         scheduleService.disable(id);
         return ResponseEntity.noContent().build();
