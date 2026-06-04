@@ -6,16 +6,19 @@ import com.elias.finanx.entity.Budget;
 import com.elias.finanx.entity.Category;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.TimeZone;
+import com.elias.finanx.util.DateUtil;
 import org.mapstruct.*;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
-@Mapper(componentModel = "spring", uses = RecurrenceRuleMapper.class)
+@Mapper(componentModel = "spring", uses = {RecurrenceRuleMapper.class, DateUtil.class})
 public interface BudgetMapper {
 
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "category.id", target = "categoryId")
+    @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     BudgetResponse toResponse(Budget entity);
 
     @Mapping(target = "id", ignore = true)
@@ -45,10 +48,5 @@ public interface BudgetMapper {
         Category c = new Category();
         c.setId(id);
         return c;
-    }
-
-
-    default OffsetDateTime mapLocalDateToOffset(LocalDateTime value, TimeZone zone) {
-        return value.atZone(zone.toZoneId()).toOffsetDateTime();
     }
 }

@@ -3,7 +3,7 @@ package com.elias.finanx.dto.notification;
 import com.elias.finanx.entity.enums.BudgetState;
 import lombok.Builder;
 import lombok.Data;
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 
 import com.elias.finanx.entity.enums.NotificationType;
 import com.elias.finanx.entity.enums.NotificationState;
@@ -16,9 +16,10 @@ public class NotificationDTO {
     private String userEmail;
     private NotificationType type;
     private String message;
-    private ZonedDateTime createdAt;
-    private ZonedDateTime scheduledAt;
-    private ZonedDateTime sentAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime disabledAt;
+    private LocalDateTime scheduledAt;
+    private LocalDateTime sentAt;
     private NotificationState state;
     private Long scheduleId;
     private Long budgetId;

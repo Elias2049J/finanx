@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,4 +19,7 @@ public class ReasonResponse {
     private String description;
 
     private Long userId;
+    private LocalDateTime createdAt;
+    private LocalDateTime disabledAt;
+    private boolean active;
 }

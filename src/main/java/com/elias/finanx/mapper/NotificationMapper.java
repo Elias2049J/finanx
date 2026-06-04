@@ -5,13 +5,10 @@ import com.elias.finanx.entity.Budget;
 import com.elias.finanx.entity.Notification;
 import com.elias.finanx.entity.Transaction;
 import com.elias.finanx.entity.User;
+import com.elias.finanx.util.DateUtil;
 import org.mapstruct.*;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = DateUtil.class)
 public interface NotificationMapper {
 
     @Mapping(source = "user.id", target = "userId")
@@ -22,18 +19,10 @@ public interface NotificationMapper {
     @Mapping(source = "budget.state", target = "budgetState")
     @Mapping(source = "savingGoal.id", target = "savingGoalId")
     @Mapping(source = "savingGoal.description", target = "savingGoalDescription")
-    @Mapping(
-            target = "createdAt",
-            expression = "java(mapDateTime(entity.getCreatedAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
-    )
-    @Mapping(
-            target = "scheduledAt",
-            expression = "java(mapDateTime(entity.getScheduledAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
-    )
-    @Mapping(
-            target = "sentAt",
-            expression = "java(mapDateTime(entity.getSentAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
-    )
+    @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "scheduledAt", target = "scheduledAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "sentAt", target = "sentAt", qualifiedByName = "OffsetToLocal")
     NotificationDTO toResponse(Notification entity);
 
     default User mapUserId(Long id) {
@@ -57,10 +46,5 @@ public interface NotificationMapper {
         return b;
     }
 
-    default ZonedDateTime mapDateTime(OffsetDateTime value, ZoneId zoneId) {
-        if (value == null || zoneId == null) {
-            return null;
-        }
-        return value.atZoneSameInstant(zoneId);
-    }
+
 }

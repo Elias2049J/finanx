@@ -8,11 +8,13 @@ import com.elias.finanx.dto.schedule.TransactionScheduleRequest;
 import com.elias.finanx.dto.schedule.TransactionScheduleResponse;
 import com.elias.finanx.entity.*;
 import com.elias.finanx.entity.enums.TimeZone;
+import com.elias.finanx.util.DateUtil;
+import com.itextpdf.commons.utils.DateTimeUtil;
 import org.mapstruct.*;
 
 import java.time.*;
 
-@Mapper(componentModel = "spring", uses = RecurrenceRuleMapper.class)
+@Mapper(componentModel = "spring", uses = {RecurrenceRuleMapper.class, DateUtil.class})
 public interface ScheduleMapper {
 
     default ScheduleResponse toResponseDispatch(Schedule entity) {
@@ -46,18 +48,20 @@ public interface ScheduleMapper {
     @Mapping(source = "reason.id", target = "reasonId")
     @Mapping(source = "reason.description", target = "reasonDesc")
     @Mapping(source = "recurrenceRule", target = "recurrenceRule")
-    @Mapping(target = "nextRunAt", expression = "java(mapOffsetToZoned(entity.getNextRunAt(), entity.getUser().getTimeZone().toZoneId()))")
-    @Mapping(target = "createdAt", expression = "java(mapOffsetToZoned(entity.getCreatedAt(), entity.getUser().getTimeZone().toZoneId()))")
-    @Mapping(target = "lastRunAt", expression = "java((entity.getLastRunAt() != null) ? mapOffsetToZoned(entity.getLastRunAt(), entity.getUser().getTimeZone().toZoneId()) : null)")
+    @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "nextRunAt", target = "nextRunAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "lastRunAt", target = "lastRunAt", qualifiedByName = "OffsetToLocal")
     TransactionScheduleResponse toResponse(TransactionSchedule entity);
 
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.name", target = "categoryName")
     @Mapping(source = "recurrenceRule", target = "recurrenceRule")
-    @Mapping(target = "nextRunAt", expression = "java(mapOffsetToZoned(entity.getNextRunAt(), entity.getUser().getTimeZone().toZoneId()))")
-    @Mapping(target = "createdAt", expression = "java(mapOffsetToZoned(entity.getCreatedAt(), entity.getUser().getTimeZone().toZoneId()))")
-    @Mapping(target = "lastRunAt", expression = "java((entity.getLastRunAt() != null) ? mapOffsetToZoned(entity.getLastRunAt(), entity.getUser().getTimeZone().toZoneId()) : null)")
+    @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "nextRunAt", target = "nextRunAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "lastRunAt", target = "lastRunAt", qualifiedByName = "OffsetToLocal")
     BudgetScheduleResponse toResponse(BudgetSchedule entity);
 
     @Mapping(target = "reason", ignore = true)
@@ -90,12 +94,4 @@ public interface ScheduleMapper {
     @Mapping(target = "createdAt", source = "lastRunAt")
     @Mapping(target = "schedule", source = "st")
     Transaction toTransaction(TransactionSchedule st);
-    
-    default OffsetDateTime mapLocalDateToOffset(LocalDateTime value, TimeZone zone) {
-        return value.atZone(zone.toZoneId()).toOffsetDateTime();
-    }
-
-    default ZonedDateTime mapOffsetToZoned(OffsetDateTime value, ZoneId zoneId) {
-        return value.atZoneSameInstant(zoneId);
-    }
 }

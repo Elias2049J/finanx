@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.Data;
 
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 
 @Data
 @JsonTypeInfo(
@@ -24,9 +24,10 @@ public class ScheduleResponse {
     private Long userId;
     private Long categoryId;
     private String categoryName;
-    private ZonedDateTime nextRunAt;
-    private ZonedDateTime createdAt;
-    private ZonedDateTime lastRunAt;
+    private LocalDateTime nextRunAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime lastRunAt;
+    private LocalDateTime disabledAt;
     private Boolean active;
     private ScheduleState state;
     private RecurrenceRuleResponse recurrenceRule;

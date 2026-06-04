@@ -37,8 +37,15 @@ public class Budget {
     @Column(nullable = false, name = "estado")
     private BudgetState state;
 
+    @Builder.Default
     @Column(name = "activo")
     private Boolean active = true;
+
+    @Column(name = "fecha_creacion")
+    private OffsetDateTime createdAt;
+
+    @Column(name = "fecha_desactivacion")
+    private OffsetDateTime disabledAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_usuario", nullable = false)

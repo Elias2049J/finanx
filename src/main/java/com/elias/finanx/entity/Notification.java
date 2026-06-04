@@ -40,6 +40,9 @@ public class Notification {
     @Column(name = "fecha_envio")
     private OffsetDateTime sentAt;
 
+    @Column(name = "fecha_desactivacion")
+    private OffsetDateTime disabledAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false)
     private NotificationState state;

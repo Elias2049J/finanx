@@ -3,29 +3,17 @@ package com.elias.finanx.mapper;
 import com.elias.finanx.dto.saving.SavingGoalRequest;
 import com.elias.finanx.dto.saving.SavingGoalResponse;
 import com.elias.finanx.entity.SavingGoal;
+import com.elias.finanx.util.DateUtil;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = DateUtil.class)
 public interface SavingGoalMapper {
     @Mapping(source = "user.id", target = "userId")
     @Mapping(target = "progressPercentage", expression = "java(entity.getProgressPercentage())")
-    @Mapping(
-            target = "deadline",
-            expression = "java(mapOffsetToZoned(entity.getDeadline(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
-    )
-    @Mapping(
-            target = "createdAt",
-            expression = "java(mapOffsetToZoned(entity.getCreatedAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
-    )
-    @Mapping(
-            target = "disabledAt",
-            expression = "java(mapOffsetToZoned(entity.getDisabledAt(), (entity.getUser() != null && entity.getUser().getTimeZone() != null) ? entity.getUser().getTimeZone().toZoneId() : null))"
-    )
+    @Mapping(source = "deadline", target = "deadline", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(target = "accumulated", expression = "java(entity.getAccumulated())")
     @Mapping(target = "outstanding", expression = "java(entity.getOutstanding())")
     @Mapping(target = "transactionsCount", expression = "java(entity.getTransactionsCount())")
@@ -44,11 +32,4 @@ public interface SavingGoalMapper {
     @Mapping(target = "transactions", ignore = true)
     @Mapping(target = "deadline", ignore = true)
     SavingGoal toEntity(SavingGoalRequest request);
-
-    default ZonedDateTime mapOffsetToZoned(OffsetDateTime value, ZoneId zoneId) {
-        if (value == null || zoneId == null) {
-            return null;
-        }
-        return value.atZoneSameInstant(zoneId);
-    }
 }

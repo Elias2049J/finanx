@@ -41,6 +41,9 @@ public abstract class Schedule {
     @Column(name = "ultima_ejecucion")
     private OffsetDateTime lastRunAt;
 
+    @Column(name = "fecha_desactivacion")
+    private OffsetDateTime disabledAt;
+
     @Column(name = "activo", nullable = false)
     private Boolean active;
 

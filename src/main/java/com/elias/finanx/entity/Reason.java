@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.OffsetDateTime;
+
 @Entity
 @Table(
         name = "motivos_movimiento",
@@ -28,6 +30,12 @@ public class Reason {
 
     @Column(name = "activo", nullable = false)
     private Boolean active;
+
+    @Column(name = "fecha_creacion")
+    private OffsetDateTime createdAt;
+
+    @Column(name = "fecha_desactivacion")
+    private OffsetDateTime disabledAt;
 
     @ManyToOne
     @JoinColumn(name = "id_usuario")

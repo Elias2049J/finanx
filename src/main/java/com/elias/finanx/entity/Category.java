@@ -35,6 +35,9 @@ public class Category {
     @Column(name = "activo", nullable = false)
     private Boolean active = true;
 
+    @Column(name = "fecha_creacion")
+    private OffsetDateTime createdAt;
+
     @Column(name = "fecha_desactivacion")
     private OffsetDateTime disabledAt;
 

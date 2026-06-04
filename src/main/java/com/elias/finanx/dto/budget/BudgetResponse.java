@@ -2,6 +2,8 @@ package com.elias.finanx.dto.budget;
 
 import lombok.Data;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import com.elias.finanx.entity.enums.BudgetState;
 
 @Data
@@ -15,4 +17,6 @@ public class BudgetResponse {
     private Long userId;
     private Long categoryId;
     private Long categoryName;
+    private LocalDateTime createdAt;
+    private LocalDateTime disabledAt;
 }

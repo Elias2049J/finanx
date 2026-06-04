@@ -9,8 +9,8 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -109,11 +109,11 @@ public class SavingGoal {
         return getAccumulated().compareTo(targetAmount) >= 0;
     }
 
-    public ZonedDateTime getEstimatedCompletionDate() {
+    public LocalDateTime getEstimatedCompletionDate() {
         BigDecimal outstanding = getOutstanding();
         BigDecimal avg = getAverageContribution();
         if (avg.compareTo(BigDecimal.ZERO) == 0) return null;
         long months = outstanding.divide(avg, 0, HALF_UP).longValue();
-        return ZonedDateTime.now(user.getTimeZone().toZoneId()).plusMonths(months);
+        return OffsetDateTime.now(user.getTimeZone().toZoneId()).toLocalDateTime().plusMonths(months);
     }
 }

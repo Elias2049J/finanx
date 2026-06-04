@@ -2,7 +2,7 @@ package com.elias.finanx.dto.transaction;
 
 import lombok.Data;
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 import com.elias.finanx.entity.enums.PaymentMethod;
 import com.elias.finanx.entity.enums.TransactionType;
@@ -16,5 +16,7 @@ public class TransactionResponse {
     private BigDecimal amount;
     private PaymentMethod paymentMethod;
     private TransactionType type;
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime disabledAt;
+    private boolean active;
 }

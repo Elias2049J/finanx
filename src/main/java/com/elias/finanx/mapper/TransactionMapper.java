@@ -3,14 +3,17 @@ package com.elias.finanx.mapper;
 import com.elias.finanx.dto.transaction.TransactionRequest;
 import com.elias.finanx.dto.transaction.TransactionResponse;
 import com.elias.finanx.entity.Transaction;
+import com.elias.finanx.util.DateUtil;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = DateUtil.class)
 public interface TransactionMapper {
 
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "reason.id", target = "reasonId")
+    @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     TransactionResponse toResponse(Transaction entity);
 
     @Mapping(target = "id", ignore = true)

@@ -5,7 +5,7 @@ import com.elias.finanx.entity.enums.TimeZone;
 import com.elias.finanx.entity.enums.UserState;
 import lombok.Data;
 import java.math.BigDecimal;
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 
 @Data
 public class UserResponse {
@@ -17,7 +17,8 @@ public class UserResponse {
     private Role role;
     private UserState state;
     private BigDecimal moneyBalance;
-    private ZonedDateTime createdAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime disabledAt;
 
     private String fullName;
     private TimeZone timeZone;

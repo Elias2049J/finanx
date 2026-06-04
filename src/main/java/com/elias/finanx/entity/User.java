@@ -68,6 +68,9 @@ public class User implements UserDetails {
     @Column(name = "fecha_creacion")
     private OffsetDateTime createdAt;
 
+    @Column(name = "fecha_desactivacion")
+    private OffsetDateTime disabledAt;
+
     public void disable() {
         this.state = UserState.DISABLED;
     }
