@@ -3,6 +3,7 @@ package com.elias.finanx.entity.enums;
 public enum BudgetState {
     ACTIVE,
     CANCELLED,
+    DISABLED,
     FINALIZED;
     public boolean isActive() {
         return this == ACTIVE;

@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 @Service
 
@@ -62,10 +64,13 @@ public class CategoryServiceImpl implements CategoryService {
                 .toList();
     }
 
+    @Transactional
     @Override
     public void disable(Long id) {
         Category existing = categoryRepository.findById(id).orElseThrow();
+        ZoneId zoneId = existing.getUser().getTimeZone().toZoneId();
         existing.setActive(false);
+        existing.setDisabledAt(OffsetDateTime.now(zoneId));
         categoryRepository.save(existing);
     }
 

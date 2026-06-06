@@ -44,4 +44,10 @@ public class SavingGoalController {
         savingGoalService.disable(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<Void> cancel(@PathVariable Long id) {
+        savingGoalService.cancel(id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -19,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -57,8 +59,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 .toList();
     }
 
-    @Override
-    public User getEntityById(Long aLong) {
+    private User getEntityById(Long aLong) {
         return userRepository.findById(aLong).orElseThrow();
     }
 
@@ -70,7 +71,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     public UserResponse disable(Long id) {
         User user = getEntityById(id);
+        ZoneId zoneId = user.getTimeZone().toZoneId();
         user.disable();
+        user.setDisabledAt(OffsetDateTime.now(zoneId));
         return userMapper.toResponse(userRepository.save(user));
     }
 

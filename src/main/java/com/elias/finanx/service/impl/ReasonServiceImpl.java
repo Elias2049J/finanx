@@ -9,7 +9,10 @@ import com.elias.finanx.repository.UserRepository;
 import com.elias.finanx.service.ReasonService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 @Service
 
@@ -46,10 +49,13 @@ public class ReasonServiceImpl implements ReasonService {
                 .toList();
     }
 
+    @Transactional
     @Override
     public void disable(Long id) {
         Reason existing = reasonRepository.findById(id).orElseThrow();
+        ZoneId zoneId = existing.getUser().getTimeZone().toZoneId();
         existing.setActive(false);
+        existing.setDisabledAt(OffsetDateTime.now(zoneId));
         reasonRepository.save(existing);
     }
 }

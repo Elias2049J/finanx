@@ -3,6 +3,7 @@ package com.elias.finanx.service;
 import com.elias.finanx.dto.notification.NotificationDTO;
 import com.elias.finanx.entity.Notification;
 import com.elias.finanx.entity.enums.NotificationState;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,6 +22,9 @@ public interface NotificationService {
     void markAsRead(Long id);
 
     void discard(Long id);
+
+    @Transactional
+    void disable(Long id);
 
     void purgeOlderThan(LocalDateTime threshold, long userId);
 

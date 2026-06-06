@@ -9,6 +9,11 @@ import java.util.List;
 public interface SavingGoalService {
     SavingGoalResponse create(SavingGoalRequest request);
     SavingGoalResponse update(Long id, SavingGoalRequest request);
+
+    @Transactional
+    void cancel(Long id);
+
+    @Transactional
     void disable(Long id);
     List<SavingGoalResponse> findAllActiveByUser(Long userId);
     SavingGoalResponse findById(Long id);

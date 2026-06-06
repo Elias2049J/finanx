@@ -21,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 @Service
 @RequiredArgsConstructor
@@ -108,9 +111,12 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
+    @Transactional
     public void disable(Long id) {
         Transaction transaction = transactionRepository.findById(id).orElseThrow();
+        ZoneId zoneId = transaction.getUser().getTimeZone().toZoneId();
         transaction.setActive(false);
+        transaction.setDisabledAt(OffsetDateTime.now(zoneId));
         transactionRepository.save(transaction);
     }
 

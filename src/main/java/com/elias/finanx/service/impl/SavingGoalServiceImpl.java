@@ -62,11 +62,21 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         return sgMapper.toResponse(sgRepository.save(existing));
     }
 
+    @Transactional
+    @Override
+    public void cancel(Long id) {
+        SavingGoal existing = sgRepository.findById(id).orElseThrow();
+        existing.setState(SavingGoalState.CANCELLED);
+        sgRepository.save(existing);
+    }
+
     @Override
     @Transactional
     public void disable(Long id) {
         SavingGoal existing = sgRepository.findById(id).orElseThrow();
+        ZoneId zoneId = existing.getUser().getTimeZone().toZoneId();
         existing.setActive(false);
+        existing.setDisabledAt(OffsetDateTime.now(zoneId));
         sgRepository.save(existing);
     }
 
@@ -91,6 +101,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         List<SavingGoal> all = sgRepository.findAllByUser_IdAndActiveAndState(userId, true, SavingGoalState.RUNNING);
         for (SavingGoal sa: all) {
             StringBuilder sb = new StringBuilder();
+            User u = sa.getUser();
             if (sa.isCompleted()) {
                 Transaction last = sa.getTransactions().stream()
                         .filter(t -> Boolean.TRUE.equals(t.getActive()))
@@ -100,11 +111,12 @@ public class SavingGoalServiceImpl implements SavingGoalService {
                             return new IllegalStateException("Not active transactions found");
                                 });
                 sa.setState(SavingGoalState.COMPLETED);
+                sa.setCompletedAt(OffsetDateTime.now(u.getTimeZone().toZoneId()));
                 log.info("COMPLETING SavingGoal id={} desc={}", sa.getId(), sa.getDescription());
 
                 notificationService.generate(b -> b
                         .savingGoal(sa)
-                        .user(sa.getUser())
+                        .user(u)
                         .type(NotificationType.SUCCESS)
                         .message(sb
                                 .append("🎉 ¡Felicitaciones! Has alcanzado tu meta de ahorro '")

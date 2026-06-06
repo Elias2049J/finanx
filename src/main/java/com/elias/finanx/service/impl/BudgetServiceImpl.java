@@ -90,10 +90,13 @@ public class BudgetServiceImpl implements BudgetService {
     }
 
     @Override
+    @Transactional
     public void disable(Long id) {
         Budget b = budgetRepository.findById(id).orElseThrow();
-        b.setState(BudgetState.CANCELLED);
+        ZoneId zoneId = b.getUser().getTimeZone().toZoneId();
+        b.setState(BudgetState.DISABLED);
         b.setActive(false);
+        b.setDisabledAt(OffsetDateTime.now(zoneId));
         budgetRepository.save(b);
     }
 

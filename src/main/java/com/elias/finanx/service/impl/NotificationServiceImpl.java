@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -93,6 +94,15 @@ public class NotificationServiceImpl implements NotificationService {
         Notification n = notificationRepository.findById(id).orElseThrow();
         n.setState(NotificationState.DISCARD);
         notificationRepository.save(n);
+    }
+
+    @Transactional
+    @Override
+    public void disable(Long id) {
+        Notification existing = notificationRepository.findById(id).orElseThrow();
+        ZoneId zoneId = existing.getUser().getTimeZone().toZoneId();
+        existing.setDisabledAt(OffsetDateTime.now(zoneId));
+        notificationRepository.save(existing);
     }
 
     @Override
