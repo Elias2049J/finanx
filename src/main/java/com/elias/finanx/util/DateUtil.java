@@ -25,6 +25,7 @@ public final class DateUtil {
 
     @Named("OffsetToLocal")
     public static LocalDateTime offsetToLocal(OffsetDateTime value) {
+        if (value == null) return null;
         return value.toLocalDateTime();
     }
 

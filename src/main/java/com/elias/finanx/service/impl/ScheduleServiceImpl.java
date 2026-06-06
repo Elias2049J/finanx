@@ -8,12 +8,14 @@ import com.elias.finanx.entity.enums.ScheduleState;
 import com.elias.finanx.mapper.ScheduleMapper;
 import com.elias.finanx.repository.*;
 import com.elias.finanx.service.*;
+import com.itextpdf.commons.utils.Action;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -139,10 +141,13 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     // ─── Estado ──────────────────────────────────────────────────────────────────
 
+    @Transactional
     @Override
     public void disable(Long id) {
         Schedule st = scheduleRepository.findById(id).orElseThrow();
+        ZoneId zoneId =  st.getUser().getTimeZone().toZoneId();
         st.setActive(false);
+        st.setDisabledAt(OffsetDateTime.now(zoneId));
         scheduleRepository.save(st);
     }
 

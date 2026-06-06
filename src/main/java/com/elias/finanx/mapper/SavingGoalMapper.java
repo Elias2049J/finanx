@@ -13,6 +13,7 @@ public interface SavingGoalMapper {
     @Mapping(target = "progressPercentage", expression = "java(entity.getProgressPercentage())")
     @Mapping(source = "deadline", target = "deadline", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "completedAt", target = "completedAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(target = "accumulated", expression = "java(entity.getAccumulated())")
     @Mapping(target = "outstanding", expression = "java(entity.getOutstanding())")

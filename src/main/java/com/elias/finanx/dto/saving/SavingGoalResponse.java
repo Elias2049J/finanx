@@ -14,6 +14,7 @@ public class SavingGoalResponse {
     private BigDecimal accumulated;
     private LocalDateTime deadline;
     private LocalDateTime createdAt;
+    private LocalDateTime completedAt;
     private LocalDateTime disabledAt;
     private SavingGoalState state;
     private Boolean active;

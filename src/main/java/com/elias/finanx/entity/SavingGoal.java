@@ -43,6 +43,9 @@ public class SavingGoal {
     @Column(name = "fecha_desactivacion")
     private OffsetDateTime disabledAt;
 
+    @Column(name = "fecha_completado")
+    private OffsetDateTime completedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
     private SavingGoalState state;
