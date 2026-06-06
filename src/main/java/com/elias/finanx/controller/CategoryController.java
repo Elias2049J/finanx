@@ -18,12 +18,12 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-    @GetMapping("/{idUser}")
+    @GetMapping("/user/{idUser}")
     public ResponseEntity<List<CategoryResponse>> findAllByUser(@PathVariable Long idUser) {
         return ResponseEntity.ok(categoryService.findAllByUser(idUser));
     }
 
-    @GetMapping("/{idUser}/{active}")
+    @GetMapping("/user/{idUser}/{active}")
     public ResponseEntity<List<CategoryResponse>> findAllByUserAndActive(
             @PathVariable Long idUser,
             @PathVariable boolean active) {

@@ -18,12 +18,12 @@ import java.util.List;
 public class BudgetController {
     private final BudgetService budgetService;
 
-    @GetMapping("/{idUser}")
+    @GetMapping("/user/{idUser}")
     public ResponseEntity<List<BudgetResponse>> findAllByUser(@PathVariable Long idUser) {
         return ResponseEntity.ok(budgetService.findAllByUser(idUser));
     }
 
-    @GetMapping("/{idUser}/{state}")
+    @GetMapping("/user/{idUser}/{state}")
     public ResponseEntity<List<BudgetResponse>> findAllByUserAndState(
             @PathVariable Long idUser,
             @PathVariable BudgetState state

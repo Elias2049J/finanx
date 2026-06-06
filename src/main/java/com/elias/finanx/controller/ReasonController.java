@@ -18,8 +18,8 @@ public class ReasonController {
 
     private final ReasonService reasonService;
 
-    @GetMapping("/{idUser}")
-    public ResponseEntity<List<ReasonResponse>> findAll(@PathVariable Long idUser) {
+    @GetMapping("/user/{idUser}")
+    public ResponseEntity<List<ReasonResponse>> findAllByUser(@PathVariable Long idUser) {
         return ResponseEntity.ok(reasonService.findAllByUser(idUser));
     }
 

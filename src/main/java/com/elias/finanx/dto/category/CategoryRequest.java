@@ -7,6 +7,8 @@ import jakarta.validation.constraints.*;
 public class CategoryRequest {
     @NotBlank
     private String name;
+    @NotBlank
     private String description;
+    @NotNull
     private Long userId;
 }

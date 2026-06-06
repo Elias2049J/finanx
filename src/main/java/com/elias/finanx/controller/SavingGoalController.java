@@ -18,7 +18,7 @@ public class SavingGoalController {
 
     private final SavingGoalService savingGoalService;
 
-    @GetMapping("/{idUser}")
+    @GetMapping("/user/{idUser}")
     public ResponseEntity<List<SavingGoalResponse>> findAllActiveByUser(@PathVariable Long idUser) {
         return ResponseEntity.ok(savingGoalService.findAllActiveByUser(idUser));
     }
@@ -39,7 +39,7 @@ public class SavingGoalController {
         return ResponseEntity.ok(savingGoalService.update(id, request));
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/disable")
     public ResponseEntity<Void> disable(@PathVariable Long id) {
         savingGoalService.disable(id);
         return ResponseEntity.noContent().build();

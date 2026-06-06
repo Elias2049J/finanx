@@ -5,6 +5,7 @@ import com.elias.finanx.entity.BudgetSchedule;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
@@ -17,7 +18,9 @@ import lombok.Data;
 })
 @Data
 public class ScheduleRequest {
+    @NotNull
     private Long userId;
+    @NotNull
     private Long categoryId;
 
     @Valid

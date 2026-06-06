@@ -31,7 +31,7 @@ public class ScheduleController {
         return ResponseEntity.ok(scheduleService.update(id, request));
     }
 
-    @GetMapping("/{idUser}/{state}")
+    @GetMapping("/user/{idUser}/{state}")
     public ResponseEntity<List<ScheduleResponse>> findAllByUserAndState(
             @PathVariable Long idUser,
             @PathVariable ScheduleState state

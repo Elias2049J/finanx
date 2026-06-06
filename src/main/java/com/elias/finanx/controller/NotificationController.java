@@ -16,7 +16,7 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    @GetMapping("/{idUser}")
+    @GetMapping("/user/{idUser}")
     public ResponseEntity<List<NotificationDTO>> findAllByUser(@PathVariable Long idUser) {
         return ResponseEntity.ok(notificationService.findAllByUser(idUser));
     }
@@ -26,7 +26,7 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.findById(id));
     }
 
-    @GetMapping("/{idUser}/{state}")
+    @GetMapping("/user/{idUser}/{state}")
     public ResponseEntity<List<NotificationDTO>> findAllByUserAndState(
             @PathVariable Long idUser,
             @PathVariable NotificationState state) {

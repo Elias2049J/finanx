@@ -1,6 +1,7 @@
 package com.elias.finanx.dto.reason;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,5 +16,6 @@ import lombok.ToString;
 public class ReasonRequest {
     @NotBlank
     private String description;
+    @NotNull
     private Long userId;
 }

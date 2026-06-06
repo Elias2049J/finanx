@@ -20,7 +20,7 @@ public class TransactionController {
 
     private final TransactionService transactionService;
 
-    @GetMapping("/{userId}/active")
+    @GetMapping("/user/{userId}/active")
     public ResponseEntity<List<TransactionResponse>> findAllActiveByUser(@PathVariable Long userId) {
         return ResponseEntity.ok(transactionService.findAllActiveByUser(userId));
     }

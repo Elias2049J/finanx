@@ -16,7 +16,7 @@ import java.util.List;
 public class TransactionScheduleController {
     private final ScheduleService scheduleService;
 
-    @GetMapping("/{idUser}/{state}")
+    @GetMapping("/user/{idUser}/{state}")
     public ResponseEntity<List<TransactionScheduleResponse>> findAllByUserAndState(
             @PathVariable Long idUser,
             @PathVariable ScheduleState state
