@@ -40,7 +40,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         sg.setUser(user);
 
         ZoneId userZone = user.getTimeZone().toZoneId();
-        sg.setDeadline(request.getDeadline().atZone(userZone).toOffsetDateTime());
+        sg.setDeadline(request.getDeadline().atStartOfDay().atZone(userZone).toOffsetDateTime());
 
         sg.setCreatedAt(OffsetDateTime.now(userZone));
         sg.setActive(true);
@@ -57,7 +57,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         existing.setTargetAmount(request.getTargetAmount());
 
         ZoneId userZone = existing.getUser().getTimeZone().toZoneId();
-        existing.setDeadline(request.getDeadline().atZone(userZone).toOffsetDateTime());
+        existing.setDeadline(request.getDeadline().atStartOfDay().atZone(userZone).toOffsetDateTime());
 
         return sgMapper.toResponse(sgRepository.save(existing));
     }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 @Data
 public class SavingGoalRequest {
@@ -13,7 +14,7 @@ public class SavingGoalRequest {
     @NotNull
     private BigDecimal targetAmount;
     @NotNull
-    private LocalDateTime deadline;
+    private LocalDate deadline;
     @NotNull
     private Long userId;
 }

@@ -142,7 +142,7 @@ public class BudgetServiceImpl implements BudgetService {
                 }
             }
             if (Boolean.TRUE.equals(b.getAlertable())) {
-                int pct = Math.min(Math.max(b.getPercentAlert(), 0), 100);
+                int pct = Math.clamp(b.getPercentAlert(), 0, 100);
                 BigDecimal threshold = b.getLimitAmount()
                         .multiply(BigDecimal.valueOf(pct))
                         .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
@@ -181,7 +181,7 @@ public class BudgetServiceImpl implements BudgetService {
     private void applyRequestDateTimes(BudgetRequest request, Budget b) {
         ZoneId zoneId = b.getUser().getTimeZone().toZoneId();
 
-        b.setStart(request.getStart().atZone(zoneId).toOffsetDateTime());
-        b.setEnd(request.getEnd().atZone(zoneId).toOffsetDateTime());
+        b.setStart(request.getStart().atStartOfDay().atZone(zoneId).toOffsetDateTime());
+        b.setEnd(request.getEnd().atStartOfDay().atZone(zoneId).toOffsetDateTime());
     }
 }

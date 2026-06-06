@@ -3,6 +3,7 @@ package com.elias.finanx.dto.budget;
 import lombok.Data;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -23,7 +24,7 @@ public class BudgetRequest {
     private Long categoryId;
 
     @NotNull
-    private LocalDateTime start;
+    private LocalDate start;
     @NotNull
-    private LocalDateTime end;
+    private LocalDate end;
 }

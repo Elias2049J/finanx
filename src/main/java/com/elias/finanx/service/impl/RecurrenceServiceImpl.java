@@ -30,8 +30,8 @@ public class RecurrenceServiceImpl implements RecurrenceService {
         recurrenceRule.setUser(user);
 
         ZoneId userZone = user.getTimeZone().toZoneId();
-        recurrenceRule.setStart(request.getStart().atZone(userZone).toOffsetDateTime());
-        recurrenceRule.setEnd(request.getEnd().atZone(userZone).toOffsetDateTime());
+        recurrenceRule.setStart(request.getStart().atStartOfDay().atZone(userZone).toOffsetDateTime());
+        recurrenceRule.setEnd(request.getEnd().atStartOfDay().atZone(userZone).toOffsetDateTime());
         return recurrenceRuleRepository.save(recurrenceRule);
     }
 
@@ -42,8 +42,8 @@ public class RecurrenceServiceImpl implements RecurrenceService {
 
         ZoneId userZone = existing.getUser().getTimeZone().toZoneId();
 
-        existing.setStart(request.getStart().atZone(userZone).toOffsetDateTime());
-        existing.setEnd(request.getEnd().atZone(userZone).toOffsetDateTime());
+        existing.setStart(request.getStart().atStartOfDay().atZone(userZone).toOffsetDateTime());
+        existing.setEnd(request.getEnd().atStartOfDay().atZone(userZone).toOffsetDateTime());
 
         return recurrenceRuleRepository.save(existing);
     }

@@ -17,6 +17,8 @@ public class BudgetResponse {
     private Long userId;
     private Long categoryId;
     private Long categoryName;
+    private LocalDateTime start;
+    private LocalDateTime end;
     private LocalDateTime createdAt;
     private LocalDateTime disabledAt;
 }
