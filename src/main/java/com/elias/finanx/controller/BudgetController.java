@@ -13,7 +13,7 @@ import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping("/bugdets")
+@RequestMapping("/budgets")
 @RequiredArgsConstructor
 public class BudgetController {
     private final BudgetService budgetService;
