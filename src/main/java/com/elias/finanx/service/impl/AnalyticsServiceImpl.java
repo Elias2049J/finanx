@@ -11,16 +11,59 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+
+// Servicio encargado de calcular las métricas del resumen financiero.
+// La implementación se mantiene aislada para no modificar la lógica de los módulos
+// de movimientos, presupuestos, categorías o metas; solo consulta sus datos.
 @Service
 public class AnalyticsServiceImpl implements AnalyticsService {
     @Override
     public AnalyticsDashboard getDashboard(Long userId, AnalyticsPeriod period) {
-        return null;
+
+        // Construye la respuesta principal del dashboard financiero.
+        // Este metodo centraliza las métricas de movimientos, presupuestos,
+        // categorías, motivos e insights para que el frontend consuma un solo endpoint.
+        AnalyticsDashboard dashboard = new AnalyticsDashboard();
+
+
+        // Cada sección se obtiene desde un metodo independiente para mantener
+        // la lógica separada y poder implementar las métricas por fases.dashboard.setUserId(userId);
+        dashboard.setPeriod(period);
+        dashboard.setTransactions(getTransactionOverview(userId, period));
+        dashboard.setCategories(getCategoryOverview(userId, period));
+        dashboard.setBudgets(getBudgetOverview(userId, period));
+        dashboard.setReasons(getReasonOverview(userId, period, 5));
+
+        // Las proyecciones programadas se dejan pendientes por ahora porque
+        // pertenecen a una sección distinta del análisis financiero.
+        dashboard.setScheduled(null);
+
+        // Los insights representan recomendaciones o alertas calculadas para el usuario.
+        dashboard.setInsights(getUserInsights(userId, period));
+
+        return dashboard;
     }
 
     @Override
     public TransactionAnalytics getTransactionOverview(Long userId, AnalyticsPeriod period) {
-        return null;
+
+        // Respuesta base para movimientos.
+        // Se inicializa con valores en cero para evitar respuestas nulas hacia el frontend.
+        // Luego aquí se calcularán ingresos, gastos y balance usando la tabla movimientos.
+        return new TransactionAnalytics(
+                userId,
+                period,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                Map.of(),
+                Map.of(),
+                null,
+                List.of(),
+                List.of(),
+                List.of()
+        );
+
     }
 
     @Override
@@ -50,7 +93,17 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public CategoryAnalytics getCategoryOverview(Long userId, AnalyticsPeriod period) {
-        return null;
+        // Respuesta base para categorías.
+        // Más adelante esta sección agrupará los movimientos por categoría
+        // para mostrar gastos e ingresos principales.
+        return new CategoryAnalytics(
+                userId,
+                period,
+                Map.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        );
     }
 
     @Override
@@ -70,9 +123,14 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public ReasonAnalytics getReasonOverview(Long userId, AnalyticsPeriod period, int topN) {
-        return null;
+        // Respuesta base para motivos de movimiento.
+        // Luego se usará para listar los motivos más frecuentes del usuario.
+        return new ReasonAnalytics(
+                userId,
+                period,
+                List.of()
+        );
     }
-
     @Override
     public List<RankingItem<ReasonSummary>> getTopReasons(Long userId, AnalyticsPeriod period, int topN, TransactionType type) {
         return List.of();
@@ -80,7 +138,18 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public BudgetAnalytics getBudgetOverview(Long userId, AnalyticsPeriod period) {
-        return null;
+        // Respuesta base para presupuestos.
+        // Evita que el endpoint devuelva null mientras se implementa el cálculo real
+        // de límite, gasto, restante y ejecución por presupuesto.
+        return new BudgetAnalytics(
+                userId,
+                period,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                List.of(),
+                List.of()
+        );
     }
 
     @Override
