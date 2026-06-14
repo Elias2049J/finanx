@@ -68,6 +68,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<NotificationDTO> findAllByUser(Long userId) {
         return notificationRepository.findAllByUser_Id(userId)
                 .stream().map(notificationMapper::toResponse)
@@ -75,6 +76,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<NotificationDTO> findAllByUserAndState(Long userId, NotificationState state) {
         return notificationRepository.findAllByUser_IdAndState(userId, state)
                 .stream()
