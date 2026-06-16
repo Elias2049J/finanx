@@ -29,6 +29,9 @@ public class Category {
     @Column(name = "nombre", nullable = false, length = 120)
     private String name;
 
+    @Column(name = "tipo", nullable = false, length = 120)
+    private TransactionType type;
+
     @Column(name = "descripcion")
     private String description;
 

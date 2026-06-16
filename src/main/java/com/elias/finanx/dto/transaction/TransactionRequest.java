@@ -15,6 +15,7 @@ public class TransactionRequest {
     private Long categoryId;
     private Long reasonId;
     private String description;
+    private Long savingGoalId;
     @NotNull
     @DecimalMin(value = "0.00", inclusive = false)
     private BigDecimal amount;

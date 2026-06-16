@@ -1,15 +1,16 @@
 package com.elias.finanx.dto.analytics;
 
+import com.elias.finanx.dto.category.CategoryResponse;
+import com.elias.finanx.dto.reason.ReasonResponse;
 import com.elias.finanx.entity.enums.RecurrenceType;
 import com.elias.finanx.entity.enums.TransactionType;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class ScheduledProjection {
@@ -17,12 +18,12 @@ public class ScheduledProjection {
     private TransactionType transactionType;
     private BigDecimal transactionAmount;
 
-    private CategorySummary category;
-    private ReasonSummary reason;
+    private CategoryResponse category;
+    private ReasonResponse reason;
 
     private RecurrenceType recurrenceType;
-    private OffsetDateTime nextRunAt;
-    private OffsetDateTime endAt;
+    private LocalDateTime nextRunAt;
+    private LocalDateTime endAt;
 
     private int expectedOccurrenceCount;
     private BigDecimal expectedTotalAmount;

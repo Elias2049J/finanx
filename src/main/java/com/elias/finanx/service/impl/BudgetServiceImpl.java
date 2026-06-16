@@ -1,12 +1,16 @@
 package com.elias.finanx.service.impl;
 
+import com.elias.finanx.dto.analytics.TimeBoundList;
+import com.elias.finanx.dto.date.PeriodRequest;
 import com.elias.finanx.dto.budget.BudgetRequest;
 import com.elias.finanx.dto.budget.BudgetResponse;
 import com.elias.finanx.entity.*;
+import com.elias.finanx.entity.enums.BudgetHealth;
 import com.elias.finanx.entity.enums.BudgetState;
 import com.elias.finanx.entity.enums.NotificationType;
 import com.elias.finanx.entity.enums.TransactionType;
 import com.elias.finanx.mapper.BudgetMapper;
+import com.elias.finanx.mapper.DateMapper;
 import com.elias.finanx.repository.BudgetRepository;
 import com.elias.finanx.repository.CategoryRepository;
 import com.elias.finanx.repository.TransactionRepository;
@@ -21,10 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.time.OffsetDateTime;
 import java.util.List;
+
+import static java.math.RoundingMode.HALF_UP;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -37,6 +43,7 @@ public class BudgetServiceImpl implements BudgetService {
     private final TransactionRepository transactionRepository;
     private final RecurrenceCalculatorService rcService;
     private final NotificationService notificationService;
+    private final DateMapper dateMapper;
 
     @Override
     @Transactional
@@ -145,11 +152,12 @@ public class BudgetServiceImpl implements BudgetService {
                 int pct = Math.clamp(b.getPercentAlert(), 0, 100);
                 BigDecimal threshold = b.getLimitAmount()
                         .multiply(BigDecimal.valueOf(pct))
-                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                        .divide(BigDecimal.valueOf(100), 2, HALF_UP);
                 if (spent.compareTo(threshold) >= 0) {
                     Long lastTxId = lastTx.getId();
                     OffsetDateTime lastTxAt = lastTx.getCreatedAt();
                     BigDecimal lastTxAmount = lastTx.getAmount();
+                    b.setHealth(BudgetHealth.NEAR_LIMIT);
 
                     log.info("Budget {} got {}% (spent={}, limit={}, lastTxId={}, lastTxAt={}, lastTxAmount={})",
                             b.getId(), pct, spent, b.getLimitAmount(), lastTxId, lastTxAt, lastTxAmount);
@@ -171,11 +179,31 @@ public class BudgetServiceImpl implements BudgetService {
                 }
             }
             if (spent.compareTo(b.getLimitAmount()) >= 0) {
-                b.setState(BudgetState.FINALIZED);
+                b.setHealth(BudgetHealth.EXCEEDED);
             }
         }
 
         budgetRepository.saveAll(budgets);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public TimeBoundList<BudgetResponse> getBudgetsByHealth(PeriodRequest request, BudgetHealth health) {
+        User u = userRepository.findById(request.getUserId()).orElseThrow();
+        ZoneId zoneId = u.getTimeZone().toZoneId();
+        List<BudgetResponse> budgets = budgetRepository.findAllByUser_IdAndActiveAndCreatedAtBetweenAndStateAndHealth(
+                request.getUserId(),
+                true,
+                request.getStart().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
+                request.getEnd().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
+                BudgetState.ACTIVE,
+                health
+        ).stream().map(budgetMapper::toResponse).toList();
+
+        TimeBoundList<BudgetResponse> tb = new TimeBoundList<>();
+        tb.setItems(budgets);
+        tb.setPeriodResponse(dateMapper.toResponse(request));
+        return tb;
     }
 
     private void applyRequestDateTimes(BudgetRequest request, Budget b) {

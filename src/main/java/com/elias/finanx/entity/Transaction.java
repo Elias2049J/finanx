@@ -62,10 +62,6 @@ public class Transaction {
     @JoinColumn(name = "id_meta_ahorro")
     private SavingGoal savingGoal;
 
-    @ManyToOne
-    @JoinColumn(name = "id_presupuesto")
-    private Budget budget;
-
     @Column(name = "fecha_desactivacion")
     private OffsetDateTime disabledAt;
 

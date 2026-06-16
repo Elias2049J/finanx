@@ -294,7 +294,7 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/CategoryResponse"
-  /bugdets/{id}:
+  /budgets/{id}:
     get:
       tags:
         - budget-controller
@@ -547,54 +547,6 @@ paths:
       responses:
         "200":
           description: OK
-  /reports/balance:
-    post:
-      tags:
-        - report-controller
-      operationId: balance
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BalanceReportRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                oneOf:
-                  - $ref: "#/components/schemas/BalanceReportResponse"
-  /reports/balance/export:
-    post:
-      tags:
-        - report-controller
-      operationId: exportBalance
-      parameters:
-        - name: fileType
-          in: query
-          required: true
-          schema:
-            type: string
-            enum:
-              - CSV
-              - PDF
-              - EXCEL
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BalanceReportRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: byte
   /reasons:
     post:
       tags:
@@ -680,7 +632,7 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/CategoryResponse"
-  /bugdets:
+  /budgets:
     post:
       tags:
         - budget-controller
@@ -698,7 +650,7 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/BudgetResponse"
-  /bugdets/{id}/disable:
+  /budgets/{id}/disable:
     post:
       tags:
         - budget-controller
@@ -713,7 +665,7 @@ paths:
       responses:
         "200":
           description: OK
-  /bugdets/{id}/cancel:
+  /budgets/{id}/cancel:
     post:
       tags:
         - budget-controller
@@ -782,693 +734,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LoginResponse"
-  /api/analytics/user/insights:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getUserInsights
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Insight"
-  /api/analytics/transactions/top-payment-methods:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getTopPaymentMethods
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: topN
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int32
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/RankingItemPaymentMethod"
-  /api/analytics/transactions/overview:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getTransactionOverview
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/TransactionAnalytics"
-  /api/analytics/transactions/most-used-payment-method:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getMostUsedPaymentMethod
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: string
-                enum:
-                  - CASH
-                  - CREDIT_CARD
-                  - DEBIT_CARD
-                  - BANK_TRANSFER
-                  - YAPE
-                  - PLIN
-                  - OTHER
-  /api/analytics/transactions/insights:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getTransactionInsights
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Insight"
-  /api/analytics/transactions/daily-net-series:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getDailyNetSeries
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TimeSeriesPoint"
-  /api/analytics/transactions/aggregates/type:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getTransactionAggregatesByType
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: object
-                additionalProperties:
-                  $ref: "#/components/schemas/TransactionAggregate"
-  /api/analytics/transactions/aggregates/payment-method:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getTransactionAggregatesByPaymentMethod
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: object
-                additionalProperties:
-                  $ref: "#/components/schemas/TransactionAggregate"
-  /api/analytics/scheduled/projections:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getScheduledProjections
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: projectionStart
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-        - name: projectionEnd
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ScheduledProjection"
-  /api/analytics/scheduled/projection:
-    post:
-      tags:
-        - analytics-controller
-      operationId: makeProjection
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: projectionStart
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-        - name: projectionEnd
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-        - name: type
-          in: query
-          required: true
-          schema:
-            type: string
-            enum:
-              - SPENT
-              - INCOME
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/TransactionScheduleAnalytics"
-  /api/analytics/scheduled/overview:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getScheduledOverview
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: projectionStart
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-        - name: projectionEnd
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/TransactionScheduleAnalytics"
-  /api/analytics/scheduled/insights:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getScheduledInsights
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: projectionStart
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-        - name: projectionEnd
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Insight"
-  /api/analytics/reasons/top:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getTopReasons
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: topN
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int32
-        - name: type
-          in: query
-          required: true
-          schema:
-            type: string
-            enum:
-              - SPENT
-              - INCOME
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/RankingItemReasonSummary"
-  /api/analytics/reasons/overview:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getReasonOverview
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: topN
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int32
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ReasonAnalytics"
-  /api/analytics/categories/total-amount-by-type:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getTotalAmountByTransactionType
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: object
-                additionalProperties:
-                  type: number
-  /api/analytics/categories/top:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getTopCategories
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: topN
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int32
-        - name: type
-          in: query
-          required: true
-          schema:
-            type: string
-            enum:
-              - SPENT
-              - INCOME
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/RankingItemCategorySummary"
-  /api/analytics/categories/overview:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getCategoryOverview
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/CategoryAnalytics"
-  /api/analytics/categories/aggregates:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getCategoryAggregates
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CategoryAggregate"
-  /api/analytics/budgets/overview:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getBudgetOverview
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/BudgetAnalytics"
-  /api/analytics/budgets/near-limit:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getNearLimitBudgets
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/BudgetAnalytics"
-  /api/analytics/budgets/insights:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getBudgetInsights
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Insight"
-  /api/analytics/budgets/executions:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getBudgetExecutions
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/BudgetAnalytics"
-  /api/analytics/budgets/exceeded:
-    post:
-      tags:
-        - analytics-controller
-      operationId: getExceededBudgets
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnalyticsPeriod"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/BudgetAnalytics"
   /users:
     get:
       tags:
@@ -1862,7 +1127,35 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CategoryResponse"
-  /bugdets/user/{idUser}:
+  /budgets/{health}:
+    get:
+      tags:
+        - budget-controller
+      operationId: getBudgetsByHealth
+      parameters:
+        - name: health
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - OK
+              - NEAR_LIMIT
+              - EXCEEDED
+              - INACTIVE
+        - name: request
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/PeriodRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TimeBoundListBudgetResponse"
+  /budgets/user/{idUser}:
     get:
       tags:
         - budget-controller
@@ -1883,7 +1176,7 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BudgetResponse"
-  /bugdets/user/{idUser}/{state}:
+  /budgets/user/{idUser}/{state}:
     get:
       tags:
         - budget-controller
@@ -1914,79 +1207,69 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BudgetResponse"
-  /api/analytics/scheduled/active-count:
+  /analytics/{id}/execution:
     get:
       tags:
         - analytics-controller
-      operationId: getActiveScheduledTransactionCount
+      operationId: getExecution
       parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: integer
-                format: int64
-  /api/analytics/scheduled/active-count-by-recurrence:
-    get:
-      tags:
-        - analytics-controller
-      operationId: getActiveScheduledCountByRecurrenceType
-      parameters:
-        - name: userId
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: object
-                additionalProperties:
-                  type: integer
-                  format: int64
-  /api/analytics/dashboard/{userId}:
-    get:
-      tags:
-        - analytics-controller
-      operationId: dashboard
-      parameters:
-        - name: userId
+        - name: id
           in: path
           required: true
           schema:
             type: integer
             format: int64
-        - name: start
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
-        - name: end
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date-time
       responses:
         "200":
           description: OK
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/AnalyticsDashboard"
+                $ref: "#/components/schemas/BudgetExecutionResponse"
+  /analytics/dashboard/budgets:
+    get:
+      tags:
+        - analytics-controller
+      operationId: budgets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PeriodRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/BudgetsDashboard"
+                  - $ref: "#/components/schemas/SavingGoalsDashboard"
+                  - $ref: "#/components/schemas/TSchedulesDashboard"
+                  - $ref: "#/components/schemas/TransactionsDashboard"
+  /analytics/dashboard/balance:
+    get:
+      tags:
+        - analytics-controller
+      operationId: balance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PeriodRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/BudgetsDashboard"
+                  - $ref: "#/components/schemas/SavingGoalsDashboard"
+                  - $ref: "#/components/schemas/TSchedulesDashboard"
+                  - $ref: "#/components/schemas/TransactionsDashboard"
   /schedule/{id}/disable:
     delete:
       tags:
@@ -2099,6 +1382,9 @@ components:
           format: int64
         description:
           type: string
+        savingGoalId:
+          type: integer
+          format: int64
         amount:
           type: number
           minimum: 0.00
@@ -2135,7 +1421,19 @@ components:
         categoryId:
           type: integer
           format: int64
+        categoryName:
+          type: integer
+          format: int64
         reasonId:
+          type: integer
+          format: int64
+        reasonDescription:
+          type: integer
+          format: int64
+        savingGoalId:
+          type: integer
+          format: int64
+        scheduleId:
           type: integer
           format: int64
         amount:
@@ -2574,6 +1872,18 @@ components:
         id:
           type: integer
           format: int64
+        userId:
+          type: integer
+          format: int64
+        categoryId:
+          type: integer
+          format: int64
+        categoryName:
+          type: integer
+          format: int64
+        scheduleId:
+          type: integer
+          format: int64
         alertable:
           type: boolean
         percentAlert:
@@ -2590,15 +1900,13 @@ components:
             - CANCELLED
             - DISABLED
             - FINALIZED
-        userId:
-          type: integer
-          format: int64
-        categoryId:
-          type: integer
-          format: int64
-        categoryName:
-          type: integer
-          format: int64
+        health:
+          type: string
+          enum:
+            - OK
+            - NEAR_LIMIT
+            - EXCEEDED
+            - INACTIVE
         start:
           type: string
           format: date-time
@@ -2618,50 +1926,6 @@ components:
           $ref: "#/components/schemas/UserResponse"
         token:
           type: string
-    BalanceReportRequest:
-      type: object
-      properties:
-        from:
-          type: string
-          format: date
-        to:
-          type: string
-          format: date
-        userId:
-          type: integer
-          format: int64
-      required:
-        - from
-        - to
-        - userId
-    BalanceReportResponse:
-      allOf:
-        - $ref: "#/components/schemas/Report"
-        - type: object
-          properties:
-            user:
-              $ref: "#/components/schemas/UserResponse"
-            balance:
-              type: number
-            totalSpent:
-              type: number
-            totalIncome:
-              type: number
-            totalTransactionCountToday:
-              type: integer
-              format: int64
-    Report:
-      type: object
-      discriminator:
-        propertyName: type
-      properties:
-        createdAt:
-          type: string
-          format: date-time
-        type:
-          type: string
-      required:
-        - type
     LoginRequest:
       type: object
       properties:
@@ -2682,363 +1946,6 @@ components:
           minLength: 1
       required:
         - idToken
-    AnalyticsPeriod:
-      type: object
-      properties:
-        start:
-          type: string
-          format: date-time
-        end:
-          type: string
-          format: date-time
-    Insight:
-      type: object
-      properties:
-        severity:
-          type: string
-          enum:
-            - INFO
-            - WARNING
-            - CRITICAL
-        title:
-          type: string
-        description:
-          type: string
-        action:
-          type: string
-    RankingItemPaymentMethod:
-      type: object
-      properties:
-        rank:
-          type: integer
-          format: int32
-        item:
-          type: string
-          enum:
-            - CASH
-            - CREDIT_CARD
-            - DEBIT_CARD
-            - BANK_TRANSFER
-            - YAPE
-            - PLIN
-            - OTHER
-        metricValue:
-          type: number
-        occurrenceCount:
-          type: integer
-          format: int64
-        sharePercentage:
-          type: number
-    TimeSeriesPoint:
-      type: object
-      properties:
-        date:
-          type: string
-          format: date
-        amount:
-          type: number
-        occurrenceCount:
-          type: integer
-          format: int64
-    TransactionAggregate:
-      type: object
-      properties:
-        occurrenceCount:
-          type: integer
-          format: int64
-        totalAmount:
-          type: number
-    TransactionAnalytics:
-      type: object
-      properties:
-        userId:
-          type: integer
-          format: int64
-        period:
-          $ref: "#/components/schemas/AnalyticsPeriod"
-        totalIncomeAmount:
-          type: number
-        totalSpentAmount:
-          type: number
-        netAmount:
-          type: number
-        aggregatesByTransactionType:
-          type: object
-          additionalProperties:
-            $ref: "#/components/schemas/TransactionAggregate"
-        aggregatesByPaymentMethod:
-          type: object
-          additionalProperties:
-            $ref: "#/components/schemas/TransactionAggregate"
-        mostUsedPaymentMethod:
-          type: string
-          enum:
-            - CASH
-            - CREDIT_CARD
-            - DEBIT_CARD
-            - BANK_TRANSFER
-            - YAPE
-            - PLIN
-            - OTHER
-        topPaymentMethods:
-          type: array
-          items:
-            $ref: "#/components/schemas/RankingItemPaymentMethod"
-        dailyNetAmounts:
-          type: array
-          items:
-            $ref: "#/components/schemas/TimeSeriesPoint"
-        insights:
-          type: array
-          items:
-            $ref: "#/components/schemas/Insight"
-    CategorySummary:
-      type: object
-      properties:
-        categoryId:
-          type: integer
-          format: int64
-        categoryName:
-          type: string
-    ReasonSummary:
-      type: object
-      properties:
-        reasonId:
-          type: integer
-          format: int64
-        reasonDescription:
-          type: string
-    ScheduledProjection:
-      type: object
-      properties:
-        scheduledTransactionId:
-          type: integer
-          format: int64
-        transactionType:
-          type: string
-          enum:
-            - SPENT
-            - INCOME
-        transactionAmount:
-          type: number
-        category:
-          $ref: "#/components/schemas/CategorySummary"
-        reason:
-          $ref: "#/components/schemas/ReasonSummary"
-        recurrenceType:
-          type: string
-          enum:
-            - NONE
-            - DAILY
-            - WEEKLY
-            - MONTHLY
-            - YEARLY
-        nextRunAt:
-          type: string
-          format: date-time
-        endAt:
-          type: string
-          format: date-time
-        expectedOccurrenceCount:
-          type: integer
-          format: int32
-        expectedTotalAmount:
-          type: number
-    TransactionScheduleAnalytics:
-      type: object
-      properties:
-        userId:
-          type: integer
-          format: int64
-        generatedAt:
-          type: string
-          format: date-time
-        activeScheduledTransactionCount:
-          type: integer
-          format: int64
-        activeCountByRecurrenceType:
-          type: object
-          additionalProperties:
-            type: integer
-            format: int64
-        projectionStart:
-          type: string
-          format: date-time
-        projectionEnd:
-          type: string
-          format: date-time
-        projectedIncomeAmount:
-          type: number
-        projectedSpentAmount:
-          type: number
-        projectedNetAmount:
-          type: number
-        scheduledProjections:
-          type: array
-          items:
-            $ref: "#/components/schemas/ScheduledProjection"
-        insights:
-          type: array
-          items:
-            $ref: "#/components/schemas/Insight"
-    RankingItemReasonSummary:
-      type: object
-      properties:
-        rank:
-          type: integer
-          format: int32
-        item:
-          $ref: "#/components/schemas/ReasonSummary"
-        metricValue:
-          type: number
-        occurrenceCount:
-          type: integer
-          format: int64
-        sharePercentage:
-          type: number
-    ReasonAnalytics:
-      type: object
-      properties:
-        userId:
-          type: integer
-          format: int64
-        period:
-          $ref: "#/components/schemas/AnalyticsPeriod"
-        topReasons:
-          type: array
-          items:
-            $ref: "#/components/schemas/RankingItemReasonSummary"
-    RankingItemCategorySummary:
-      type: object
-      properties:
-        rank:
-          type: integer
-          format: int32
-        item:
-          $ref: "#/components/schemas/CategorySummary"
-        metricValue:
-          type: number
-        occurrenceCount:
-          type: integer
-          format: int64
-        sharePercentage:
-          type: number
-    CategoryAggregate:
-      type: object
-      properties:
-        category:
-          $ref: "#/components/schemas/CategorySummary"
-        transactionType:
-          type: string
-          enum:
-            - SPENT
-            - INCOME
-        occurrenceCount:
-          type: integer
-          format: int64
-        totalAmount:
-          type: number
-        averageAmount:
-          type: number
-        sharePercentage:
-          type: number
-    CategoryAnalytics:
-      type: object
-      properties:
-        userId:
-          type: integer
-          format: int64
-        period:
-          $ref: "#/components/schemas/AnalyticsPeriod"
-        totalAmountByTransactionType:
-          type: object
-          additionalProperties:
-            type: number
-        topSpentCategories:
-          type: array
-          items:
-            $ref: "#/components/schemas/RankingItemCategorySummary"
-        topIncomeCategories:
-          type: array
-          items:
-            $ref: "#/components/schemas/RankingItemCategorySummary"
-        categoryAggregates:
-          type: array
-          items:
-            $ref: "#/components/schemas/CategoryAggregate"
-    BudgetAnalytics:
-      type: object
-      properties:
-        userId:
-          type: integer
-          format: int64
-        period:
-          $ref: "#/components/schemas/AnalyticsPeriod"
-        totalBudgetLimitAmount:
-          type: number
-        totalBudgetSpentAmount:
-          type: number
-        totalBudgetRemainingAmount:
-          type: number
-        budgetExecutions:
-          type: array
-          items:
-            $ref: "#/components/schemas/BudgetExecution"
-        insights:
-          type: array
-          items:
-            $ref: "#/components/schemas/Insight"
-    BudgetExecution:
-      type: object
-      properties:
-        budgetId:
-          type: integer
-          format: int64
-        budgetDescription:
-          type: string
-        budgetState:
-          type: string
-          enum:
-            - ACTIVE
-            - CANCELLED
-            - DISABLED
-            - FINALIZED
-        notificationEnabled:
-          type: boolean
-        alertThresholdPercentage:
-          type: integer
-          format: int32
-        budgetStartDate:
-          type: string
-          format: date
-        budgetEndDate:
-          type: string
-          format: date
-        category:
-          $ref: "#/components/schemas/CategoryDTO"
-        budgetLimitAmount:
-          type: number
-        spentAmount:
-          type: number
-        remainingAmount:
-          type: number
-        executionPercentage:
-          type: number
-        budgetHealth:
-          type: string
-          enum:
-            - OK
-            - NEAR_LIMIT
-            - EXCEEDED
-            - INACTIVE
-    CategoryDTO:
-      type: object
-      properties:
-        categoryId:
-          type: integer
-          format: int64
-        categoryName:
-          type: string
     NotificationDTO:
       type: object
       properties:
@@ -3085,8 +1992,7 @@ components:
           type: integer
           format: int64
         budgetDescription:
-          type: integer
-          format: int64
+          type: string
         budgetState:
           type: string
           enum:
@@ -3099,25 +2005,689 @@ components:
           format: int64
         savingGoalDescription:
           type: string
-    AnalyticsDashboard:
+    PeriodRequest:
       type: object
       properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
         userId:
           type: integer
           format: int64
-        period:
-          $ref: "#/components/schemas/AnalyticsPeriod"
-        transactions:
-          $ref: "#/components/schemas/TransactionAnalytics"
-        categories:
-          $ref: "#/components/schemas/CategoryAnalytics"
-        budgets:
-          $ref: "#/components/schemas/BudgetAnalytics"
-        reasons:
-          $ref: "#/components/schemas/ReasonAnalytics"
-        scheduled:
-          $ref: "#/components/schemas/TransactionScheduleAnalytics"
+      required:
+        - end
+        - start
+        - userId
+    PeriodResponse:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        userId:
+          type: integer
+          format: int64
+        readableString:
+          type: string
+    TimeBoundListBudgetResponse:
+      type: object
+      properties:
+        periodResponse:
+          $ref: "#/components/schemas/PeriodResponse"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetResponse"
+        count:
+          type: integer
+          format: int64
+    BudgetExecutionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        categoryId:
+          type: integer
+          format: int64
+        categoryName:
+          type: integer
+          format: int64
+        scheduleId:
+          type: integer
+          format: int64
+        alertable:
+          type: boolean
+        percentAlert:
+          type: integer
+          format: int32
+        limitAmount:
+          type: number
+        description:
+          type: string
+        state:
+          type: string
+          enum:
+            - ACTIVE
+            - CANCELLED
+            - DISABLED
+            - FINALIZED
+        health:
+          type: string
+          enum:
+            - OK
+            - NEAR_LIMIT
+            - EXCEEDED
+            - INACTIVE
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        disabledAt:
+          type: string
+          format: date-time
+        spentAmount:
+          type: number
+        remainingAmount:
+          type: number
+        executionPercentage:
+          type: number
+    Aggregate:
+      type: object
+      properties:
+        title:
+          type: string
+        totalAmount:
+          type: number
+        averageAmount:
+          type: number
+        occurrenceCount:
+          type: integer
+          format: int64
+        max:
+          type: number
+        min:
+          type: number
+    AggregateByBudgetExecutionResponse:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        factor:
+          $ref: "#/components/schemas/BudgetExecutionResponse"
+        factorName:
+          type: string
+        sharePercentage:
+          type: number
+    AggregateByBudgetHealth:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        factor:
+          type: string
+          enum:
+            - OK
+            - NEAR_LIMIT
+            - EXCEEDED
+            - INACTIVE
+        factorName:
+          type: string
+        sharePercentage:
+          type: number
+    AggregateByCategoryResponse:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        factor:
+          $ref: "#/components/schemas/CategoryResponse"
+        factorName:
+          type: string
+        sharePercentage:
+          type: number
+    AggregateByCategorySummary:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        factor:
+          $ref: "#/components/schemas/CategorySummary"
+        factorName:
+          type: string
+        sharePercentage:
+          type: number
+    AggregateByPaymentMethod:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        factor:
+          type: string
+          enum:
+            - CASH
+            - CREDIT_CARD
+            - DEBIT_CARD
+            - BANK_TRANSFER
+            - YAPE
+            - PLIN
+            - OTHER
+        factorName:
+          type: string
+        sharePercentage:
+          type: number
+    AggregateByReasonSummary:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        factor:
+          $ref: "#/components/schemas/ReasonSummary"
+        factorName:
+          type: string
+        sharePercentage:
+          type: number
+    AggregateBySavingGoalResponse:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        factor:
+          $ref: "#/components/schemas/SavingGoalResponse"
+        factorName:
+          type: string
+        sharePercentage:
+          type: number
+    AggregateBySavingGoalState:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        factor:
+          type: string
+          enum:
+            - RUNNING
+            - COMPLETED
+            - CANCELLED
+        factorName:
+          type: string
+        sharePercentage:
+          type: number
+    AggregateByTransactionType:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        factor:
+          type: string
+          enum:
+            - SPENT
+            - INCOME
+        factorName:
+          type: string
+        sharePercentage:
+          type: number
+    BudgetsDashboard:
+      allOf:
+        - $ref: "#/components/schemas/DashboardResponse"
+        - type: object
+          properties:
+            byHealth:
+              type: array
+              items:
+                $ref: "#/components/schemas/AggregateByBudgetHealth"
+            byCategory:
+              type: array
+              items:
+                $ref: "#/components/schemas/AggregateByBudgetExecutionResponse"
+            executionEvolution:
+              $ref: "#/components/schemas/TimeLineBudgetExecutionResponse"
+            mostExecuted:
+              $ref: "#/components/schemas/RankingCategoryResponse"
+            mostRemaining:
+              $ref: "#/components/schemas/RankingCategoryResponse"
+            totalBudgetLimitAmount:
+              type: number
+            totalBudgetSpentAmount:
+              type: number
+            totalBudgetRemainingAmount:
+              type: number
+    CategorySummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+    DashboardResponse:
+      type: object
+      discriminator:
+        propertyName: type
+      properties:
+        periodResponse:
+          $ref: "#/components/schemas/PeriodResponse"
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        insightSummary:
+          $ref: "#/components/schemas/InsightSummary"
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        type:
+          type: string
+      required:
+        - type
+    Insight:
+      type: object
+      properties:
+        severity:
+          type: string
+          enum:
+            - INFO
+            - WARNING
+            - CRITICAL
+        title:
+          type: string
+        description:
+          type: string
+        action:
+          type: string
+    InsightSummary:
+      type: object
+      properties:
         insights:
           type: array
           items:
             $ref: "#/components/schemas/Insight"
+        insightsCount:
+          type: integer
+          format: int32
+    RankingCategoryResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+        title:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankingItemCategoryResponse"
+    RankingCategorySummary:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+        title:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankingItemCategorySummary"
+    RankingItemCategoryResponse:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/AggregateByCategoryResponse"
+        rank:
+          type: integer
+          format: int32
+        metricValue:
+          type: number
+    RankingItemCategorySummary:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/AggregateByCategorySummary"
+        rank:
+          type: integer
+          format: int32
+        metricValue:
+          type: number
+    RankingItemPaymentMethod:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/AggregateByPaymentMethod"
+        rank:
+          type: integer
+          format: int32
+        metricValue:
+          type: number
+    RankingItemReasonSummary:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/AggregateByReasonSummary"
+        rank:
+          type: integer
+          format: int32
+        metricValue:
+          type: number
+    RankingItemSavingGoalResponse:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/AggregateBySavingGoalResponse"
+        rank:
+          type: integer
+          format: int32
+        metricValue:
+          type: number
+    RankingItemTransactionType:
+      type: object
+      properties:
+        aggregate:
+          $ref: "#/components/schemas/AggregateByTransactionType"
+        rank:
+          type: integer
+          format: int32
+        metricValue:
+          type: number
+    RankingPaymentMethod:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+        title:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankingItemPaymentMethod"
+    RankingReasonSummary:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+        title:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankingItemReasonSummary"
+    RankingSavingGoalResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+        title:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankingItemSavingGoalResponse"
+    RankingTransactionType:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+        title:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankingItemTransactionType"
+    ReasonSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        description:
+          type: string
+    SavingGoalsDashboard:
+      allOf:
+        - $ref: "#/components/schemas/DashboardResponse"
+        - type: object
+          properties:
+            byState:
+              type: array
+              items:
+                $ref: "#/components/schemas/AggregateBySavingGoalState"
+            contributionEvolution:
+              $ref: "#/components/schemas/TimeLineSavingGoalResponse"
+            dailyContributions:
+              $ref: "#/components/schemas/TimeLineLocalDate"
+            closestToGoal:
+              $ref: "#/components/schemas/RankingSavingGoalResponse"
+            mostContributed:
+              $ref: "#/components/schemas/RankingSavingGoalResponse"
+    ScheduledProjection:
+      type: object
+      properties:
+        scheduledTransactionId:
+          type: integer
+          format: int64
+        transactionType:
+          type: string
+          enum:
+            - SPENT
+            - INCOME
+        transactionAmount:
+          type: number
+        category:
+          $ref: "#/components/schemas/CategoryResponse"
+        reason:
+          $ref: "#/components/schemas/ReasonResponse"
+        recurrenceType:
+          type: string
+          enum:
+            - NONE
+            - DAILY
+            - WEEKLY
+            - MONTHLY
+            - YEARLY
+        nextRunAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        expectedOccurrenceCount:
+          type: integer
+          format: int32
+        expectedTotalAmount:
+          type: number
+    TSchedulesDashboard:
+      allOf:
+        - $ref: "#/components/schemas/DashboardResponse"
+        - type: object
+          properties:
+            activeScheduledTransactionCount:
+              type: integer
+              format: int64
+            activeCountByRecurrenceType:
+              type: object
+              additionalProperties:
+                type: integer
+                format: int64
+            projectionStart:
+              type: string
+              format: date
+            projectionEnd:
+              type: string
+              format: date
+            projectedIncomeAmount:
+              type: number
+            projectedSpentAmount:
+              type: number
+            projectedNetAmount:
+              type: number
+            scheduledProjections:
+              type: array
+              items:
+                $ref: "#/components/schemas/ScheduledProjection"
+            insights:
+              type: array
+              items:
+                $ref: "#/components/schemas/Insight"
+    TimeLineBudgetExecutionResponse:
+      type: object
+      properties:
+        periodResponse:
+          $ref: "#/components/schemas/PeriodResponse"
+        title:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSeriesPointBudgetExecutionResponse"
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        count:
+          type: integer
+          format: int64
+    TimeLineLocalDate:
+      type: object
+      properties:
+        periodResponse:
+          $ref: "#/components/schemas/PeriodResponse"
+        title:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSeriesPointLocalDate"
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        count:
+          type: integer
+          format: int64
+    TimeLineSavingGoalResponse:
+      type: object
+      properties:
+        periodResponse:
+          $ref: "#/components/schemas/PeriodResponse"
+        title:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSeriesPointSavingGoalResponse"
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        count:
+          type: integer
+          format: int64
+    TimeLineTransactionResponse:
+      type: object
+      properties:
+        periodResponse:
+          $ref: "#/components/schemas/PeriodResponse"
+        title:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSeriesPointTransactionResponse"
+        aggregate:
+          $ref: "#/components/schemas/Aggregate"
+        count:
+          type: integer
+          format: int64
+    TimeSeriesPointBudgetExecutionResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        amount:
+          type: number
+        occurrenceCount:
+          type: integer
+          format: int64
+        context:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetExecutionResponse"
+    TimeSeriesPointLocalDate:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        amount:
+          type: number
+        occurrenceCount:
+          type: integer
+          format: int64
+        context:
+          type: array
+          items:
+            type: string
+            format: date
+    TimeSeriesPointSavingGoalResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        amount:
+          type: number
+        occurrenceCount:
+          type: integer
+          format: int64
+        context:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavingGoalResponse"
+    TimeSeriesPointTransactionResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        amount:
+          type: number
+        occurrenceCount:
+          type: integer
+          format: int64
+        context:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransactionResponse"
+    TransactionsDashboard:
+      allOf:
+        - $ref: "#/components/schemas/DashboardResponse"
+        - type: object
+          properties:
+            summaryByCategory:
+              $ref: "#/components/schemas/RankingCategorySummary"
+            summaryByPaymentMethod:
+              $ref: "#/components/schemas/RankingPaymentMethod"
+            summaryByType:
+              $ref: "#/components/schemas/RankingTransactionType"
+            dailyExpenses:
+              $ref: "#/components/schemas/TimeLineTransactionResponse"
+            dailyIncome:
+              $ref: "#/components/schemas/TimeLineTransactionResponse"
+            topCategories:
+              $ref: "#/components/schemas/RankingCategorySummary"
+            topSpentReasons:
+              $ref: "#/components/schemas/RankingReasonSummary"
+            topIncomeReasons:
+              $ref: "#/components/schemas/RankingReasonSummary"

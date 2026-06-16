@@ -5,10 +5,9 @@ import com.elias.finanx.dto.budget.BudgetResponse;
 import com.elias.finanx.entity.Budget;
 import com.elias.finanx.entity.Category;
 import com.elias.finanx.entity.User;
-import com.elias.finanx.util.DateUtil;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring", uses = {RecurrenceRuleMapper.class, DateUtil.class})
+@Mapper(componentModel = "spring", uses = {RecurrenceRuleMapper.class, DateMapper.class})
 public interface BudgetMapper {
 
     @Mapping(source = "user.id", target = "userId")

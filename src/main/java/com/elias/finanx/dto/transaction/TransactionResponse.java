@@ -12,7 +12,11 @@ public class TransactionResponse {
     private Long id;
     private Long userId;
     private Long categoryId;
+    private Long categoryName;
     private Long reasonId;
+    private Long reasonDescription;
+    private Long savingGoalId;
+    private Long scheduleId;
     private BigDecimal amount;
     private PaymentMethod paymentMethod;
     private TransactionType type;

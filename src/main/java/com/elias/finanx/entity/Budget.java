@@ -1,9 +1,9 @@
 package com.elias.finanx.entity;
 
+import com.elias.finanx.entity.enums.BudgetHealth;
 import com.elias.finanx.entity.enums.BudgetState;
 import jakarta.persistence.*;
 import lombok.*;
-import org.apache.poi.ss.formula.functions.Offset;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -36,6 +36,10 @@ public class Budget {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, name = "estado")
     private BudgetState state;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, name = "salud")
+    private BudgetHealth health;
 
     @Builder.Default
     @Column(name = "activo")

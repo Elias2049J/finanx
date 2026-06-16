@@ -1,7 +1,10 @@
 package com.elias.finanx.controller;
 
+import com.elias.finanx.dto.analytics.TimeBoundList;
+import com.elias.finanx.dto.date.PeriodRequest;
 import com.elias.finanx.dto.budget.BudgetRequest;
 import com.elias.finanx.dto.budget.BudgetResponse;
+import com.elias.finanx.entity.enums.BudgetHealth;
 import com.elias.finanx.entity.enums.BudgetState;
 import com.elias.finanx.service.BudgetService;
 import jakarta.validation.Valid;
@@ -13,7 +16,7 @@ import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping("/bugdets")
+@RequestMapping("/budgets")
 @RequiredArgsConstructor
 public class BudgetController {
     private final BudgetService budgetService;
@@ -57,5 +60,12 @@ public class BudgetController {
     public ResponseEntity<Void> disable(@PathVariable Long id) {
         budgetService.disable(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{health}")
+    public ResponseEntity<TimeBoundList<BudgetResponse>> getBudgetsByHealth(
+            @PathVariable BudgetHealth health,
+            @Valid PeriodRequest request) {
+        return ResponseEntity.ok(budgetService.getBudgetsByHealth(request, health));
     }
 }

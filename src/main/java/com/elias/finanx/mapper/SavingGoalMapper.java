@@ -3,11 +3,10 @@ package com.elias.finanx.mapper;
 import com.elias.finanx.dto.saving.SavingGoalRequest;
 import com.elias.finanx.dto.saving.SavingGoalResponse;
 import com.elias.finanx.entity.SavingGoal;
-import com.elias.finanx.util.DateUtil;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring", uses = DateUtil.class)
+@Mapper(componentModel = "spring", uses = DateMapper.class)
 public interface SavingGoalMapper {
     @Mapping(source = "user.id", target = "userId")
     @Mapping(target = "progressPercentage", expression = "java(entity.getProgressPercentage())")

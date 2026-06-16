@@ -1,6 +1,5 @@
 package com.elias.finanx.controller;
 
-import com.elias.finanx.dto.schedule.BudgetScheduleResponse;
 import com.elias.finanx.dto.schedule.ScheduleRequest;
 import com.elias.finanx.dto.schedule.ScheduleResponse;
 import com.elias.finanx.entity.enums.ScheduleState;

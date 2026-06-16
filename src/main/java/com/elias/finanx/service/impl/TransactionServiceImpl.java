@@ -2,15 +2,13 @@ package com.elias.finanx.service.impl;
 
 import com.elias.finanx.dto.transaction.TransactionRequest;
 import com.elias.finanx.dto.transaction.TransactionResponse;
+import com.elias.finanx.entity.Category;
 import com.elias.finanx.entity.Reason;
 import com.elias.finanx.entity.Transaction;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.TimeZone;
 import com.elias.finanx.mapper.TransactionMapper;
-import com.elias.finanx.repository.BudgetRepository;
-import com.elias.finanx.repository.CategoryRepository;
-import com.elias.finanx.repository.TransactionRepository;
-import com.elias.finanx.repository.UserRepository;
+import com.elias.finanx.repository.*;
 import com.elias.finanx.service.BudgetService;
 import com.elias.finanx.service.ReasonResolver;
 import com.elias.finanx.service.SavingGoalService;
@@ -35,14 +33,24 @@ public class TransactionServiceImpl implements TransactionService {
     private final ReasonResolver reasonResolver;
     private final BudgetService budgetService;
     private final SavingGoalService savingGoalService;
+    private final SavingGoalRepository sgRepository;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TransactionResponse create(TransactionRequest request) {
         Transaction transaction = transactionMapper.toEntity(request);
         User user = userRepository.findById(request.getUserId()).orElseThrow();
+        Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow();
+
+        if (transaction.getType() != category.getType()) {
+            throw new IllegalArgumentException("The category transactionType must be the same as transaction");
+        }
         transaction.setUser(user);
-        transaction.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
+        transaction.setCategory(category);
+
+        if (request.getSavingGoalId() != null) {
+            transaction.setSavingGoal(sgRepository.getReferenceById(request.getSavingGoalId()));
+        }
 
         Reason reason = reasonResolver
                 .resolveOrCreate(request.getUserId(), request.getReasonId(), request.getDescription())

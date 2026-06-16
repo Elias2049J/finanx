@@ -1,7 +1,8 @@
 package com.elias.finanx.service.impl;
 
-import com.elias.finanx.dto.report.BalanceReportRequest;
-import com.elias.finanx.dto.report.BalanceReportResponse;
+import com.elias.finanx.dto.FileExportDTO;
+import com.elias.finanx.dto.date.PeriodRequest;
+import com.elias.finanx.entity.enums.FileType;
 import com.elias.finanx.mapper.UserMapper;
 import com.elias.finanx.repository.ReasonRepository;
 import com.elias.finanx.repository.UserRepository;
@@ -21,7 +22,7 @@ public class ReportingServiceImpl implements ReportingService {
     private final UserMapper userMapper;
 
     @Override
-    public BalanceReportResponse generateBalanceReport(BalanceReportRequest request) {
+    public FileExportDTO exportReport(FileType fileType, PeriodRequest request) {
         return null;
     }
 }

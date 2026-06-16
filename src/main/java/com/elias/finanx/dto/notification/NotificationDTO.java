@@ -23,7 +23,7 @@ public class NotificationDTO {
     private NotificationState state;
     private Long scheduleId;
     private Long budgetId;
-    private Long budgetDescription;
+    private String budgetDescription;
     private BudgetState budgetState;
     private Long savingGoalId;
     private String savingGoalDescription;

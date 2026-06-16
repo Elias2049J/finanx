@@ -5,10 +5,9 @@ import com.elias.finanx.entity.Budget;
 import com.elias.finanx.entity.Notification;
 import com.elias.finanx.entity.Transaction;
 import com.elias.finanx.entity.User;
-import com.elias.finanx.util.DateUtil;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring", uses = DateUtil.class)
+@Mapper(componentModel = "spring", uses = DateMapper.class)
 public interface NotificationMapper {
 
     @Mapping(source = "user.id", target = "userId")

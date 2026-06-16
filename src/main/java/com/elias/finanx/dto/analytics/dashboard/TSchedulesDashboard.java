@@ -1,27 +1,26 @@
-package com.elias.finanx.dto.analytics;
+package com.elias.finanx.dto.analytics.dashboard;
 
+import com.elias.finanx.dto.analytics.ScheduledProjection;
+import com.elias.finanx.dto.analytics.component.Insight;
 import com.elias.finanx.entity.enums.RecurrenceType;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class TransactionScheduleAnalytics {
-    private Long userId;
-    private OffsetDateTime generatedAt;
-
+public class TSchedulesDashboard extends DashboardResponse {
     private long activeScheduledTransactionCount;
     private Map<RecurrenceType, Long> activeCountByRecurrenceType;
 
-    private OffsetDateTime projectionStart;
-    private OffsetDateTime projectionEnd;
+    private LocalDate projectionStart;
+    private LocalDate projectionEnd;
 
     private BigDecimal projectedIncomeAmount;
     private BigDecimal projectedSpentAmount;

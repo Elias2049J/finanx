@@ -2,7 +2,6 @@ package com.elias.finanx.service;
 
 import com.elias.finanx.dto.transaction.TransactionRequest;
 import com.elias.finanx.dto.transaction.TransactionResponse;
-import com.elias.finanx.entity.Transaction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

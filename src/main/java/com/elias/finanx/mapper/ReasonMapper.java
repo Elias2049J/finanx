@@ -2,18 +2,12 @@ package com.elias.finanx.mapper;
 
 import com.elias.finanx.dto.reason.ReasonRequest;
 import com.elias.finanx.dto.reason.ReasonResponse;
+import com.elias.finanx.dto.reason.ReasonSummary;
+import com.elias.finanx.dto.transaction.TransactionResponse;
 import com.elias.finanx.entity.Reason;
-import com.elias.finanx.util.DateUtil;
-import org.apache.commons.lang3.time.DateFormatUtils;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.*;
 
-import java.util.Date;
-
-@Mapper(componentModel = "spring", uses = DateUtil.class)
+@Mapper(componentModel = "spring", uses = DateMapper.class)
 public interface ReasonMapper {
 
     @Mapping(target = "id", ignore = true)
@@ -30,5 +24,12 @@ public interface ReasonMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "active", ignore = true)
     void updateFromDto(ReasonRequest dto, @MappingTarget Reason entity);
+
+    @Named("ToSummary")
+    ReasonSummary toSummary(Long id, String description);
+
+    @Mapping(source = "response.reasonDescription", target = "id")
+    @Mapping(source = "response.reasonId", target = "description")
+    ReasonSummary toReasonSummary(TransactionResponse response);
 }
 

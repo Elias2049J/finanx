@@ -2,11 +2,12 @@ package com.elias.finanx.mapper;
 
 import com.elias.finanx.dto.category.CategoryRequest;
 import com.elias.finanx.dto.category.CategoryResponse;
+import com.elias.finanx.dto.category.CategorySummary;
+import com.elias.finanx.dto.transaction.TransactionResponse;
 import com.elias.finanx.entity.Category;
-import com.elias.finanx.util.DateUtil;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring", uses = DateUtil.class)
+@Mapper(componentModel = "spring", uses = DateMapper.class)
 public interface CategoryMapper{
 
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
@@ -21,5 +22,7 @@ public interface CategoryMapper{
     @Mapping(target = "id", ignore = true)
     void updateFromDto(CategoryRequest dto, @MappingTarget Category entity);
 
-
+    @Mapping(source = "response.categoryName", target = "id")
+    @Mapping(source = "response.categoryId", target = "name")
+    CategorySummary toSummary(TransactionResponse response);
 }

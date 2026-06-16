@@ -1,16 +1,14 @@
-package com.elias.finanx.dto.analytics;
+package com.elias.finanx.util;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
 
-@Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class AnalyticsPeriod {
+@Data
+public class PeriodForQuery {
     private OffsetDateTime start;
     private OffsetDateTime end;
+    private Long userId;
 }
-

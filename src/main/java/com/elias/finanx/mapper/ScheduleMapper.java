@@ -7,14 +7,11 @@ import com.elias.finanx.dto.schedule.ScheduleResponse;
 import com.elias.finanx.dto.schedule.TransactionScheduleRequest;
 import com.elias.finanx.dto.schedule.TransactionScheduleResponse;
 import com.elias.finanx.entity.*;
-import com.elias.finanx.entity.enums.TimeZone;
-import com.elias.finanx.util.DateUtil;
-import com.itextpdf.commons.utils.DateTimeUtil;
 import org.mapstruct.*;
 
 import java.time.*;
 
-@Mapper(componentModel = "spring", uses = {RecurrenceRuleMapper.class, DateUtil.class})
+@Mapper(componentModel = "spring", uses = {RecurrenceRuleMapper.class, DateMapper.class})
 public interface ScheduleMapper {
 
     default ScheduleResponse toResponseDispatch(Schedule entity) {

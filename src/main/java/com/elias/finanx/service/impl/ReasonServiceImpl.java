@@ -14,36 +14,37 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+
 @Service
 
 @RequiredArgsConstructor
 public class ReasonServiceImpl implements ReasonService {
     private final ReasonMapper reasonMapper;
-    private final ReasonRepository reasonRepository;
+    private final ReasonRepository rRepository;
     private final UserRepository userRepository;
 
     @Override
     public ReasonResponse create(ReasonRequest request) {
         Reason reason = reasonMapper.toEntity(request);
         reason.setUser(userRepository.getReferenceById(request.getUserId()));
-        return reasonMapper.toResponse(reasonRepository.save(reason));
+        return reasonMapper.toResponse(rRepository.save(reason));
     }
 
     @Override
     public ReasonResponse update(Long id, ReasonRequest request) {
-        Reason existing = reasonRepository.findById(id).orElseThrow();
+        Reason existing = rRepository.findById(id).orElseThrow();
         reasonMapper.updateFromDto(request, existing);
-        return reasonMapper.toResponse(reasonRepository.save(existing));
+        return reasonMapper.toResponse(rRepository.save(existing));
     }
 
     @Override
     public ReasonResponse findById(Long id) {
-        return reasonMapper.toResponse(reasonRepository.findById(id).orElseThrow());
+        return reasonMapper.toResponse(rRepository.findById(id).orElseThrow());
     }
 
     @Override
     public List<ReasonResponse> findAllByUser(Long idUser) {
-        return reasonRepository.findAllByUser_Id(idUser)
+        return rRepository.findAllByUser_Id(idUser)
                 .stream()
                 .map(reasonMapper::toResponse)
                 .toList();
@@ -52,10 +53,10 @@ public class ReasonServiceImpl implements ReasonService {
     @Transactional
     @Override
     public void disable(Long id) {
-        Reason existing = reasonRepository.findById(id).orElseThrow();
+        Reason existing = rRepository.findById(id).orElseThrow();
         ZoneId zoneId = existing.getUser().getTimeZone().toZoneId();
         existing.setActive(false);
         existing.setDisabledAt(OffsetDateTime.now(zoneId));
-        reasonRepository.save(existing);
+        rRepository.save(existing);
     }
 }

@@ -3,10 +3,9 @@ package com.elias.finanx.mapper;
 import com.elias.finanx.dto.recurrencerule.RecurrenceRuleRequest;
 import com.elias.finanx.dto.recurrencerule.RecurrenceRuleResponse;
 import com.elias.finanx.entity.RecurrenceRule;
-import com.elias.finanx.util.DateUtil;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring", uses = DateUtil.class)
+@Mapper(componentModel = "spring", uses = DateMapper.class)
 public interface RecurrenceRuleMapper{
     @Mapping(target = "durationDays", expression = "java(entity.getDurationDays())")
     @Mapping(source = "start", target = "start", qualifiedByName = "OffsetToLocal")

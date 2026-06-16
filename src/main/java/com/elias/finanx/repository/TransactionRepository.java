@@ -20,6 +20,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     List<Transaction> findAllByCategory_IdAndCreatedAtBetweenAndActive(Long categoryId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active);
 
+    List<Transaction> findAllByUser_IdAndCreatedAtBetweenAndActive(Long categoryId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active);
 
     List<Transaction> findAllByCategory_IdAndCreatedAtBetweenAndActiveAndType(
             Long categoryId,
@@ -28,4 +29,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             Boolean active,
             TransactionType type
     );
+
+    List<Transaction> findAllByUser_IdAndCreatedAtBetweenAndActiveAndType(Long userId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active, TransactionType type);
 }

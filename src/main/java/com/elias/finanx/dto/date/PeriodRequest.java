@@ -1,5 +1,6 @@
-package com.elias.finanx.dto.report;
+package com.elias.finanx.dto.date;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -14,12 +15,14 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class BalanceReportRequest {
+public class PeriodRequest {
     @NotNull
-    private LocalDate from;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate start;
 
     @NotNull
-    private LocalDate to;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate end;
 
     @NotNull
     private Long userId;

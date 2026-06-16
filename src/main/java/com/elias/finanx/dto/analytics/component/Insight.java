@@ -1,4 +1,4 @@
-package com.elias.finanx.dto.analytics;
+package com.elias.finanx.dto.analytics.component;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
