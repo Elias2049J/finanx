@@ -7,12 +7,14 @@ import com.elias.finanx.dto.date.PeriodRequest;
 import com.elias.finanx.entity.Budget;
 import com.elias.finanx.entity.Transaction;
 import com.elias.finanx.entity.enums.BudgetState;
+import com.elias.finanx.mapper.BudgetMapper;
 import com.elias.finanx.mapper.DateMapper;
 import com.elias.finanx.repository.BudgetRepository;
 import com.elias.finanx.repository.TransactionRepository;
 import com.elias.finanx.repository.UserRepository;
 import com.elias.finanx.service.analytics.BudgetAnalyticsService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.ZoneId;
@@ -22,28 +24,34 @@ import java.util.List;
 public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements BudgetAnalyticsService {
     protected final BudgetRepository bRepository;
     protected final TransactionRepository tRepository;
+    protected final BudgetMapper budgetMapper;
 
     public BudgetAnalyticsServiceImpl(DateMapper dateMapper,
                                       UserRepository userRepository,
                                       BudgetRepository bRepository,
-                                      TransactionRepository tRepository
+                                      TransactionRepository tRepository, BudgetMapper budgetMapper
     ) {
         super(dateMapper, userRepository);
         this.bRepository = bRepository;
         this.tRepository = tRepository;
+        this.budgetMapper = budgetMapper;
     }
 
-
-    @Override
-    public DashboardResponse buildDashboard(PeriodRequest request) {
+    private List<Budget> findBudgets(PeriodRequest request) {
         ZoneId zoneId = this.getUser(request.getUserId()).getTimeZone().toZoneId();
-        List<Budget> budgets = bRepository.findAllByUser_IdAndActiveAndCreatedAtBetweenAndState(
+        return bRepository.findAllByUser_IdAndActiveAndCreatedAtBetweenAndState(
                 request.getUserId(),
                 true,
                 request.getStart().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
                 request.getEnd().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
                 BudgetState.ACTIVE
         );
+    }
+
+
+    @Override
+    public DashboardResponse buildDashboard(PeriodRequest request) {
+        List<Budget> budgets = findBudgets(request);
 
         BigDecimal totalBudgetLimitAmount = budgets
                 .stream()
@@ -105,7 +113,14 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
     }
 
     @Override
+    @Transactional(readOnly = true)
     public BudgetExecutionResponse getBudgetExecution(Long id) {
-        return null;
+        return this.mapToExecution(bRepository.findById(id).orElseThrow());
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<BudgetExecutionResponse> getBudgetsExecutions(PeriodRequest request) {
+        return this.findBudgets(request).stream().map(this::mapToExecution).toList();
     }
 }

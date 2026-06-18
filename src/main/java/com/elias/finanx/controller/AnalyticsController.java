@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/analytics")
 @RequiredArgsConstructor
@@ -41,8 +43,13 @@ public class AnalyticsController {
         return ResponseEntity.ok(bas.buildDashboard(request));
     }
 
-    @GetMapping("/{id}/execution")
+    @GetMapping("/budgets/{id}/execution")
     public ResponseEntity<BudgetExecutionResponse> getExecution(@PathVariable Long id) {
         return ResponseEntity.ok(bas.getBudgetExecution(id));
+    }
+
+    @GetMapping("/budgets/executions")
+    public ResponseEntity<List<BudgetExecutionResponse>> getExecutionsByPeriod(@Valid PeriodRequest request) {
+        return ResponseEntity.ok(bas.getBudgetsExecutions(request));
     }
 }
