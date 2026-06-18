@@ -35,3 +35,4 @@ build/
 /secrets/
 
 src/main/resources/application.yml
+application.yml
