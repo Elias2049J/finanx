@@ -1,5 +1,6 @@
 package com.elias.finanx.service.impl.analytics;
 
+import com.elias.finanx.dto.analytics.component.InsightSummary;
 import com.elias.finanx.dto.analytics.dashboard.BudgetsDashboard;
 import com.elias.finanx.dto.analytics.dashboard.DashboardResponse;
 import com.elias.finanx.dto.budget.BudgetExecutionResponse;
@@ -12,6 +13,7 @@ import com.elias.finanx.mapper.DateMapper;
 import com.elias.finanx.repository.BudgetRepository;
 import com.elias.finanx.repository.TransactionRepository;
 import com.elias.finanx.repository.UserRepository;
+import com.elias.finanx.service.InsightService;
 import com.elias.finanx.service.analytics.BudgetAnalyticsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,10 +30,11 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
 
     public BudgetAnalyticsServiceImpl(DateMapper dateMapper,
                                       UserRepository userRepository,
+                                      InsightService insightService,
                                       BudgetRepository bRepository,
                                       TransactionRepository tRepository, BudgetMapper budgetMapper
     ) {
-        super(dateMapper, userRepository);
+        super(dateMapper, userRepository, insightService);
         this.bRepository = bRepository;
         this.tRepository = tRepository;
         this.budgetMapper = budgetMapper;
@@ -50,7 +53,7 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
 
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request) {
+    public DashboardResponse buildDashboard(PeriodRequest request, String prompt) {
         List<Budget> budgets = findBudgets(request);
 
         BigDecimal totalBudgetLimitAmount = budgets
@@ -76,6 +79,16 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
         result.setTotalBudgetRemainingAmount(totalBudgetRemainingAmount);
         result.setTotalBudgetSpentAmount(totalBudgetSpentAmount);
         return result;
+    }
+
+    @Override
+    protected InsightSummary generateDefaultInsightSummary(DashboardResponse dataSource, int count) {
+        return null;
+    }
+
+    @Override
+    protected String buildContextSummary(DashboardResponse t) {
+        return "";
     }
 
     private BigDecimal getSpent(Budget b) {

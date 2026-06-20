@@ -20,8 +20,8 @@ import com.elias.finanx.repository.CategoryRepository;
 import com.elias.finanx.repository.ReasonRepository;
 import com.elias.finanx.repository.TransactionRepository;
 import com.elias.finanx.repository.UserRepository;
+import com.elias.finanx.service.InsightService;
 import com.elias.finanx.service.analytics.CategoryAnalyticsService;
-import com.elias.finanx.service.analytics.TransactionAnalyticsService;
 import com.elias.finanx.util.PeriodForQuery;
 import org.springframework.stereotype.Service;
 
@@ -47,11 +47,12 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
     public CategoryAnalyticsServiceImpl(
             DateMapper dateMapper,
             UserRepository userRepository,
+            InsightService insightService,
             TransactionRepository transactionRepository,
             CategoryRepository categoryRepository,
             ReasonRepository reasonRepository, TransactionMapper tMapper, ReasonMapper reasonMapper, CategoryMapper categoryMapper
     ) {
-        super(dateMapper, userRepository);
+        super(dateMapper, userRepository, insightService);
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.reasonRepository = reasonRepository;
@@ -61,7 +62,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
     }
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request) {
+    public DashboardResponse buildDashboard(PeriodRequest request, String prompt) {
         TransactionsDashboard td = new TransactionsDashboard();
 
         int topN = 5;
@@ -236,6 +237,16 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
         td.setSummaryByPaymentMethod(summaryByPaymentMethod);
         td.setAggregate(generalAggregate);
         return td;
+    }
+
+    @Override
+    protected InsightSummary generateDefaultInsightSummary(DashboardResponse dataSource, int count) {
+        return null;
+    }
+
+    @Override
+    protected String buildContextSummary(DashboardResponse dataSource) {
+        return "";
     }
 
     private Long getTransactionAggregatesByPaymentMethod(Long userId, PeriodResponse periodResponse) {

@@ -7,9 +7,11 @@ import com.elias.finanx.service.analytics.BudgetAnalyticsService;
 import com.elias.finanx.service.analytics.TransactionAnalyticsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.apache.http.HttpException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -21,8 +23,9 @@ public class AnalyticsController {
 
     @GetMapping("/dashboard/balance")
     public ResponseEntity<DashboardResponse> balance(
-            @Valid @RequestBody PeriodRequest request) {
-        return ResponseEntity.ok(tas.buildDashboard(request));
+            @Valid @RequestBody PeriodRequest request,
+            @RequestParam(required = false) String prompt) throws HttpException, IOException {
+        return ResponseEntity.ok(tas.buildDashboard(request, prompt));
     }/*
 
     @GetMapping("/dashboard/categories")
@@ -39,8 +42,9 @@ public class AnalyticsController {
 
     @GetMapping("/dashboard/budgets")
     public ResponseEntity<DashboardResponse> budgets(
-            @Valid @RequestBody PeriodRequest request) {
-        return ResponseEntity.ok(bas.buildDashboard(request));
+            @Valid @RequestBody PeriodRequest request,
+            @RequestParam(required = false) String prompt) throws HttpException, IOException {
+        return ResponseEntity.ok(bas.buildDashboard(request, prompt));
     }
 
     @GetMapping("/budgets/{id}/execution")

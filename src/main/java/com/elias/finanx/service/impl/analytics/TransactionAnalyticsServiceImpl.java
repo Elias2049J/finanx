@@ -1,5 +1,6 @@
 package com.elias.finanx.service.impl.analytics;
 
+import com.elias.finanx.dto.ai.PromptRequest;
 import com.elias.finanx.dto.analytics.component.*;
 import com.elias.finanx.dto.analytics.dashboard.DashboardResponse;
 import com.elias.finanx.dto.analytics.dashboard.TransactionsDashboard;
@@ -10,7 +11,6 @@ import com.elias.finanx.dto.reason.ReasonSummary;
 import com.elias.finanx.dto.transaction.TransactionResponse;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.PaymentMethod;
-import com.elias.finanx.entity.enums.RecurrenceType;
 import com.elias.finanx.entity.enums.TransactionType;
 import com.elias.finanx.mapper.CategoryMapper;
 import com.elias.finanx.mapper.DateMapper;
@@ -20,10 +20,13 @@ import com.elias.finanx.repository.CategoryRepository;
 import com.elias.finanx.repository.ReasonRepository;
 import com.elias.finanx.repository.TransactionRepository;
 import com.elias.finanx.repository.UserRepository;
+import com.elias.finanx.service.InsightService;
 import com.elias.finanx.service.analytics.TransactionAnalyticsService;
 import com.elias.finanx.util.PeriodForQuery;
+import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -31,7 +34,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,11 +48,12 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
     public TransactionAnalyticsServiceImpl(
             DateMapper dateMapper,
             UserRepository userRepository,
+            InsightService insightService,
             TransactionRepository transactionRepository,
             CategoryRepository categoryRepository,
             ReasonRepository reasonRepository, TransactionMapper tMapper, ReasonMapper reasonMapper, CategoryMapper categoryMapper
     ) {
-        super(dateMapper, userRepository);
+        super(dateMapper, userRepository, insightService);
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.reasonRepository = reasonRepository;
@@ -60,8 +63,9 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
     }
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request) {
+    public DashboardResponse buildDashboard(PeriodRequest request, String prompt) throws HttpException, IOException {
         TransactionsDashboard td = new TransactionsDashboard();
+        PromptRequest promptRequest = new PromptRequest();
 
         int topN = 5;
         String title = "Dashboard de Movimientos: " +
@@ -93,16 +97,15 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         List<TransactionResponse> income = new ArrayList<>();
         List<TransactionResponse> spent = new ArrayList<>();
 
-        for (TransactionResponse t: all) {
+        for (TransactionResponse t : all) {
             if (t.getType() == TransactionType.SPENT) {
                 spent.add(t);
-            }
-            else income.add(t);
+            } else income.add(t);
         }
 
         TimeLine<TransactionResponse> expenses = this.buildTimeLine(
                 request,
-                "Gastos del periodo :"+ pr.getReadableString(),
+                "Gastos del periodo :" + pr.getReadableString(),
                 spent,
                 t -> t.getCreatedAt().toLocalDate(),
                 TransactionResponse::getAmount,
@@ -110,7 +113,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
 
         TimeLine<TransactionResponse> incomes = this.buildTimeLine(
                 request,
-                "Ingresos del periodo :"+ pr.getReadableString(),
+                "Ingresos del periodo :" + pr.getReadableString(),
                 income,
                 t -> t.getCreatedAt().toLocalDate(),
                 TransactionResponse::getAmount,
@@ -143,14 +146,14 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
                 .toList();
 
         Ranking<ReasonSummary> rsRanking = this.buildRanking(
-                "Top " +topN+" motivos de gastos",
+                "Top " + topN + " motivos de gastos",
                 spentByReason,
                 agg -> agg.getAggregate().getTotalAmount(),
                 topN
         );
 
         Ranking<ReasonSummary> riRanking = this.buildRanking(
-                "Top " +topN+" motivos de ingresos",
+                "Top " + topN + " motivos de ingresos",
                 incomeByReason,
                 agg -> agg.getAggregate().getTotalAmount(),
                 topN
@@ -198,7 +201,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
 
         Ranking<CategorySummary> summaryByCategory = this.buildRanking(
                 "Resumen de movimientos por categoría, ordenado por montos",
-                 aggsByCategory,
+                aggsByCategory,
                 agg -> agg.getAggregate().getTotalAmount(),
                 aggsByCategory.size()
         );
@@ -234,33 +237,112 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         td.setSummaryByType(summaryByType);
         td.setSummaryByPaymentMethod(summaryByPaymentMethod);
         td.setAggregate(generalAggregate);
+
+        if (prompt != null && !prompt.isBlank()) {
+            promptRequest.setUserPrompt(prompt);
+            promptRequest.setContext(buildContextSummary(td));
+            td.setInsightSummary(this.generateSmartInsightSummary(promptRequest, 3));
+        } else td.setInsightSummary(this.generateDefaultInsightSummary(td, 3));
+
         return td;
     }
 
-    private Long getTransactionAggregatesByPaymentMethod(Long userId, PeriodResponse periodResponse) {
-        return null;
+    @Override
+    protected String buildContextSummary(DashboardResponse dr) {
+        TransactionsDashboard td = (TransactionsDashboard) dr;
+
+        BigDecimal totalIncome = td.getDailyIncome().getAggregate().getTotalAmount();
+        BigDecimal totalSpent   = td.getDailyExpenses().getAggregate().getTotalAmount();
+        BigDecimal balance       = totalIncome.subtract(totalSpent);
+        Aggregate  general       = td.getAggregate();
+
+        return """
+            === RESUMEN GENERAL ===
+            Periodo      : %s
+            Total movido : %s
+            Operaciones  : %d
+            Promedio/op  : %s
+            Máximo       : %s
+            Mínimo       : %s
+
+            === MOVIMIENTOS ===
+            Ingresos     : %s  (%s)
+            Gastos       : %s  (%s)
+            Balance neto : %s
+
+            === TOP CATEGORÍAS (por monto acumulado) ===
+            %s
+
+            === TOP MOTIVOS DE GASTO ===
+            %s
+
+            === TOP MOTIVOS DE INGRESO ===
+            %s
+
+            === DISTRIBUCIÓN POR TIPO ===
+            %s
+
+            === DISTRIBUCIÓN POR MÉTODO DE PAGO ===
+            %s
+            """.formatted(
+                td.getPeriodResponse().getReadableString(),
+                general.getTotalAmount(),
+                general.getOccurrenceCount(),
+                general.getAverageAmount(),
+                general.getMax(),
+                general.getMin(),
+                totalIncome, formatTimeLine(td.getDailyIncome()),
+                totalSpent,   formatTimeLine(td.getDailyExpenses()),
+                balance,
+                formatRanking(td.getTopCategories(), 5),
+                formatRanking(td.getTopSpentReasons(), 5),
+                formatRanking(td.getTopIncomeReasons(), 5),
+                formatRanking(td.getSummaryByType(), td.getSummaryByType().getCount()),
+                formatRanking(td.getSummaryByPaymentMethod(), td.getSummaryByPaymentMethod().getCount())
+        );
     }
 
-    private Long getTransactionAggregatesByType(Long userId, PeriodResponse periodResponse) {
-        return null;
-    }
+    @Override
+    protected InsightSummary generateDefaultInsightSummary(DashboardResponse dataSource, int count) {
+        TransactionsDashboard td = (TransactionsDashboard) dataSource;
 
+        BigDecimal totalSpent   = td.getDailyExpenses().getAggregate().getTotalAmount();
+        BigDecimal totalIncome = td.getDailyIncome().getAggregate().getTotalAmount();
 
-    private InsightSummary getTransactionInsights(PeriodRequest request) {
-        return null;
-    }
+        List<Insight> insights = new ArrayList<>();
 
-    private PaymentMethod getMostUsedPaymentMethod(Long userId, PeriodResponse periodResponse) {
-        return null;
-    }
+        BigDecimal balance = totalIncome.subtract(totalSpent);
+        boolean onDeficit = balance.compareTo(BigDecimal.ZERO) < 0;
 
+        Insight balanceInsight = new Insight();
+        balanceInsight.setSeverity(onDeficit ? Insight.InsightSeverity.CRITICAL : Insight.InsightSeverity.INFO);
+        balanceInsight.setTitle(onDeficit ? "Balance mensual negativo" : "Balance mensual positivo");
+        balanceInsight.setDescription("Ingresos: %s — Gastos: %s — Balance: %s".formatted(
+                totalIncome, totalSpent, balance));
+        balanceInsight.setAction(onDeficit
+                ? "Revisa los gastos del periodo e identifica cuáles pueden reducirse."
+                : "Considera destinar parte del excedente a ahorro o inversión.");
+        insights.add(balanceInsight);
 
-    private Long getActiveScheduledTransactionCount(Long userId) {
-        return null;
-    }
+        if (td.getTopCategories() != null && !td.getTopCategories().getItems().isEmpty()) {
+            RankingItem<CategorySummary> top = td.getTopCategories().getItems().getFirst();
+            BigDecimal share = top.getAggregate().getSharePercentage();
+            boolean isHigh   = share.compareTo(new BigDecimal("50")) >= 0;
 
-    private Map<RecurrenceType, Long> getActiveScheduledCountByRecurrenceType(Long userId) {
-        return Map.of();
+            Insight catInsight = new Insight();
+            catInsight.setSeverity(isHigh ? Insight.InsightSeverity.WARNING : Insight.InsightSeverity.INFO);
+            catInsight.setTitle("Categoría dominante: " + top.getAggregate().getFactorName());
+            catInsight.setDescription("Concentra el %.1f%% del total movido (%s).".formatted(
+                    share, top.getAggregate().getAggregate().getTotalAmount()));
+            catInsight.setAction(isHigh
+                    ? "Una sola categoría supera el 50% del gasto. Evalúa si hay oportunidad de reducirla."
+                    : "Distribución de categorías dentro del rango normal.");
+            insights.add(catInsight);
+        }
+
+        InsightSummary summary = new InsightSummary();
+        summary.setInsights(insights);
+        summary.setInsightsCount(insights.size());
+        return summary;
     }
 }
-

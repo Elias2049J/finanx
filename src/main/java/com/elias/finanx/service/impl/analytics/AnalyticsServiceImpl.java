@@ -1,5 +1,6 @@
 package com.elias.finanx.service.impl.analytics;
 
+import com.elias.finanx.dto.ai.PromptRequest;
 import com.elias.finanx.dto.analytics.TimeBoundList;
 import com.elias.finanx.dto.analytics.dashboard.DashboardResponse;
 import com.elias.finanx.dto.date.PeriodRequest;
@@ -8,10 +9,13 @@ import com.elias.finanx.dto.date.PeriodResponse;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.mapper.DateMapper;
 import com.elias.finanx.repository.UserRepository;
+import com.elias.finanx.service.InsightService;
 import com.elias.finanx.service.analytics.AnalyticsService;
+import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -28,15 +32,17 @@ import static java.math.RoundingMode.HALF_UP;
 public abstract class AnalyticsServiceImpl implements AnalyticsService {
     protected final DateMapper dateMapper;
     protected final UserRepository userRepository;
+    protected final InsightService insightService;
 
-    public AnalyticsServiceImpl(DateMapper dateMapper, UserRepository userRepository) {
+    public AnalyticsServiceImpl(DateMapper dateMapper, UserRepository userRepository, InsightService insightService) {
         this.dateMapper = dateMapper;
         this.userRepository = userRepository;
+        this.insightService = insightService;
     }
 
     @Transactional(readOnly = true)
     @Override
-    public abstract DashboardResponse buildDashboard(PeriodRequest request);
+    public abstract DashboardResponse buildDashboard(PeriodRequest request, String prompt) throws HttpException, IOException;
 
     protected Aggregate buildAggregate(
             String title,
@@ -233,5 +239,37 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
             }
         }
         return total;
+    }
+
+    protected InsightSummary generateSmartInsightSummary(PromptRequest prompt, int count) throws HttpException, IOException {
+        return insightService.getInsights(prompt, count);
+    }
+
+    protected abstract InsightSummary generateDefaultInsightSummary(DashboardResponse dataSource, int count);
+
+    protected abstract String buildContextSummary(DashboardResponse dataSource);
+
+    protected <F> String formatRanking(Ranking<F> ranking, int limit) {
+        if (ranking == null || ranking.getItems() == null || ranking.getItems().isEmpty())
+            return "  Sin datos";
+        return ranking.getItems().stream()
+                .limit(limit)
+                .map(item -> "  #%d %s → %s (%.1f%%)".formatted(
+                        item.getRank(),
+                        item.getAggregate().getFactorName(),
+                        item.getAggregate().getAggregate().getTotalAmount(),
+                        item.getAggregate().getSharePercentage()
+                ))
+                .collect(Collectors.joining("\n"));
+    }
+
+    protected <T> String formatTimeLine(TimeLine<T> timeLine) {
+        if (timeLine == null) return "Sin datos";
+        Aggregate agg = timeLine.getAggregate();
+        return "total=%s, promedio=%s, días_activos=%d".formatted(
+                agg.getTotalAmount(),
+                agg.getAverageAmount(),
+                timeLine.getCount()
+        );
     }
 }
