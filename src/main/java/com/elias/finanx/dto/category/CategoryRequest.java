@@ -1,5 +1,6 @@
 package com.elias.finanx.dto.category;
 
+import com.elias.finanx.entity.enums.TransactionType;
 import lombok.Data;
 import jakarta.validation.constraints.*;
 
@@ -11,4 +12,6 @@ public class CategoryRequest {
     private String description;
     @NotNull
     private Long userId;
+    @NotNull
+    private TransactionType type;
 }

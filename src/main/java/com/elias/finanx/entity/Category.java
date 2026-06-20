@@ -29,6 +29,7 @@ public class Category {
     @Column(name = "nombre", nullable = false, length = 120)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false, length = 120)
     private TransactionType type;
 

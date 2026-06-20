@@ -12,7 +12,7 @@ public class BudgetResponse {
     private Long id;
     private Long userId;
     private Long categoryId;
-    private Long categoryName;
+    private String categoryName;
     private Long scheduleId;
     private Boolean alertable;
     private Integer percentAlert;

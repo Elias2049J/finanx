@@ -12,9 +12,9 @@ public class TransactionResponse {
     private Long id;
     private Long userId;
     private Long categoryId;
-    private Long categoryName;
+    private String categoryName;
     private Long reasonId;
-    private Long reasonDescription;
+    private String reasonDescription;
     private Long savingGoalId;
     private Long scheduleId;
     private BigDecimal amount;

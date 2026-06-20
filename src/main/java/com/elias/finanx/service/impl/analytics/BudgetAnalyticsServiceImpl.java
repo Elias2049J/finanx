@@ -109,7 +109,7 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
         BigDecimal r = b.getLimitAmount().subtract(s);
         BudgetExecutionResponse e = new BudgetExecutionResponse();
         e.setCategoryId(b.getCategory().getId());
-        e.setCategoryName(b.getCategory().getId());
+        e.setCategoryName(b.getCategory().getName());
         e.setId(b.getId());
         e.setLimitAmount(b.getLimitAmount());
         e.setSpentAmount(s);
