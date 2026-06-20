@@ -1207,30 +1207,17 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BudgetResponse"
-  /analytics/{id}/execution:
-    get:
-      tags:
-        - analytics-controller
-      operationId: getExecution
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/BudgetExecutionResponse"
   /analytics/dashboard/budgets:
     get:
       tags:
         - analytics-controller
       operationId: budgets
+      parameters:
+        - name: prompt
+          in: query
+          required: false
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -1253,6 +1240,12 @@ paths:
       tags:
         - analytics-controller
       operationId: balance
+      parameters:
+        - name: prompt
+          in: query
+          required: false
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -1270,6 +1263,45 @@ paths:
                   - $ref: "#/components/schemas/SavingGoalsDashboard"
                   - $ref: "#/components/schemas/TSchedulesDashboard"
                   - $ref: "#/components/schemas/TransactionsDashboard"
+  /analytics/budgets/{id}/execution:
+    get:
+      tags:
+        - analytics-controller
+      operationId: getExecution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BudgetExecutionResponse"
+  /analytics/budgets/executions:
+    get:
+      tags:
+        - analytics-controller
+      operationId: getExecutionsByPeriod
+      parameters:
+        - name: request
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/PeriodRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetExecutionResponse"
   /schedule/{id}/disable:
     delete:
       tags:
@@ -1422,14 +1454,12 @@ components:
           type: integer
           format: int64
         categoryName:
-          type: integer
-          format: int64
+          type: string
         reasonId:
           type: integer
           format: int64
         reasonDescription:
-          type: integer
-          format: int64
+          type: string
         savingGoalId:
           type: integer
           format: int64
@@ -1808,9 +1838,15 @@ components:
         userId:
           type: integer
           format: int64
+        type:
+          type: string
+          enum:
+            - SPENT
+            - INCOME
       required:
         - description
         - name
+        - type
         - userId
     CategoryResponse:
       type: object
@@ -1822,6 +1858,11 @@ components:
           type: string
         description:
           type: string
+        type:
+          type: string
+          enum:
+            - SPENT
+            - INCOME
         active:
           type: boolean
         createdAt:
@@ -1879,8 +1920,7 @@ components:
           type: integer
           format: int64
         categoryName:
-          type: integer
-          format: int64
+          type: string
         scheduleId:
           type: integer
           format: int64
@@ -2047,65 +2087,6 @@ components:
         count:
           type: integer
           format: int64
-    BudgetExecutionResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        userId:
-          type: integer
-          format: int64
-        categoryId:
-          type: integer
-          format: int64
-        categoryName:
-          type: integer
-          format: int64
-        scheduleId:
-          type: integer
-          format: int64
-        alertable:
-          type: boolean
-        percentAlert:
-          type: integer
-          format: int32
-        limitAmount:
-          type: number
-        description:
-          type: string
-        state:
-          type: string
-          enum:
-            - ACTIVE
-            - CANCELLED
-            - DISABLED
-            - FINALIZED
-        health:
-          type: string
-          enum:
-            - OK
-            - NEAR_LIMIT
-            - EXCEEDED
-            - INACTIVE
-        start:
-          type: string
-          format: date-time
-        end:
-          type: string
-          format: date-time
-        createdAt:
-          type: string
-          format: date-time
-        disabledAt:
-          type: string
-          format: date-time
-        spentAmount:
-          type: number
-        remainingAmount:
-          type: number
-        executionPercentage:
-          type: number
     Aggregate:
       type: object
       properties:
@@ -2240,6 +2221,64 @@ components:
         factorName:
           type: string
         sharePercentage:
+          type: number
+    BudgetExecutionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        categoryId:
+          type: integer
+          format: int64
+        categoryName:
+          type: string
+        scheduleId:
+          type: integer
+          format: int64
+        alertable:
+          type: boolean
+        percentAlert:
+          type: integer
+          format: int32
+        limitAmount:
+          type: number
+        description:
+          type: string
+        state:
+          type: string
+          enum:
+            - ACTIVE
+            - CANCELLED
+            - DISABLED
+            - FINALIZED
+        health:
+          type: string
+          enum:
+            - OK
+            - NEAR_LIMIT
+            - EXCEEDED
+            - INACTIVE
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        disabledAt:
+          type: string
+          format: date-time
+        spentAmount:
+          type: number
+        remainingAmount:
+          type: number
+        executionPercentage:
           type: number
     BudgetsDashboard:
       allOf:
