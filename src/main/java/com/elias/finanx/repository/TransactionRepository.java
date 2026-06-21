@@ -14,6 +14,8 @@ import java.util.List;
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
     List<Transaction> findAllByUser_Id(Long userId);
 
+    List<Transaction> findAllByUser_IdAndActiveTrue(Long userId);
+
     List<Transaction> findAllByUser_IdAndCreatedAtBetweenAndActive(Long userId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, boolean active);
 
     List<Transaction> findAllByUser_IdAndActive(Long userId, Boolean active);

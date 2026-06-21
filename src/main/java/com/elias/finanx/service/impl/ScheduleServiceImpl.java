@@ -109,7 +109,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional(readOnly = true)
     @Override
     public List<ScheduleResponse> findAllByUser(Long userId) {
-        return scheduleRepository.findAllByUser_Id(userId)
+        return scheduleRepository.findAllByUser_IdAndActiveTrue(userId)
                 .stream()
                 .map(tsMapper::toResponseDispatch)
                 .toList();

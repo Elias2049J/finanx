@@ -47,7 +47,7 @@ public class ReasonServiceImpl implements ReasonService {
     @Override
     @Transactional(readOnly = true)
     public List<ReasonResponse> findAllByUser(Long idUser) {
-        return rRepository.findAllByUser_Id(idUser)
+        return rRepository.findAllByUser_IdAndActiveTrue(idUser)
                 .stream()
                 .map(reasonMapper::toResponse)
                 .toList();

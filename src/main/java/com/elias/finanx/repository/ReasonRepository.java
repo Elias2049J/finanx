@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface ReasonRepository extends JpaRepository<Reason, Long> {
     List<Reason> findAllByUser_Id(Long userId);
+
+    List<Reason> findAllByUser_IdAndActiveTrue(Long userId);
 }
