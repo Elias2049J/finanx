@@ -680,6 +680,35 @@ paths:
       responses:
         "200":
           description: OK
+  /budgets/{health}:
+    post:
+      tags:
+        - budget-controller
+      operationId: getBudgetsByHealth
+      parameters:
+        - name: health
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - OK
+              - NEAR_LIMIT
+              - EXCEEDED
+              - INACTIVE
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PeriodRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TimeBoundListBudgetResponse"
   /auth/register:
     post:
       tags:
@@ -734,6 +763,101 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LoginResponse"
+  /analytics/dashboard/budgets:
+    post:
+      tags:
+        - analytics-controller
+      operationId: budgets
+      parameters:
+        - name: prompt
+          in: query
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PeriodRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/BudgetsDashboard"
+                  - $ref: "#/components/schemas/SavingGoalsDashboard"
+                  - $ref: "#/components/schemas/TSchedulesDashboard"
+                  - $ref: "#/components/schemas/TransactionsDashboard"
+  /analytics/dashboard/balance:
+    post:
+      tags:
+        - analytics-controller
+      operationId: balance
+      parameters:
+        - name: prompt
+          in: query
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PeriodRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/BudgetsDashboard"
+                  - $ref: "#/components/schemas/SavingGoalsDashboard"
+                  - $ref: "#/components/schemas/TSchedulesDashboard"
+                  - $ref: "#/components/schemas/TransactionsDashboard"
+  /analytics/budgets/{id}/execution:
+    post:
+      tags:
+        - analytics-controller
+      operationId: getExecution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BudgetExecutionResponse"
+  /analytics/budgets/executions:
+    post:
+      tags:
+        - analytics-controller
+      operationId: getExecutionsByPeriod
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PeriodRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetExecutionResponse"
   /users:
     get:
       tags:
@@ -1127,34 +1251,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CategoryResponse"
-  /budgets/{health}:
-    get:
-      tags:
-        - budget-controller
-      operationId: getBudgetsByHealth
-      parameters:
-        - name: health
-          in: path
-          required: true
-          schema:
-            type: string
-            enum:
-              - OK
-              - NEAR_LIMIT
-              - EXCEEDED
-              - INACTIVE
-        - name: request
-          in: query
-          required: true
-          schema:
-            $ref: "#/components/schemas/PeriodRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/TimeBoundListBudgetResponse"
   /budgets/user/{idUser}:
     get:
       tags:
@@ -1207,101 +1303,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BudgetResponse"
-  /analytics/dashboard/budgets:
-    get:
-      tags:
-        - analytics-controller
-      operationId: budgets
-      parameters:
-        - name: prompt
-          in: query
-          required: false
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PeriodRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                oneOf:
-                  - $ref: "#/components/schemas/BudgetsDashboard"
-                  - $ref: "#/components/schemas/SavingGoalsDashboard"
-                  - $ref: "#/components/schemas/TSchedulesDashboard"
-                  - $ref: "#/components/schemas/TransactionsDashboard"
-  /analytics/dashboard/balance:
-    get:
-      tags:
-        - analytics-controller
-      operationId: balance
-      parameters:
-        - name: prompt
-          in: query
-          required: false
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PeriodRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                oneOf:
-                  - $ref: "#/components/schemas/BudgetsDashboard"
-                  - $ref: "#/components/schemas/SavingGoalsDashboard"
-                  - $ref: "#/components/schemas/TSchedulesDashboard"
-                  - $ref: "#/components/schemas/TransactionsDashboard"
-  /analytics/budgets/{id}/execution:
-    get:
-      tags:
-        - analytics-controller
-      operationId: getExecution
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/BudgetExecutionResponse"
-  /analytics/budgets/executions:
-    get:
-      tags:
-        - analytics-controller
-      operationId: getExecutionsByPeriod
-      parameters:
-        - name: request
-          in: query
-          required: true
-          schema:
-            $ref: "#/components/schemas/PeriodRequest"
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/BudgetExecutionResponse"
   /schedule/{id}/disable:
     delete:
       tags:
@@ -1966,85 +1967,6 @@ components:
           $ref: "#/components/schemas/UserResponse"
         token:
           type: string
-    LoginRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          minLength: 1
-        password:
-          type: string
-          minLength: 1
-      required:
-        - email
-        - password
-    GoogleLoginRequest:
-      type: object
-      properties:
-        idToken:
-          type: string
-          minLength: 1
-      required:
-        - idToken
-    NotificationDTO:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        userId:
-          type: integer
-          format: int64
-        userEmail:
-          type: string
-        type:
-          type: string
-          enum:
-            - WARNING
-            - SUCCESS
-            - ERROR
-            - INFO
-        message:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        disabledAt:
-          type: string
-          format: date-time
-        scheduledAt:
-          type: string
-          format: date-time
-        sentAt:
-          type: string
-          format: date-time
-        state:
-          type: string
-          enum:
-            - SCHEDULED
-            - SENT
-            - READ
-            - DISCARD
-        scheduleId:
-          type: integer
-          format: int64
-        budgetId:
-          type: integer
-          format: int64
-        budgetDescription:
-          type: string
-        budgetState:
-          type: string
-          enum:
-            - ACTIVE
-            - CANCELLED
-            - DISABLED
-            - FINALIZED
-        savingGoalId:
-          type: integer
-          format: int64
-        savingGoalDescription:
-          type: string
     PeriodRequest:
       type: object
       properties:
@@ -2087,6 +2009,26 @@ components:
         count:
           type: integer
           format: int64
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      required:
+        - email
+        - password
+    GoogleLoginRequest:
+      type: object
+      properties:
+        idToken:
+          type: string
+          minLength: 1
+      required:
+        - idToken
     Aggregate:
       type: object
       properties:
@@ -2730,3 +2672,62 @@ components:
               $ref: "#/components/schemas/RankingReasonSummary"
             topIncomeReasons:
               $ref: "#/components/schemas/RankingReasonSummary"
+    NotificationDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        userEmail:
+          type: string
+        type:
+          type: string
+          enum:
+            - WARNING
+            - SUCCESS
+            - ERROR
+            - INFO
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        disabledAt:
+          type: string
+          format: date-time
+        scheduledAt:
+          type: string
+          format: date-time
+        sentAt:
+          type: string
+          format: date-time
+        state:
+          type: string
+          enum:
+            - SCHEDULED
+            - SENT
+            - READ
+            - DISCARD
+        scheduleId:
+          type: integer
+          format: int64
+        budgetId:
+          type: integer
+          format: int64
+        budgetDescription:
+          type: string
+        budgetState:
+          type: string
+          enum:
+            - ACTIVE
+            - CANCELLED
+            - DISABLED
+            - FINALIZED
+        savingGoalId:
+          type: integer
+          format: int64
+        savingGoalDescription:
+          type: string
