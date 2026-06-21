@@ -69,19 +69,22 @@ public class BudgetServiceImpl implements BudgetService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public BudgetResponse findById(Long id) {
         return budgetMapper.toResponse(budgetRepository.findById(id).orElseThrow());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<BudgetResponse> findAllByUser(Long idUser) {
-        return budgetRepository.findAllByUser_Id(idUser)
+        return budgetRepository.findAllByUser_IdAndActiveTrue(idUser)
                 .stream()
                 .map(budgetMapper::toResponse)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<BudgetResponse> findAllActiveByUserAndState(Long idUser, BudgetState state) {
         return budgetRepository.findAllByUser_IdAndActiveTrueAndState(idUser, state)
                 .stream()

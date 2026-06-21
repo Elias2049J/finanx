@@ -24,6 +24,7 @@ public class ReasonServiceImpl implements ReasonService {
     private final UserRepository userRepository;
 
     @Override
+    @Transactional
     public ReasonResponse create(ReasonRequest request) {
         Reason reason = reasonMapper.toEntity(request);
         reason.setUser(userRepository.getReferenceById(request.getUserId()));
@@ -31,6 +32,7 @@ public class ReasonServiceImpl implements ReasonService {
     }
 
     @Override
+    @Transactional
     public ReasonResponse update(Long id, ReasonRequest request) {
         Reason existing = rRepository.findById(id).orElseThrow();
         reasonMapper.updateFromDto(request, existing);
@@ -43,6 +45,7 @@ public class ReasonServiceImpl implements ReasonService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ReasonResponse> findAllByUser(Long idUser) {
         return rRepository.findAllByUser_Id(idUser)
                 .stream()

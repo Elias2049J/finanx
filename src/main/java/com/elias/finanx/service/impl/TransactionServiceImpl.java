@@ -62,6 +62,7 @@ public class TransactionServiceImpl implements TransactionService {
         return transactionMapper.toResponse(saved);
     }
 
+    @Transactional
     @Override
     public TransactionResponse update(Long id, TransactionRequest request) {
         Transaction existing = transactionRepository.findById(id).orElseThrow();
@@ -84,11 +85,13 @@ public class TransactionServiceImpl implements TransactionService {
         return transactionMapper.toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public TransactionResponse findById(Long id) {
         return transactionMapper.toResponse(transactionRepository.findById(id).orElseThrow());
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<TransactionResponse> findAllByUser(Long userId) {
         return transactionRepository.findAllByUser_Id(userId)
@@ -97,6 +100,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<TransactionResponse> findAllActiveByUser(Long userId) {
         return transactionRepository.findAllByUser_IdAndActive(userId, true)
@@ -105,6 +109,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<TransactionResponse> findAllByUserAndIssueDateBetween(Long userId, LocalDate from, LocalDate to) {
         User user = userRepository.findById(userId).orElseThrow();
@@ -128,6 +133,7 @@ public class TransactionServiceImpl implements TransactionService {
         transactionRepository.save(transaction);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public BigDecimal sumAmountByCategory(Long userId, Long categoryId, LocalDate from, LocalDate to) {
         return findAllActiveByCategoryAndDateBetween(userId, categoryId, from, to)

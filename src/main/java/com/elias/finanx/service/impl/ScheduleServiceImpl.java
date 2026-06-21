@@ -106,6 +106,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         return tsMapper.toResponseDispatch(scheduleRepository.findById(id).orElseThrow());
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<ScheduleResponse> findAllByUser(Long userId) {
         return scheduleRepository.findAllByUser_Id(userId)
@@ -114,6 +115,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<ScheduleResponse> findAllActiveByUserAndState(Long userId, ScheduleState state) {
         return scheduleRepository.findAllByUser_IdAndActiveAndState(userId, true, state)
@@ -122,6 +124,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<BudgetScheduleResponse> findAllBScheduleActiveByUserAndState(Long userId, ScheduleState state) {
         return bsRepository.findAllByUser_IdAndActiveAndState(userId, true, state)
@@ -131,6 +134,7 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<TransactionScheduleResponse> findAllTScheduleActiveByUserAndState(Long userId, ScheduleState state) {
         return tsRepository.findAllByUser_IdAndActiveAndState(userId, true, state)

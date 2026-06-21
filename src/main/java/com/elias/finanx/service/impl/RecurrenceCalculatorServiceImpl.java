@@ -5,6 +5,7 @@ import com.elias.finanx.entity.Schedule;
 import com.elias.finanx.entity.enums.RecurrenceType;
 import com.elias.finanx.service.RecurrenceCalculatorService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.time.temporal.ChronoUnit;

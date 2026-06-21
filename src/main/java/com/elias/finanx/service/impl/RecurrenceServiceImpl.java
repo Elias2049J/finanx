@@ -36,6 +36,7 @@ public class RecurrenceServiceImpl implements RecurrenceService {
     }
 
     @Override
+    @Transactional
     public RecurrenceRule update(Long id, RecurrenceRuleRequest request) {
         RecurrenceRule existing = recurrenceRuleRepository.findById(id).orElseThrow();
         recurrenceRuleMapper.updateFromDto(request, existing);
@@ -49,6 +50,7 @@ public class RecurrenceServiceImpl implements RecurrenceService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public RecurrenceRuleResponse findById(Long id) {
         return recurrenceRuleMapper.toResponse(recurrenceRuleRepository.findById(id).orElseThrow());
     }

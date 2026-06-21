@@ -63,18 +63,21 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public NotificationDTO findById(Long id) {
         return notificationMapper.toResponse(notificationRepository.findById(id).orElseThrow());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<NotificationDTO> findAllByUser(Long userId) {
-        return notificationRepository.findAllByUser_Id(userId)
+        return notificationRepository.findAllByUser_IdAndStateIsNot(userId, NotificationState.DISCARD)
                 .stream().map(notificationMapper::toResponse)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<NotificationDTO> findAllByUserAndState(Long userId, NotificationState state) {
         return notificationRepository.findAllByUser_IdAndState(userId, state)
                 .stream()
@@ -89,27 +92,26 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.save(n);
     }
 
-    @Override
-    public void discard(Long id) {
-        Notification n = notificationRepository.findById(id).orElseThrow();
-        n.setState(NotificationState.DISCARD);
-        notificationRepository.save(n);
-    }
-
     @Transactional
     @Override
-    public void disable(Long id) {
+    public void discard(Long id) {
         Notification existing = notificationRepository.findById(id).orElseThrow();
+        this.disable(existing);
+    }
+
+    private void disable(Notification existing) {
         ZoneId zoneId = existing.getUser().getTimeZone().toZoneId();
         existing.setDisabledAt(OffsetDateTime.now(zoneId));
+        existing.setState(NotificationState.DISCARD);
         notificationRepository.save(existing);
     }
 
     @Override
+    @Transactional
     public void purgeOlderThan(LocalDateTime threshold, long userId) {
         User u = userRepository.findById(userId).orElseThrow();
         List<Notification> nList = notificationRepository.findAllByUser_IdAndStateAndSentAtBefore(userId, NotificationState.SENT, OffsetDateTime.now(u.getTimeZone().toZoneId()));
-        nList.forEach(n -> n.setState(NotificationState.DISCARD));
+        nList.forEach(this::disable);
         notificationRepository.saveAll(nList);
     }
 

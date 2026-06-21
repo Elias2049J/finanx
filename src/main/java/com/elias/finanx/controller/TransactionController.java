@@ -61,4 +61,14 @@ public class TransactionController {
         transactionService.disable(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/user/{userId}/category/{categoryId}/between")
+    public ResponseEntity<List<TransactionResponse>> findAllByCategoryAndDateBetween(
+            @PathVariable Long userId,
+            @PathVariable Long categoryId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return ResponseEntity.ok(transactionService.findAllActiveByCategoryAndDateBetween(userId, categoryId,from, to));
+    }
 }

@@ -23,9 +23,6 @@ public interface NotificationService {
 
     void discard(Long id);
 
-    @Transactional
-    void disable(Long id);
-
     void purgeOlderThan(LocalDateTime threshold, long userId);
 
     List<NotificationDTO> findAllScheduledByUser(long userId);

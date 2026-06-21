@@ -52,6 +52,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserResponse> findAll() {
         return userRepository.findAll()
                 .stream()
@@ -64,6 +65,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UserResponse findById(Long aLong) {
         return userMapper.toResponse(getEntityById(aLong));
     }

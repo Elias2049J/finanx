@@ -13,6 +13,8 @@ import java.util.List;
 public interface BudgetRepository extends JpaRepository<Budget, Long> {
     List<Budget> findAllByUser_Id(Long userId);
 
+    List<Budget> findAllByUser_IdAndActiveTrue(Long userId);
+
     List<Budget> findAllByUser_IdAndActiveTrueAndState(Long userId, BudgetState state);
 
     List<Budget> findAllByUser_IdAndActiveAndCreatedAtBetweenAndStateAndHealth(

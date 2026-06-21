@@ -51,9 +51,4 @@ public class CategoryController {
         categoryService.disable(id);
         return ResponseEntity.noContent().build();
     }
-
-    @PostMapping("/{id}/activate")
-    public ResponseEntity<CategoryResponse> activate(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.activate(id));
-    }
 }

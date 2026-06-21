@@ -14,5 +14,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findAllByUser_IdAndState(Long userId, NotificationState state);
     List<Notification> findAllByUser_Id(Long userId);
     List<Notification> findAllByUser_IdAndStateAndSentAtBefore(Long userId, NotificationState stateSent, OffsetDateTime sentAtBefore);
+
+    List<Notification> findAllByUser_IdAndStateIsNot(Long userId, NotificationState state);
 }
 
