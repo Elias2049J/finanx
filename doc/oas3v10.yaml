@@ -565,6 +565,42 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ReasonResponse"
+  /notifications/user/{userId}/purge-older-than:
+    post:
+      tags:
+        - notification-controller
+      operationId: purge
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: dateTime
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: OK
+  /notifications/mark-as-read:
+    post:
+      tags:
+        - notification-controller
+      operationId: markAsRead
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: integer
+              format: int64
+        required: true
+      responses:
+        "200":
+          description: OK
   /notifications/discard:
     post:
       tags:
@@ -613,25 +649,6 @@ paths:
       responses:
         "200":
           description: OK
-  /categories/{id}/activate:
-    post:
-      tags:
-        - category-controller
-      operationId: activate
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/CategoryResponse"
   /budgets:
     post:
       tags:
@@ -926,6 +943,45 @@ paths:
           schema:
             type: integer
             format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransactionResponse"
+  /transactions/user/{userId}/category/{categoryId}/between:
+    get:
+      tags:
+        - transaction-controller
+      operationId: findAllByCategoryAndDateBetween
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
       responses:
         "200":
           description: OK
