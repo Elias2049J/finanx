@@ -1,5 +1,7 @@
 package com.elias.finanx.entity;
 
+import com.elias.finanx.entity.enums.BudgetHealth;
+import com.elias.finanx.entity.enums.BudgetState;
 import com.elias.finanx.entity.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -50,9 +52,8 @@ public class Category {
     private User user;
 
     @PrePersist
-    private void onCreate(){
-        if (active == null)  {
-            active = true;
-        }
+    private void onCreate() {
+        if (active == null) active = Boolean.TRUE;
+        if (createdAt == null) createdAt = OffsetDateTime.now(user.getTimeZone().toZoneId());
     }
 }

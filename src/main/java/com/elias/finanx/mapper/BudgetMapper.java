@@ -17,7 +17,7 @@ public interface BudgetMapper {
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "start", target = "start", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "end", target = "end", qualifiedByName = "OffsetToLocal")
-    BudgetResponse toResponse(Budget entity);
+    BudgetResponse toResponseWithContext(Budget entity, @Context User user);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(source = "userId", target = "user")
@@ -56,5 +56,9 @@ public interface BudgetMapper {
         Category c = new Category();
         c.setId(id);
         return c;
+    }
+
+    default BudgetResponse toResponse(Budget entity) {
+        return toResponseWithContext(entity, entity.getUser());
     }
 }

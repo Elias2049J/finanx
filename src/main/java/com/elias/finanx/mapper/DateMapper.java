@@ -2,8 +2,10 @@ package com.elias.finanx.mapper;
 
 import com.elias.finanx.dto.date.PeriodRequest;
 import com.elias.finanx.dto.date.PeriodResponse;
+import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.TimeZone;
 import com.elias.finanx.util.PeriodForQuery;
+import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -37,9 +39,9 @@ public interface DateMapper {
     }
 
     @Named("OffsetToLocal")
-    default LocalDateTime offsetToLocal(OffsetDateTime value) {
+    default LocalDateTime offsetToLocal(OffsetDateTime value, @Context User user) {
         if (value == null) return null;
-        return value.toLocalDateTime();
+        return value.atZoneSameInstant(user.getTimeZone().toZoneId()).toLocalDateTime();
     }
 
     @Named("PeriodToStringES")

@@ -3,6 +3,8 @@ package com.elias.finanx.mapper;
 import com.elias.finanx.dto.saving.SavingGoalRequest;
 import com.elias.finanx.dto.saving.SavingGoalResponse;
 import com.elias.finanx.entity.SavingGoal;
+import com.elias.finanx.entity.User;
+import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -21,7 +23,7 @@ public interface SavingGoalMapper {
     @Mapping(target = "averageContribution", expression = "java(entity.getAverageContribution())")
     @Mapping(target = "completed", expression = "java(entity.isCompleted())")
     @Mapping(target = "estimatedCompletionDate", expression = "java(entity.getEstimatedCompletionDate())")
-    SavingGoalResponse toResponse(SavingGoal entity);
+    SavingGoalResponse toResponseWithContext(SavingGoal entity, @Context User user);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "accumulated", ignore = true)
@@ -32,4 +34,8 @@ public interface SavingGoalMapper {
     @Mapping(target = "transactions", ignore = true)
     @Mapping(target = "deadline", ignore = true)
     SavingGoal toEntity(SavingGoalRequest request);
+
+    default SavingGoalResponse toResponse(SavingGoal entity){
+        return toResponseWithContext(entity, entity.getUser());
+    }
 }

@@ -1,11 +1,11 @@
 package com.elias.finanx.mapper;
 
 import com.elias.finanx.dto.notification.NotificationDTO;
-import com.elias.finanx.entity.Budget;
 import com.elias.finanx.entity.Notification;
-import com.elias.finanx.entity.Transaction;
 import com.elias.finanx.entity.User;
-import org.mapstruct.*;
+import org.mapstruct.Context;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring", uses = DateMapper.class)
 public interface NotificationMapper {
@@ -22,28 +22,9 @@ public interface NotificationMapper {
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "scheduledAt", target = "scheduledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "sentAt", target = "sentAt", qualifiedByName = "OffsetToLocal")
-    NotificationDTO toResponse(Notification entity);
+    NotificationDTO toResponseWithContext(Notification entity, @Context User user);
 
-    default User mapUserId(Long id) {
-        if (id == null) return null;
-        User u = new User();
-        u.setId(id);
-        return u;
+    default NotificationDTO toResponse(Notification entity) {
+        return toResponseWithContext(entity, entity.getUser());
     }
-
-    default Transaction mapTransactionId(Long id) {
-        if (id == null) return null;
-        Transaction t = new Transaction();
-        t.setId(id);
-        return t;
-    }
-
-    default Budget mapBudgetId(Long id) {
-        if (id == null) return null;
-        Budget b = new Budget();
-        b.setId(id);
-        return b;
-    }
-
-
 }

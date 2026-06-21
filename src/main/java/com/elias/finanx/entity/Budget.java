@@ -72,5 +72,7 @@ public class Budget {
     @PrePersist
     private void onCreate() {
         if (state == null) state = BudgetState.ACTIVE;
+        if (health == null) health = BudgetHealth.OK;
+        if (createdAt == null) createdAt = OffsetDateTime.now(user.getTimeZone().toZoneId());
     }
 }

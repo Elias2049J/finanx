@@ -3,6 +3,7 @@ package com.elias.finanx.mapper;
 import com.elias.finanx.dto.recurrencerule.RecurrenceRuleRequest;
 import com.elias.finanx.dto.recurrencerule.RecurrenceRuleResponse;
 import com.elias.finanx.entity.RecurrenceRule;
+import com.elias.finanx.entity.User;
 import org.mapstruct.*;
 
 @Mapper(componentModel = "spring", uses = DateMapper.class)
@@ -10,7 +11,7 @@ public interface RecurrenceRuleMapper{
     @Mapping(target = "durationDays", expression = "java(entity.getDurationDays())")
     @Mapping(source = "start", target = "start", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "end", target = "end", qualifiedByName = "OffsetToLocal")
-    RecurrenceRuleResponse toResponse(RecurrenceRule entity);
+    RecurrenceRuleResponse toResponseWithContext(RecurrenceRule entity, @Context User user);
     
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "start", ignore = true)
@@ -24,4 +25,9 @@ public interface RecurrenceRuleMapper{
     @Mapping(target = "end", ignore = true)
     @Mapping(target = "user", ignore = true)
     void updateFromDto(RecurrenceRuleRequest dto, @MappingTarget RecurrenceRule entity);
+
+    @Named("RecurrenceRuleToResponse")
+    default RecurrenceRuleResponse toResponse(RecurrenceRule entity) {
+        return toResponseWithContext(entity, entity.getUser());
+    }
 }

@@ -3,11 +3,7 @@ package com.elias.finanx.mapper;
 import com.elias.finanx.dto.user.UserRequest;
 import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.User;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.*;
 
 @Mapper(componentModel = "spring", uses = DateMapper.class)
 public interface UserMapper{
@@ -21,7 +17,7 @@ public interface UserMapper{
     @Mapping(target = "fullName", expression = "java(entity.getFullName())")
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
-    UserResponse toResponse(User entity);
+    UserResponse toResponseWithContext(User entity, @Context User user);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
@@ -30,5 +26,9 @@ public interface UserMapper{
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "disabledAt", ignore = true)
     void updateFromDto(UserRequest dto, @MappingTarget User entity);
+
+    default UserResponse toResponse(User entity) {
+        return toResponseWithContext(entity, entity);
+    }
 }
 

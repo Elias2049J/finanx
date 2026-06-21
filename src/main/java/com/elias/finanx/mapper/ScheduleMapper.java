@@ -44,22 +44,30 @@ public interface ScheduleMapper {
     @Mapping(source = "category.name", target = "categoryName")
     @Mapping(source = "reason.id", target = "reasonId")
     @Mapping(source = "reason.description", target = "reasonDesc")
-    @Mapping(source = "recurrenceRule", target = "recurrenceRule")
+    @Mapping(source = "recurrenceRule", target = "recurrenceRule", qualifiedByName = "RecurrenceRuleToResponse")
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "nextRunAt", target = "nextRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "lastRunAt", target = "lastRunAt", qualifiedByName = "OffsetToLocal")
-    TransactionScheduleResponse toResponse(TransactionSchedule entity);
+    TransactionScheduleResponse toResponseWithContext(TransactionSchedule entity, @Context User user);
 
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.name", target = "categoryName")
-    @Mapping(source = "recurrenceRule", target = "recurrenceRule")
+    @Mapping(source = "recurrenceRule", target = "recurrenceRule", qualifiedByName = "RecurrenceRuleToResponse")
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "nextRunAt", target = "nextRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "lastRunAt", target = "lastRunAt", qualifiedByName = "OffsetToLocal")
-    BudgetScheduleResponse toResponse(BudgetSchedule entity);
+    BudgetScheduleResponse toResponseWithContext(BudgetSchedule entity, @Context User user);
+
+    default BudgetScheduleResponse toResponse(BudgetSchedule entity) {
+        return toResponseWithContext(entity, entity.getUser());
+    }
+
+    default TransactionScheduleResponse toResponse(TransactionSchedule entity) {
+        return toResponseWithContext(entity, entity.getUser());
+    }
 
     @Mapping(target = "reason", ignore = true)
     TransactionSchedule toEntity(TransactionScheduleRequest dto);
