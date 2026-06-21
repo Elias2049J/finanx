@@ -62,10 +62,10 @@ public class BudgetController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{health}")
+    @PostMapping("/{health}")
     public ResponseEntity<TimeBoundList<BudgetResponse>> getBudgetsByHealth(
             @PathVariable BudgetHealth health,
-            @Valid PeriodRequest request) {
+            @Valid @RequestBody PeriodRequest request) {
         return ResponseEntity.ok(budgetService.getBudgetsByHealth(request, health));
     }
 }

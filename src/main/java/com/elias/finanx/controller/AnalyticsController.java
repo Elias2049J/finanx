@@ -21,7 +21,7 @@ public class AnalyticsController {
     private final BudgetAnalyticsService bas;
     private final TransactionAnalyticsService tas;
 
-    @GetMapping("/dashboard/balance")
+    @PostMapping("/dashboard/balance")
     public ResponseEntity<DashboardResponse> balance(
             @Valid @RequestBody PeriodRequest request,
             @RequestParam(required = false) String prompt) throws HttpException, IOException {
@@ -40,20 +40,21 @@ public class AnalyticsController {
         return ResponseEntity.ok(analyticsService.buildDashboard(request));
     }*/
 
-    @GetMapping("/dashboard/budgets")
+    @PostMapping("/dashboard/budgets")
     public ResponseEntity<DashboardResponse> budgets(
             @Valid @RequestBody PeriodRequest request,
             @RequestParam(required = false) String prompt) throws HttpException, IOException {
         return ResponseEntity.ok(bas.buildDashboard(request, prompt));
     }
 
-    @GetMapping("/budgets/{id}/execution")
+    @PostMapping("/budgets/{id}/execution")
     public ResponseEntity<BudgetExecutionResponse> getExecution(@PathVariable Long id) {
         return ResponseEntity.ok(bas.getBudgetExecution(id));
     }
 
-    @GetMapping("/budgets/executions")
-    public ResponseEntity<List<BudgetExecutionResponse>> getExecutionsByPeriod(@Valid PeriodRequest request) {
+    @PostMapping("/budgets/executions")
+    public ResponseEntity<List<BudgetExecutionResponse>> getExecutionsByPeriod(
+            @Valid @RequestBody PeriodRequest request) {
         return ResponseEntity.ok(bas.getBudgetsExecutions(request));
     }
 }

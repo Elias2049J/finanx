@@ -29,13 +29,15 @@ public class ReasonController {
     }
 
     @PostMapping
-    public ResponseEntity<ReasonResponse> create(@Valid @RequestBody ReasonRequest request) {
+    public ResponseEntity<ReasonResponse> create(
+            @Valid @RequestBody ReasonRequest request) {
         ReasonResponse saved = reasonService.create(request);
         return ResponseEntity.created(URI.create("/reasons/" + saved.getId())).body(saved);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ReasonResponse> update(@PathVariable Long id, @Valid @RequestBody ReasonRequest request) {
+    public ResponseEntity<ReasonResponse> update(
+            @PathVariable Long id, @Valid @RequestBody ReasonRequest request) {
         return ResponseEntity.ok(reasonService.update(id, request));
     }
 

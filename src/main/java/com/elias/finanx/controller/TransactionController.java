@@ -45,7 +45,8 @@ public class TransactionController {
     }
 
     @PostMapping
-    public ResponseEntity<TransactionResponse> create(@Valid @RequestBody TransactionRequest request) {
+    public ResponseEntity<TransactionResponse> create(
+            @Valid @RequestBody TransactionRequest request) {
         TransactionResponse saved = transactionService.create(request);
         return ResponseEntity.created(URI.create("/transactions/" + saved.getId())).body(saved);
     }
