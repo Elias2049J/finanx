@@ -49,7 +49,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .type(saved.getType())
                 .payload(toJson(dto))
                 .state(OutboxState.PENDING)
-                .createdAt(OffsetDateTime.now())
+                .createdAt(OffsetDateTime.now(saved.getUser().getTimeZone().toZoneId()))
                 .build());
 
     }
@@ -122,5 +122,17 @@ public class NotificationServiceImpl implements NotificationService {
                 .stream()
                 .map(notificationMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsActiveForBudget(Long budgetId) {
+        boolean alreadySent = notificationRepository.existsByBudget_IdAndStateIn(
+                budgetId,
+                List.of(NotificationState.SENT, NotificationState.SCHEDULED)
+        );
+        if (alreadySent) return true;
+
+        return outboxRepository.existsByBudgetIdAndState(budgetId, OutboxState.PENDING);
     }
 }

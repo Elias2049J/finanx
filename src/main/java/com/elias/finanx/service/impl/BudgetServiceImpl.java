@@ -172,7 +172,9 @@ public class BudgetServiceImpl implements BudgetService {
                     log.info("Budget {} alcanzó {}% (spent={}, limit={})",
                             b.getId(), pct, spent, b.getLimitAmount());
 
-                    if (lastTx != null) {
+                    boolean alreadyNotified = notificationService.existsActiveForBudget(b.getId());
+
+                    if (!alreadyNotified && lastTx != null) {
                         BigDecimal finalSpent = spent;
                         Transaction finalLastTx = lastTx;
                         notificationService.generate(builder -> builder
@@ -182,8 +184,8 @@ public class BudgetServiceImpl implements BudgetService {
                                 .message(
                                         "Has alcanzado tu porcentaje de alerta de presupuesto para: " + c.getName() +
                                                 ".\n Total: " + finalSpent +
-                                                ".\n Último movimiento: " +
-                                                ",\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt()) +
+                                                ".\n Último movimiento:" +
+                                                "\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt()) +
                                                 ",\n Monto: " + finalLastTx.getAmount() +
                                                 ",\n Método: " + finalLastTx.getPaymentMethod().getDisplayName()
                                 ));

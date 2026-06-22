@@ -9,13 +9,17 @@ import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.List;
+
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class InsightGeminiAdapter implements InsightPort {
 
     @Value("${app.gemini.model}")
@@ -36,7 +40,7 @@ public class InsightGeminiAdapter implements InsightPort {
     private GenerateContentConfig getConfig() {
         return GenerateContentConfig.builder()
                 .temperature(0.3f)
-                .maxOutputTokens(512)
+                .maxOutputTokens(2048)
                 .responseMimeType("application/json")
                 .build();
     }
@@ -82,12 +86,34 @@ public class InsightGeminiAdapter implements InsightPort {
     private InsightSummary mapToInsightSummary(GenerateContentResponse response) {
         try {
             String json = response.text();
+
+            if (json == null || json.isBlank()) {
+                log.warn("Gemini devolvió respuesta vacía");
+                return fallbackSummary();
+            }
+
             InsightSummary summary = objectMapper.readValue(json, InsightSummary.class);
             normalizeSeverities(summary);
             return summary;
+
         } catch (Exception e) {
-            throw new RuntimeException("Error deserializando respuesta de Gemini: " + e.getMessage(), e);
+            log.error("Error deserializando respuesta de Gemini: {}", e.getMessage());
+            return fallbackSummary();
         }
+    }
+
+    private InsightSummary fallbackSummary() {
+        InsightSummary summary = new InsightSummary();
+        summary.setInsightsCount(1);
+        summary.setInsights(List.of(
+                Insight.builder()
+                        .severity(Insight.InsightSeverity.INFO)
+                        .title("No se pudieron generar insights")
+                        .description("El análisis no estuvo disponible en este momento.")
+                        .action("Intenta nuevamente en unos instantes.")
+                        .build()
+        ));
+        return summary;
     }
 
     private void normalizeSeverities(InsightSummary summary) {

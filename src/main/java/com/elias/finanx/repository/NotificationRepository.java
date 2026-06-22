@@ -16,5 +16,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findAllByUser_IdAndStateAndSentAtBefore(Long userId, NotificationState stateSent, OffsetDateTime sentAtBefore);
 
     List<Notification> findAllByUser_IdAndStateIsNot(Long userId, NotificationState state);
+
+    boolean existsByBudget_IdAndStateIn(Long budgetId, List<NotificationState> states);
 }
 

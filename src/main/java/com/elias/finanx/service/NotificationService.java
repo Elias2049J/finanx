@@ -26,4 +26,6 @@ public interface NotificationService {
     void purgeOlderThan(LocalDateTime threshold, long userId);
 
     List<NotificationDTO> findAllScheduledByUser(long userId);
+
+    boolean existsActiveForBudget(Long id);
 }
