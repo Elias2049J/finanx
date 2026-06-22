@@ -7,6 +7,7 @@ import com.elias.finanx.entity.Transaction;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.NotificationType;
 import com.elias.finanx.entity.enums.SavingGoalState;
+import com.elias.finanx.mapper.DateMapper;
 import com.elias.finanx.mapper.SavingGoalMapper;
 import com.elias.finanx.repository.SavingGoalRepository;
 import com.elias.finanx.repository.UserRepository;
@@ -30,7 +31,8 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     private final SavingGoalMapper sgMapper;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
-    
+    private final DateMapper dateMapper;
+
     @Override
     @Transactional
     public SavingGoalResponse create(SavingGoalRequest request) {
@@ -125,10 +127,10 @@ public class SavingGoalServiceImpl implements SavingGoalService {
                                 .append(sa.getAccumulated())
                                 .append(" de ")
                                 .append(sa.getTargetAmount())
-                                .append(". La último mivimiento fue de ")
+                                .append(". El último movimiento fue de ")
                                 .append(last.getAmount())
-                                .append(" a las ")
-                                .append(last.getCreatedAt().toLocalTime())
+                                .append(" el ")
+                                .append(dateMapper.toStringES(last.getCreatedAt()))
                                 .append(". ¡Excelente disciplina financiera!")
                                 .toString())
                 );
