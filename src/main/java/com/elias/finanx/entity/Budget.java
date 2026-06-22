@@ -65,6 +65,14 @@ public class Budget {
     @Column(name = "fecha_final")
     private OffsetDateTime end;
 
+    @Builder.Default
+    @Column(name = "alertado_umbral")
+    private boolean nearLimitNotified = false;
+
+    @Builder.Default
+    @Column(name = "alertado_limite")
+    private boolean exceededNotified = false;
+
     @ManyToOne
     @JoinColumn(name = "id_programacion")
     private BudgetSchedule schedule;

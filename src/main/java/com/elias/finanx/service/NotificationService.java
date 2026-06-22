@@ -3,7 +3,6 @@ package com.elias.finanx.service;
 import com.elias.finanx.dto.notification.NotificationDTO;
 import com.elias.finanx.entity.Notification;
 import com.elias.finanx.entity.enums.NotificationState;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +25,4 @@ public interface NotificationService {
     void purgeOlderThan(LocalDateTime threshold, long userId);
 
     List<NotificationDTO> findAllScheduledByUser(long userId);
-
-    boolean existsActiveForBudget(Long id);
 }

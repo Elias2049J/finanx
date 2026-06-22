@@ -166,15 +166,39 @@ public class BudgetServiceImpl implements BudgetService {
                         .multiply(BigDecimal.valueOf(pct))
                         .divide(BigDecimal.valueOf(100), 2, HALF_UP);
 
-                if (spent.compareTo(threshold) >= 0) {
+                if (spent.compareTo(b.getLimitAmount()) >= 0) {
+                    b.setHealth(BudgetHealth.EXCEEDED);
+
+                    log.info("Budget {} superó el límite (spent={}, limit={})",
+                            b.getId(), spent, b.getLimitAmount());
+
+                    if (!b.isExceededNotified() && lastTx != null) {
+                        b.setExceededNotified(true);
+                        BigDecimal finalSpent = spent;
+                        Transaction finalLastTx = lastTx;
+                        notificationService.generate(builder -> builder
+                                .budget(b)
+                                .user(u)
+                                .type(NotificationType.WARNING)
+                                .message(
+                                        "Has superado el límite de tu presupuesto para: " + c.getName() +
+                                                ".\n Total gastado: " + finalSpent +
+                                                " de " + b.getLimitAmount() +
+                                                ".\n Último movimiento:" +
+                                                "\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt()) +
+                                                ",\n Monto: " + finalLastTx.getAmount() +
+                                                ",\n Método: " + finalLastTx.getPaymentMethod().getDisplayName()
+                                ));
+                    }
+
+                } else if (spent.compareTo(threshold) >= 0) {
                     b.setHealth(BudgetHealth.NEAR_LIMIT);
 
                     log.info("Budget {} alcanzó {}% (spent={}, limit={})",
                             b.getId(), pct, spent, b.getLimitAmount());
 
-                    boolean alreadyNotified = notificationService.existsActiveForBudget(b.getId());
-
-                    if (!alreadyNotified && lastTx != null) {
+                    if (!b.isNearLimitNotified() && lastTx != null) {
+                        b.setNearLimitNotified(true);
                         BigDecimal finalSpent = spent;
                         Transaction finalLastTx = lastTx;
                         notificationService.generate(builder -> builder
@@ -191,10 +215,10 @@ public class BudgetServiceImpl implements BudgetService {
                                 ));
                     }
                 }
-            }
-
-            if (spent.compareTo(b.getLimitAmount()) >= 0) {
-                b.setHealth(BudgetHealth.EXCEEDED);
+            } else {
+                if (spent.compareTo(b.getLimitAmount()) >= 0) {
+                    b.setHealth(BudgetHealth.EXCEEDED);
+                }
             }
         }
 

@@ -4,6 +4,7 @@ import com.elias.finanx.dto.notification.NotificationDTO;
 import com.elias.finanx.entity.Notification;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.NotificationState;
+import com.elias.finanx.entity.enums.NotificationType;
 import com.elias.finanx.mapper.NotificationMapper;
 import com.elias.finanx.outbox.NotificationOutbox;
 import com.elias.finanx.outbox.OutboxState;
@@ -122,17 +123,5 @@ public class NotificationServiceImpl implements NotificationService {
                 .stream()
                 .map(notificationMapper::toResponse)
                 .toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public boolean existsActiveForBudget(Long budgetId) {
-        boolean alreadySent = notificationRepository.existsByBudget_IdAndStateIn(
-                budgetId,
-                List.of(NotificationState.SENT, NotificationState.SCHEDULED)
-        );
-        if (alreadySent) return true;
-
-        return outboxRepository.existsByBudgetIdAndState(budgetId, OutboxState.PENDING);
     }
 }

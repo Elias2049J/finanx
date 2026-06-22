@@ -2,6 +2,7 @@ package com.elias.finanx.repository;
 
 import com.elias.finanx.entity.Notification;
 import com.elias.finanx.entity.enums.NotificationState;
+import com.elias.finanx.entity.enums.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -16,7 +17,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findAllByUser_IdAndStateAndSentAtBefore(Long userId, NotificationState stateSent, OffsetDateTime sentAtBefore);
 
     List<Notification> findAllByUser_IdAndStateIsNot(Long userId, NotificationState state);
-
-    boolean existsByBudget_IdAndStateIn(Long budgetId, List<NotificationState> states);
+    boolean existsByBudget_IdAndStateInAndType(
+            Long budgetId, List<NotificationState> states, NotificationType type);
 }
 
