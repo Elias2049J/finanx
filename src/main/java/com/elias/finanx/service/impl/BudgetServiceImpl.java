@@ -28,6 +28,7 @@ import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static java.math.RoundingMode.HALF_UP;
 
@@ -109,28 +110,36 @@ public class BudgetServiceImpl implements BudgetService {
         b.setDisabledAt(OffsetDateTime.now(zoneId));
         budgetRepository.save(b);
     }
-
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void checkAllBudgets(Long userId) {
         List<Budget> budgets = budgetRepository.findAllByUser_IdAndActiveTrueAndState(userId, BudgetState.ACTIVE);
         if (budgets.isEmpty()) return;
 
+        User u = userRepository.findById(userId).orElseThrow();
+        ZoneId zoneId = u.getTimeZone().toZoneId();
+        OffsetDateTime now = OffsetDateTime.now(zoneId);
+
         for (Budget b : budgets) {
-            User u = userRepository.findById(userId).orElseThrow();
             Category c = b.getCategory();
-            ZoneId zoneId = u.getTimeZone().toZoneId();
-            OffsetDateTime now = OffsetDateTime.now(zoneId);
 
-            RecurrenceRule rr = b.getSchedule().getRecurrenceRule();
-            if (now.isAfter(b.getEnd())) {
-                b.setState(BudgetState.FINALIZED);
-                continue;
-            }
+            OffsetDateTime periodStart;
+            RecurrenceRule rr = Optional.ofNullable(b.getSchedule())
+                    .map(BudgetSchedule::getRecurrenceRule)
+                    .orElse(null);
 
-            OffsetDateTime periodStart = rcService.computeCurrentPeriodStart(rr, now, zoneId);
-            if (periodStart == null) {
-                continue;
+            if (rr != null) {
+                periodStart = rcService.computeCurrentPeriodStart(rr, now, zoneId);
+                if (periodStart == null) {
+                    log.debug("Budget {} con schedule no tiene periodo válido", b.getId());
+                    continue;
+                }
+            } else {
+                periodStart = Optional.ofNullable(b.getStart()).orElse(b.getCreatedAt());
+                if (b.getEnd() != null && now.isAfter(b.getEnd())) {
+                    b.setState(BudgetState.FINALIZED);
+                    continue;
+                }
             }
 
             List<Transaction> txs = transactionRepository
@@ -146,41 +155,42 @@ public class BudgetServiceImpl implements BudgetService {
             Transaction lastTx = null;
             for (Transaction t : txs) {
                 spent = spent.add(t.getAmount());
-
                 if (lastTx == null || t.getCreatedAt().isAfter(lastTx.getCreatedAt())) {
                     lastTx = t;
                 }
             }
+
             if (Boolean.TRUE.equals(b.getAlertable())) {
                 int pct = Math.clamp(b.getPercentAlert(), 0, 100);
                 BigDecimal threshold = b.getLimitAmount()
                         .multiply(BigDecimal.valueOf(pct))
                         .divide(BigDecimal.valueOf(100), 2, HALF_UP);
+
                 if (spent.compareTo(threshold) >= 0) {
-                    Long lastTxId = lastTx.getId();
-                    OffsetDateTime lastTxAt = lastTx.getCreatedAt();
-                    BigDecimal lastTxAmount = lastTx.getAmount();
                     b.setHealth(BudgetHealth.NEAR_LIMIT);
 
-                    log.info("Budget {} got {}% (spent={}, limit={}, lastTxId={}, lastTxAt={}, lastTxAmount={})",
-                            b.getId(), pct, spent, b.getLimitAmount(), lastTxId, lastTxAt, lastTxAmount);
+                    log.info("Budget {} alcanzó {}% (spent={}, limit={})",
+                            b.getId(), pct, spent, b.getLimitAmount());
 
-                    BigDecimal finalSpent = spent;
-                    Transaction finalLastTx = lastTx;
-                    notificationService.generate(builder -> builder
-                            .budget(b)
-                            .user(u)
-                            .type(NotificationType.WARNING)
-                            .message(
-                                    "Has alcanzado tu porcentaje de alerta de presupuesto para: " + c.getName() +
-                                            ".\n Total: " + finalSpent +
-                                            ".\n Último movimiento: " +
-                                            ",\n Fecha: " + finalLastTx.getCreatedAt() +
-                                            ",\n Monto: " + finalLastTx.getAmount() +
-                                            ",\n Método: " + finalLastTx.getPaymentMethod()
-                            ));
+                    if (lastTx != null) {
+                        BigDecimal finalSpent = spent;
+                        Transaction finalLastTx = lastTx;
+                        notificationService.generate(builder -> builder
+                                .budget(b)
+                                .user(u)
+                                .type(NotificationType.WARNING)
+                                .message(
+                                        "Has alcanzado tu porcentaje de alerta de presupuesto para: " + c.getName() +
+                                                ".\n Total: " + finalSpent +
+                                                ".\n Último movimiento: " +
+                                                ",\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt()) +
+                                                ",\n Monto: " + finalLastTx.getAmount() +
+                                                ",\n Método: " + finalLastTx.getPaymentMethod().getDisplayName()
+                                ));
+                    }
                 }
             }
+
             if (spent.compareTo(b.getLimitAmount()) >= 0) {
                 b.setHealth(BudgetHealth.EXCEEDED);
             }
@@ -188,6 +198,7 @@ public class BudgetServiceImpl implements BudgetService {
 
         budgetRepository.saveAll(budgets);
     }
+
 
     @Transactional(readOnly = true)
     @Override

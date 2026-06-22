@@ -84,4 +84,15 @@ public interface DateMapper {
 
         return new PeriodForQuery(startOffset, endOffset, userId);
     }
+
+    @Named("OffsetToStringES")
+    default String toStringES(OffsetDateTime dateTime) {
+        if (dateTime == null) return null;
+
+        DateTimeFormatter formatter = DateTimeFormatter
+                .ofPattern("d 'de' MMMM 'de' yyyy 'a las' h:mma", Locale.of("es", "ES"));
+
+        return dateTime.format(formatter);
+    }
+
 }

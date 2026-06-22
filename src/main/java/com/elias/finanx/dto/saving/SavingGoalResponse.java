@@ -1,12 +1,16 @@
 package com.elias.finanx.dto.saving;
 
 import com.elias.finanx.entity.enums.SavingGoalState;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class SavingGoalResponse {
     private Long id;
     private String description;

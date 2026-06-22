@@ -1,13 +1,17 @@
 package com.elias.finanx.dto.budget;
 
 import com.elias.finanx.entity.enums.BudgetHealth;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.elias.finanx.entity.enums.BudgetState;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class BudgetResponse {
     private Long id;
     private Long userId;

@@ -1,15 +1,19 @@
 package com.elias.finanx.dto.notification;
 
 import com.elias.finanx.entity.enums.BudgetState;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDateTime;
 
 import com.elias.finanx.entity.enums.NotificationType;
 import com.elias.finanx.entity.enums.NotificationState;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class NotificationDTO {
     private Long id;
     private Long userId;

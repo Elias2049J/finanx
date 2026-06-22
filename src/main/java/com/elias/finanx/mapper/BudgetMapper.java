@@ -13,6 +13,7 @@ public interface BudgetMapper {
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.name", target = "categoryName")
+    @Mapping(source = "schedule.id", target = "scheduleId")
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "start", target = "start", qualifiedByName = "OffsetToLocal")

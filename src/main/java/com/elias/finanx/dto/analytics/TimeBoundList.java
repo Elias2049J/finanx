@@ -12,6 +12,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class TimeBoundList<T> {
     private PeriodResponse periodResponse;
     private List<T> items;

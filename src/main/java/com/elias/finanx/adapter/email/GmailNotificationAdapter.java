@@ -2,6 +2,7 @@ package com.elias.finanx.adapter.email;
 
 import com.elias.finanx.port.NotificationPort;
 import com.elias.finanx.dto.notification.NotificationDTO;
+import jakarta.annotation.PostConstruct;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;

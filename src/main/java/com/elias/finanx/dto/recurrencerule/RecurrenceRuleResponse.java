@@ -1,5 +1,6 @@
 package com.elias.finanx.dto.recurrencerule;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.time.DayOfWeek;
@@ -7,8 +8,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.elias.finanx.entity.enums.RecurrenceType;
+import lombok.NoArgsConstructor;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class RecurrenceRuleResponse {
     private Long id;
     private RecurrenceType recurrenceType;

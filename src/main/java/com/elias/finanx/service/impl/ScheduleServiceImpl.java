@@ -48,12 +48,16 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional
     public ScheduleResponse create(ScheduleRequest request) {
         Schedule s = tsMapper.toEntityDispatch(request);
+        Category c = categoryRepository.findById(request.getCategoryId()).orElseThrow();
 
         s.setUser(userRepository.getReferenceById(request.getUserId()));
-        s.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
+        s.setCategory(c);
 
         if (request instanceof TransactionScheduleRequest tr
                 && s instanceof TransactionSchedule ts) {
+            if (tr.getTransactionType() != c.getType()) {
+                throw new IllegalArgumentException("The category transactionType must be the same as transactionSchedule");
+            }
             ts.setReason(
                     reasonResolver
                             .resolveOrCreate(tr.getUserId(), tr.getReasonId(), tr.getDescription())
