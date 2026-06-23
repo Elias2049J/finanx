@@ -142,7 +142,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         Category miscellaneousIncomes = new Category();
         miscellaneousIncomes.setType(TransactionType.INCOME);
         miscellaneousIncomes.setName("Otros Ingresos");
-        miscellaneousIncomes.setDescription("Otros ingresos no recurrentes, por ejemplo, ventas ocasionales, regalos o bonificaciones.");
+        miscellaneousIncomes.setDescription("Ventas ocasionales, regalos, bonificaciones, etc.");
 
         Category healthCare = new Category();
         healthCare.setType(TransactionType.SPENT);
@@ -152,7 +152,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         Category entertainment = new Category();
         entertainment.setType(TransactionType.SPENT);
         entertainment.setName("Entretenimiento");
-        entertainment.setDescription("Actividades recreativas como cine, viajes, conciertos y ocio en general.");
+        entertainment.setDescription("Cine, viajes, conciertos y ocio en general.");
 
         Category utilities = new Category();
         utilities.setType(TransactionType.SPENT);
@@ -161,8 +161,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         Category housing = new Category();
         housing.setType(TransactionType.SPENT);
-        housing.setName("vivienda");
-        housing.setDescription("Descripción: Gastos relacionados con mantener el hogar, incluyendo alquiler o hipoteca, mantenimiento, seguros de vivienda, impuestos prediales y cuotas de condominio.");
+        housing.setName("Vivienda");
+        housing.setDescription("Gastos relacionados con mantener el hogar, incluyendo alquiler o hipoteca, mantenimiento, seguros de vivienda, impuestos prediales y cuotas de condominio.");
 
         Category transport = new Category();
         transport.setType(TransactionType.SPENT);
@@ -172,12 +172,12 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         Category education = new Category();
         education.setType(TransactionType.SPENT);
         education.setName("Educación");
-        education.setDescription("Inversión en formación académica y profesional: matrículas, cursos, libros.");
+        education.setDescription("Formación académica y profesional: matrículas, cursos, libros, etc.");
 
         Category food = new Category();
         food.setType(TransactionType.SPENT);
         food.setName("Alimentación");
-        food.setDescription("Compras de alimentos, restaurantes, mercado y productos de consumo diario.");
+        food.setDescription("Alimentos, restaurantes, mercado y productos de consumo diario.");
 
 
         List<Category> defaultCategories = new ArrayList<>();
