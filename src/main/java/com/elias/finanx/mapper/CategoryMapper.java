@@ -23,8 +23,8 @@ public interface CategoryMapper{
     @Mapping(target = "id", ignore = true)
     void updateFromDto(CategoryRequest dto, @MappingTarget Category entity);
 
-    @Mapping(source = "response.categoryName", target = "id")
-    @Mapping(source = "response.categoryId", target = "name")
+    @Mapping(source = "categoryName", target = "name")
+    @Mapping(source = "categoryId", target = "id")
     CategorySummary toSummary(TransactionResponse response);
 
     default CategoryResponse toResponse(Category entity) {

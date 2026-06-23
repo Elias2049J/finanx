@@ -27,8 +27,8 @@ public interface ReasonMapper {
     @Mapping(target = "active", ignore = true)
     void updateFromDto(ReasonRequest dto, @MappingTarget Reason entity);
 
-    @Mapping(source = "response.reasonDescription", target = "id")
-    @Mapping(source = "response.reasonId", target = "description")
+    @Mapping(source = "reasonDescription", target = "description")
+    @Mapping(source = "reasonId", target = "id")
     ReasonSummary toReasonSummary(TransactionResponse response);
 
     default ReasonResponse toResponse(Reason entity) {
