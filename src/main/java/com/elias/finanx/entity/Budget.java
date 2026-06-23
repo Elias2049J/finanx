@@ -67,11 +67,11 @@ public class Budget {
 
     @Builder.Default
     @Column(name = "alertado_umbral")
-    private boolean nearLimitNotified = false;
+    private Boolean nearLimitNotified = false;
 
     @Builder.Default
     @Column(name = "alertado_limite")
-    private boolean exceededNotified = false;
+    private Boolean exceededNotified = false;
 
     @ManyToOne
     @JoinColumn(name = "id_programacion")

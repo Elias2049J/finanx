@@ -176,7 +176,7 @@ public class BudgetServiceImpl implements BudgetService {
                     log.info("Budget {} superó el límite (spent={}, limit={})",
                             b.getId(), spent, b.getLimitAmount());
 
-                    if (!b.isExceededNotified() && lastTx != null) {
+                    if (!b.getExceededNotified() && lastTx != null) {
                         b.setExceededNotified(true);
                         BigDecimal finalSpent = spent;
                         Transaction finalLastTx = lastTx;
@@ -201,7 +201,7 @@ public class BudgetServiceImpl implements BudgetService {
                     log.info("Budget {} alcanzó {}% (spent={}, limit={})",
                             b.getId(), pct, spent, b.getLimitAmount());
 
-                    if (!b.isNearLimitNotified() && lastTx != null) {
+                    if (!b.getNearLimitNotified() && lastTx != null) {
                         b.setNearLimitNotified(true);
                         BigDecimal finalSpent = spent;
                         Transaction finalLastTx = lastTx;
