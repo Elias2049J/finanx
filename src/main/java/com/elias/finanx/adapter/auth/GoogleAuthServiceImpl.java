@@ -3,6 +3,7 @@ package com.elias.finanx.adapter.auth;
 import com.elias.finanx.dto.auth.GoogleIdTokenPayload;
 import com.elias.finanx.dto.auth.GoogleLoginRequest;
 import com.elias.finanx.dto.auth.LoginResponse;
+import com.elias.finanx.dto.user.UserRequest;
 import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.Role;
@@ -10,6 +11,8 @@ import com.elias.finanx.entity.enums.TimeZone;
 import com.elias.finanx.mapper.UserMapper;
 import com.elias.finanx.repository.UserRepository;
 import com.elias.finanx.service.JwtTokenService;
+import com.elias.finanx.service.UserService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +27,7 @@ import java.util.Base64;
 public class GoogleAuthServiceImpl implements GoogleAuthService {
 
     private final UserRepository userRepository;
+    private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
     private final UserMapper userMapper;
@@ -33,6 +37,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     private String googleClientId;
 
     @Override
+    @Transactional
     public LoginResponse authenticate(GoogleLoginRequest request) {
         var payload = googleIdTokenVerifier.verify(request.getIdToken(), googleClientId);
         String email = payload.email().trim().toLowerCase();
@@ -73,28 +78,32 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
     @Override
     public LoginResponse register(GoogleIdTokenPayload payload) {
-        String email = payload.email();
+        String email = payload.email().trim().toLowerCase();
 
-        if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already registered");
+        User existing = userRepository.findByEmail(email).orElse(null);
+
+        if (existing != null) {
+            existing.setName(payload.givenName());
+            existing.setLastname(payload.familyName());
+            existing.setUsername(email);
+
+            User saved = userRepository.save(existing);
+
+            String token = jwtTokenService.generateToken(saved);
+            return new LoginResponse(userMapper.toResponse(saved), token);
         }
 
-        User u = new User();
-        u.setEmail(email);
-        u.setUsername(email);
-        u.setName(payload.givenName());
-        u.setLastname(payload.familyName());
-        u.setTimeZone(TimeZone.AMERICA_LIMA);
-        u.setRole(Role.USER);
-        u.setMoneyBalance(BigDecimal.ZERO);
-        u.setPassword(passwordEncoder.encode(randomSecret()));
+        UserRequest request = new UserRequest();
+        request.setEmail(email);
+        request.setUsername(email);
+        request.setName(payload.givenName());
+        request.setLastname(payload.familyName());
+        request.setPassword(randomSecret());
+        request.setTimeZone(TimeZone.AMERICA_LIMA);
 
-        User saved = userRepository.save(u);
-
-        String token = jwtTokenService.generateToken(saved);
-        UserResponse userDto = userMapper.toResponse(saved);
-        return new LoginResponse(userDto, token);
+        return userService.register(request);
     }
+
 
     private static String randomSecret() {
         byte[] bytes = new byte[32];
