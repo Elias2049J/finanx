@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -61,7 +62,10 @@ public class BudgetServiceImpl implements BudgetService {
     @Transactional
     public BudgetResponse update(Long id, BudgetRequest request) {
         Budget existing = budgetRepository.findById(id).orElseThrow();
+        OffsetDateTime currentStart = existing.getStart();
         budgetMapper.updateFromDto(request, existing);
+        applyRequestDateTimes(request, existing);
+        existing.setStart(currentStart);
 
         existing.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
         existing.setUser(userRepository.getReferenceById(request.getUserId()));
