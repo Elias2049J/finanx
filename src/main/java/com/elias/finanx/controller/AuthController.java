@@ -7,6 +7,8 @@ import com.elias.finanx.dto.auth.LoginResponse;
 import com.elias.finanx.dto.user.UserRequest;
 import com.elias.finanx.service.AuthService;
 import com.elias.finanx.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,19 +23,48 @@ public class AuthController {
     private final GoogleAuthService googleAuthService;
     private final UserService userService;
 
+    @Operation(
+            summary = "Login",
+            description = "Autenticación de usuario.",
+            operationId = "authLogin",
+            tags = {"Auth"},
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Login exitoso"),
+                    @ApiResponse(responseCode = "400", description = "Credenciales inválidas")
+            }
+    )
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    @Operation(
+            summary = "Registro",
+            description = "Registro de nuevo usuario.",
+            operationId = "authRegister",
+            tags = {"Auth"},
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Registro exitoso"),
+                    @ApiResponse(responseCode = "400", description = "Datos inválidos")
+            }
+    )
     @PostMapping("/register")
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody UserRequest request) {
         return ResponseEntity.ok(userService.register(request));
     }
 
+    @Operation(
+            summary = "Login con Google",
+            description = "Autenticación mediante Google.",
+            operationId = "authGoogle",
+            tags = {"Auth"},
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Login exitoso"),
+                    @ApiResponse(responseCode = "400", description = "Token inválido")
+            }
+    )
     @PostMapping("/google")
     public ResponseEntity<LoginResponse> google(@Valid @RequestBody GoogleLoginRequest request) {
         return ResponseEntity.ok(googleAuthService.authenticate(request));
     }
-
 }

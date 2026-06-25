@@ -13,5 +13,7 @@ public interface BudgetScheduleRepository extends JpaRepository<BudgetSchedule, 
     List<BudgetSchedule> findAllByActiveTrueAndState(ScheduleState scheduleState);
 
     List<BudgetSchedule> findAllByUser_IdAndActiveAndState(Long userId, boolean active, ScheduleState scheduleState);
+
+    void deleteAllByUser_Id(Long userId);
 }
 

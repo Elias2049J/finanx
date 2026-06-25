@@ -18,4 +18,5 @@ public interface TransactionScheduleRepository extends JpaRepository<Transaction
     List<TransactionSchedule> findAllByActiveTrueAndState(ScheduleState state);
     List<TransactionSchedule> findAllByUser_IdAndActiveAndState(Long userId, boolean active, ScheduleState state);
 
+    void deleteAllByUser_Id(Long userId);
 }

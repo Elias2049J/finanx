@@ -27,5 +27,7 @@ public interface BudgetRepository extends JpaRepository<Budget, Long> {
     );
 
     List<Budget> findAllByUser_IdAndActiveAndCreatedAtBetweenAndState(Long userId, Boolean active, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, BudgetState state);
+
+    void deleteAllByUser_Id(Long userId);
 }
 

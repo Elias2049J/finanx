@@ -14,4 +14,6 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     List<Schedule> findAllByUser_Id(Long userId);
 
     List<Schedule> findAllByUser_IdAndActiveTrue(Long userId);
+
+    void deleteAllByUser_Id(Long userId);
 }

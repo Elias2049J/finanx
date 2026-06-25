@@ -9,8 +9,7 @@ import com.elias.finanx.entity.enums.TransactionType;
 import com.elias.finanx.entity.enums.UserState;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.mapper.UserMapper;
-import com.elias.finanx.repository.CategoryRepository;
-import com.elias.finanx.repository.UserRepository;
+import com.elias.finanx.repository.*;
 import com.elias.finanx.service.UserService;
 import com.elias.finanx.service.JwtTokenService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +35,13 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
     private final CategoryRepository categoryRepository;
+    private final TransactionRepository transactionRepository;
+    private final BudgetRepository budgetRepository;
+    private final NotificationRepository notificationRepository;
+    private final SavingGoalRepository savingGoalRepository;
+    private final ReasonRepository reasonRepository;
+    private final BudgetScheduleRepository budgetScheduleRepository;
+    private final TransactionScheduleRepository transactionScheduleRepository;
 
     @Override
     @Transactional
@@ -133,7 +139,24 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return TimeZone.values();
     }
 
+    @Transactional
+    @Override
+    public void resetAccountData(Long userId) {
+        this.deleteUserData(userId);
+        User u = this.getEntityById(userId);
+        this.registerCategories(u);
+    }
+
+    @Transactional
+    @Override
+    public void deleteUserAccount(Long userId) {
+        this.deleteUserData(userId);
+        userRepository.deleteById(userId);
+        log.info("Deleted user with ID: {}", userId);
+    }
+
     private void registerCategories(User u) {
+        log.info("Registering default categories");
         Category salary = new Category();
         salary.setType(TransactionType.INCOME);
         salary.setName("Salario");
@@ -192,10 +215,41 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         defaultCategories.add(food);
         defaultCategories.add(housing);
 
-        for (Category c: defaultCategories) {
+        for (Category c : defaultCategories) {
             c.setUser(u);
             c.setActive(true);
         }
         categoryRepository.saveAll(defaultCategories);
+    }
+
+    private void logDelete(
+            Long id, String relationshipName) {
+        log.info("Deleted all {} for user with ID: {}", relationshipName, id);
+    }
+
+    private void deleteUserData(Long userId) {
+        savingGoalRepository.deleteAllByUser_Id(userId);
+        logDelete(userId, "savingGoals");
+
+        notificationRepository.deleteAllByUser_Id(userId);
+        logDelete(userId, "notifications");
+
+        transactionRepository.deleteAllByUser_Id(userId);
+        logDelete(userId, "transactions");
+
+        reasonRepository.deleteAllByUser_Id(userId);
+        logDelete(userId, "categories");
+
+        budgetRepository.deleteAllByUser_Id(userId);
+        logDelete(userId, "budgets");
+
+        budgetScheduleRepository.deleteAllByUser_Id(userId);
+        logDelete(userId, "budget schedules");
+
+        transactionScheduleRepository.deleteAllByUser_Id(userId);
+        logDelete(userId, "transaction schedules");
+
+        categoryRepository.deleteAllByUser_Id(userId);
+        logDelete(userId, "categories");
     }
 }

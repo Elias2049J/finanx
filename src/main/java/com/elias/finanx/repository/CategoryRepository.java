@@ -13,5 +13,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Long id(Long id);
 
     List<Category> findAllByUser_IdAndActive(Long userId, Boolean active);
+
+    void deleteAllByUser_Id(Long userId);
 }
 

@@ -24,4 +24,8 @@ public interface UserService {
     List<UserResponse> searchByName(String q);
 
     TimeZone[] listTimeZones();
+
+    void resetAccountData(Long userId);
+
+    void deleteUserAccount(Long userId);
 }

@@ -13,4 +13,6 @@ public interface SavingGoalRepository extends JpaRepository<SavingGoal, Long> {
 	List<SavingGoal> findAllByUser_IdAndActive(Long userId, Boolean active);
 
 	List<SavingGoal> findAllByUser_IdAndActiveAndState(Long userId, Boolean active, SavingGoalState state);
+
+    void deleteAllByUser_Id(Long userId);
 }

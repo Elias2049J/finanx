@@ -3,6 +3,8 @@ package com.elias.finanx.controller;
 import com.elias.finanx.dto.transaction.TransactionRequest;
 import com.elias.finanx.dto.transaction.TransactionResponse;
 import com.elias.finanx.service.TransactionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -20,55 +22,105 @@ public class TransactionController {
 
     private final TransactionService transactionService;
 
+    @Operation(
+            summary = "Listar transacciones activas",
+            description = "Obtiene todas las transacciones activas de un usuario.",
+            operationId = "transactionFindAllActive",
+            tags = {"Transactions"}
+    )
     @GetMapping("/user/{userId}/active")
-    public ResponseEntity<List<TransactionResponse>> findAllActiveByUser(@PathVariable Long userId) {
+    public ResponseEntity<List<TransactionResponse>> findAllActiveByUser(
+            @Parameter(description = "ID usuario") @PathVariable Long userId) {
         return ResponseEntity.ok(transactionService.findAllActiveByUser(userId));
     }
 
+    @Operation(
+            summary = "Buscar transacción",
+            description = "Obtiene una transacción por ID.",
+            operationId = "transactionFindById",
+            tags = {"Transactions"}
+    )
     @GetMapping("/{id}")
     public ResponseEntity<TransactionResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(transactionService.findById(id));
     }
 
-    @GetMapping("/{userId}")
+    @Operation(
+            summary = "Listar transacciones por usuario",
+            description = "Obtiene todas las transacciones de un usuario.",
+            operationId = "transactionFindAllByUser",
+            tags = {"Transactions"}
+    )
+    @GetMapping("/user/{userId}")
     public ResponseEntity<List<TransactionResponse>> findAllByUser(@PathVariable Long userId) {
         return ResponseEntity.ok(transactionService.findAllByUser(userId));
     }
 
+    @Operation(
+            summary = "Listar transacciones por rango",
+            description = "Obtiene transacciones en un rango de fechas.",
+            operationId = "transactionFindBetween",
+            tags = {"Transactions"}
+    )
     @GetMapping("/user/{userId}/between")
     public ResponseEntity<List<TransactionResponse>> findAllByUserBetween(
             @PathVariable Long userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-    ) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(transactionService.findAllByUserAndIssueDateBetween(userId, from, to));
     }
 
+    @Operation(
+            summary = "Crear transacción",
+            description = "Crea una nueva transacción.",
+            operationId = "transactionCreate",
+            tags = {"Transactions"}
+    )
     @PostMapping
-    public ResponseEntity<TransactionResponse> create(
-            @Valid @RequestBody TransactionRequest request) {
+    public ResponseEntity<TransactionResponse> create(@Valid @RequestBody TransactionRequest request) {
         TransactionResponse saved = transactionService.create(request);
         return ResponseEntity.created(URI.create("/transactions/" + saved.getId())).body(saved);
     }
 
+    @Operation(
+            summary = "Actualizar transacción",
+            description = "Actualiza una transacción.",
+            operationId = "transactionUpdate",
+            tags = {"Transactions"}
+    )
     @PutMapping("/{id}")
-    public ResponseEntity<TransactionResponse> update(@PathVariable Long id, @Valid @RequestBody TransactionRequest request) {
+    public ResponseEntity<TransactionResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody TransactionRequest request) {
         return ResponseEntity.ok(transactionService.update(id, request));
     }
 
+    @Operation(
+            summary = "Eliminar transacción",
+            description = "Deshabilita una transacción.",
+            operationId = "transactionDelete",
+            tags = {"Transactions"}
+    )
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> disable(@PathVariable Long id) {
         transactionService.disable(id);
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Filtrar por categoría y fecha",
+            description = "Obtiene transacciones por categoría y rango de fechas.",
+            operationId = "transactionByCategoryAndDate",
+            tags = {"Transactions"}
+    )
     @GetMapping("/user/{userId}/category/{categoryId}/between")
     public ResponseEntity<List<TransactionResponse>> findAllByCategoryAndDateBetween(
             @PathVariable Long userId,
             @PathVariable Long categoryId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-    ) {
-        return ResponseEntity.ok(transactionService.findAllActiveByCategoryAndDateBetween(userId, categoryId,from, to));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(
+                transactionService.findAllActiveByCategoryAndDateBetween(userId, categoryId, from, to)
+        );
     }
 }

@@ -41,12 +41,6 @@ public class UserController {
         return ResponseEntity.ok(userService.update(id, request));
     }
 
-    @PostMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        userService.disable(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/{id}/disable")
     public ResponseEntity<UserResponse> disable(@PathVariable Long id) {
         return ResponseEntity.ok(userService.disable(id));
@@ -71,5 +65,17 @@ public class UserController {
     @GetMapping("/timezones")
     public ResponseEntity<TimeZone[]> listTimeZones() {
         return ResponseEntity.ok(userService.listTimeZones());
+    }
+
+    @DeleteMapping("/{id}/delete")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        userService.deleteUserAccount(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/reset-data")
+    public ResponseEntity<Void> resetData(@PathVariable Long id) {
+        userService.resetAccountData(id);
+        return ResponseEntity.noContent().build();
     }
 }
