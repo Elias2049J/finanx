@@ -185,7 +185,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         Category housing = new Category();
         housing.setType(TransactionType.SPENT);
         housing.setName("Vivienda");
-        housing.setDescription("Gastos relacionados con mantener el hogar, incluyendo alquiler o hipoteca, mantenimiento, seguros de vivienda, impuestos prediales y cuotas de condominio.");
+        housing.setDescription("Alquiler o hipoteca, mantenimiento, seguros de vivienda, impuestos prediales y cuotas de condominio.");
 
         Category transport = new Category();
         transport.setType(TransactionType.SPENT);
