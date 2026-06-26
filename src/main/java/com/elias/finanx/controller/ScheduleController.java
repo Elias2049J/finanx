@@ -23,37 +23,37 @@ public class ScheduleController {
     private final ScheduleService scheduleService;
 
     @Operation(
-            summary = "Crear programación",
-            description = "Crea una nueva programación.",
-            operationId = "scheduleCreate",
+            summary = "Crear programacion",
+            description = "Crea una nueva programacion.",
+            operationId = "createSchedule",
             tags = {"Schedule"},
             responses = {
-                    @ApiResponse(responseCode = "201", description = "Programación creada"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos")
+                    @ApiResponse(responseCode = "201", description = "Programacion creada"),
+                    @ApiResponse(responseCode = "400", description = "Datos invalidos")
             }
     )
     @PostMapping
     public ResponseEntity<ScheduleResponse> create(
-            @Parameter(description = "Datos de la programación")
+            @Parameter(description = "Datos de la programacion")
             @Valid @RequestBody ScheduleRequest request) {
         ScheduleResponse saved = scheduleService.create(request);
         return ResponseEntity.created(URI.create("/schedule/" + saved.getId())).body(saved);
     }
 
     @Operation(
-            summary = "Actualizar programación",
-            description = "Actualiza una programación existente.",
-            operationId = "scheduleUpdate",
+            summary = "Actualizar programacion",
+            description = "Actualiza una programacion existente.",
+            operationId = "updateSchedule",
             tags = {"Schedule"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Actualizada"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                    @ApiResponse(responseCode = "400", description = "Datos invalidos"),
                     @ApiResponse(responseCode = "404", description = "No encontrada")
             }
     )
     @PutMapping("/{id}")
     public ResponseEntity<ScheduleResponse> update(
-            @Parameter(description = "ID de la programación")
+            @Parameter(description = "ID de la programacion")
             @PathVariable Long id,
             @Valid @RequestBody ScheduleRequest request) {
         return ResponseEntity.ok(scheduleService.update(id, request));
@@ -62,7 +62,7 @@ public class ScheduleController {
     @Operation(
             summary = "Listar programaciones por usuario y estado",
             description = "Obtiene programaciones activas filtradas por usuario y estado.",
-            operationId = "scheduleFindByUserAndState",
+            operationId = "findAllScheduleByUserAndState",
             tags = {"Schedule"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
@@ -71,14 +71,14 @@ public class ScheduleController {
     @GetMapping("/user/{idUser}/{state}")
     public ResponseEntity<List<ScheduleResponse>> findAllByUserAndState(
             @Parameter(description = "ID usuario") @PathVariable Long idUser,
-            @Parameter(description = "Estado de la programación") @PathVariable ScheduleState state) {
+            @Parameter(description = "Estado de la programacion") @PathVariable ScheduleState state) {
         return ResponseEntity.ok(scheduleService.findAllActiveByUserAndState(idUser, state));
     }
 
     @Operation(
-            summary = "Pausar programación",
-            description = "Pausa una programación.",
-            operationId = "schedulePause",
+            summary = "Pausar programacion",
+            description = "Pausa una programacion.",
+            operationId = "pauseSchedule",
             tags = {"Schedule"},
             responses = {
                     @ApiResponse(responseCode = "204", description = "Pausada"),
@@ -87,15 +87,15 @@ public class ScheduleController {
     )
     @PostMapping("/{id}/pause")
     public ResponseEntity<Void> pause(
-            @Parameter(description = "ID de la programación") @PathVariable Long id) {
+            @Parameter(description = "ID de la programacion") @PathVariable Long id) {
         scheduleService.pause(id);
         return ResponseEntity.noContent().build();
     }
 
     @Operation(
-            summary = "Reanudar programación",
-            description = "Reanuda una programación pausada.",
-            operationId = "scheduleResume",
+            summary = "Reanudar programacion",
+            description = "Reanuda una programacion pausada.",
+            operationId = "resumeSchedule",
             tags = {"Schedule"},
             responses = {
                     @ApiResponse(responseCode = "204", description = "Reanudada"),
@@ -104,15 +104,15 @@ public class ScheduleController {
     )
     @PostMapping("/{id}/resume")
     public ResponseEntity<Void> resume(
-            @Parameter(description = "ID de la programación") @PathVariable Long id) {
+            @Parameter(description = "ID de la programacion") @PathVariable Long id) {
         scheduleService.resume(id);
         return ResponseEntity.noContent().build();
     }
 
     @Operation(
-            summary = "Cancelar programación",
-            description = "Cancela una programación.",
-            operationId = "scheduleCancel",
+            summary = "Cancelar programacion",
+            description = "Cancela una programacion.",
+            operationId = "cancelSchedule",
             tags = {"Schedule"},
             responses = {
                     @ApiResponse(responseCode = "204", description = "Cancelada"),
@@ -121,15 +121,15 @@ public class ScheduleController {
     )
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Void> cancel(
-            @Parameter(description = "ID de la programación") @PathVariable Long id) {
+            @Parameter(description = "ID de la programacion") @PathVariable Long id) {
         scheduleService.cancel(id);
         return ResponseEntity.noContent().build();
     }
 
     @Operation(
-            summary = "Deshabilitar programación",
-            description = "Deshabilita una programación.",
-            operationId = "scheduleDisable",
+            summary = "Deshabilitar programacion",
+            description = "Deshabilita una programacion.",
+            operationId = "disableSchedule",
             tags = {"Schedule"},
             responses = {
                     @ApiResponse(responseCode = "204", description = "Deshabilitada"),
@@ -138,7 +138,7 @@ public class ScheduleController {
     )
     @DeleteMapping("/{id}/disable")
     public ResponseEntity<Void> disable(
-            @Parameter(description = "ID de la programación") @PathVariable Long id) {
+            @Parameter(description = "ID de la programacion") @PathVariable Long id) {
         scheduleService.disable(id);
         return ResponseEntity.noContent().build();
     }

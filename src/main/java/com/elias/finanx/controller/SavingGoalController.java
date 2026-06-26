@@ -24,7 +24,7 @@ public class SavingGoalController {
     @Operation(
             summary = "Listar metas activas",
             description = "Obtiene metas de ahorro activas por usuario.",
-            operationId = "savingFindAllActiveByUser",
+            operationId = "findAllActiveSavingGoalByUser",
             tags = {"Savings"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
@@ -39,7 +39,7 @@ public class SavingGoalController {
     @Operation(
             summary = "Obtener una meta de ahorro",
             description = "Obtiene una meta de ahorro por ID.",
-            operationId = "savingFindById",
+            operationId = "findSavingGoalById",
             tags = {"Savings"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Encontrada"),
@@ -55,11 +55,11 @@ public class SavingGoalController {
     @Operation(
             summary = "Crear meta",
             description = "Crea una nueva meta de ahorro.",
-            operationId = "savingCreate",
+            operationId = "createSavingGoal",
             tags = {"Savings"},
             responses = {
                     @ApiResponse(responseCode = "201", description = "Creada"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos")
+                    @ApiResponse(responseCode = "400", description = "Datos invalidos")
             }
     )
     @PostMapping
@@ -72,7 +72,7 @@ public class SavingGoalController {
     @Operation(
             summary = "Actualizar meta",
             description = "Actualiza una meta de ahorro.",
-            operationId = "savingUpdate",
+            operationId = "updateSavingGoal",
             tags = {"Savings"}
     )
     @PutMapping("/{id}")
@@ -85,7 +85,7 @@ public class SavingGoalController {
     @Operation(
             summary = "Deshabilitar meta",
             description = "Deshabilita una meta.",
-            operationId = "savingDisable",
+            operationId = "disableSavingGoal",
             tags = {"Savings"}
     )
     @PostMapping("/{id}/disable")
@@ -97,7 +97,7 @@ public class SavingGoalController {
     @Operation(
             summary = "Cancelar meta",
             description = "Cancela una meta de ahorro.",
-            operationId = "savingCancel",
+            operationId = "cancelSavingGoal",
             tags = {"Savings"}
     )
     @PostMapping("/{id}/cancel")

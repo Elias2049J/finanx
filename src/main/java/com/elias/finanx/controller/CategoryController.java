@@ -21,9 +21,9 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @Operation(
-            summary = "Listar categorías por usuario",
-            description = "Obtiene todas las categorías asociadas a un usuario.",
-            operationId = "categoryFindAllByUser",
+            summary = "Listar categorias por usuario",
+            description = "Obtiene todas las categorias asociadas a un usuario.",
+            operationId = "findAllCategoriesByUser",
             tags = {"Categories"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
@@ -37,9 +37,9 @@ public class CategoryController {
     }
 
     @Operation(
-            summary = "Listar categorías por usuario y estado",
-            description = "Obtiene categorías filtradas por estado activo/inactivo.",
-            operationId = "categoryFindAllByUserAndActive",
+            summary = "Listar categorias por usuario y estado",
+            description = "Obtiene categorias filtradas por estado activo/inactivo.",
+            operationId = "findAllCategoriesyUserAndActive",
             tags = {"Categories"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
@@ -53,60 +53,60 @@ public class CategoryController {
     }
 
     @Operation(
-            summary = "Buscar categoría por ID",
-            description = "Obtiene una categoría específica.",
-            operationId = "categoryFindById",
+            summary = "Buscar categoria por ID",
+            description = "Obtiene una categoria especifica.",
+            operationId = "findCategoryById",
             tags = {"Categories"},
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Categoría encontrada"),
+                    @ApiResponse(responseCode = "200", description = "Categoria encontrada"),
                     @ApiResponse(responseCode = "404", description = "No encontrada")
             }
     )
     @GetMapping("/{id}")
     public ResponseEntity<CategoryResponse> findById(
-            @Parameter(description = "ID de la categoría") @PathVariable Long id) {
+            @Parameter(description = "ID de la categoria") @PathVariable Long id) {
         return ResponseEntity.ok(categoryService.findById(id));
     }
 
     @Operation(
-            summary = "Crear categoría",
-            description = "Crea una nueva categoría.",
-            operationId = "categoryCreate",
+            summary = "Crear categoria",
+            description = "Crea una nueva categoria.",
+            operationId = "createCategory",
             tags = {"Categories"},
             responses = {
-                    @ApiResponse(responseCode = "201", description = "Categoría creada"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos")
+                    @ApiResponse(responseCode = "201", description = "Categoria creada"),
+                    @ApiResponse(responseCode = "400", description = "Datos invalidos")
             }
     )
     @PostMapping
     public ResponseEntity<CategoryResponse> create(
-            @Parameter(description = "Datos de la categoría") @Valid @RequestBody CategoryRequest request) {
+            @Parameter(description = "Datos de la categoria") @Valid @RequestBody CategoryRequest request) {
         CategoryResponse saved = categoryService.create(request);
         return ResponseEntity.created(URI.create("/categories/" + saved.getId())).body(saved);
     }
 
     @Operation(
-            summary = "Actualizar categoría",
-            description = "Actualiza una categoría existente.",
-            operationId = "categoryUpdate",
+            summary = "Actualizar categoria",
+            description = "Actualiza una categoria existente.",
+            operationId = "updateCategory",
             tags = {"Categories"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Actualizada"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                    @ApiResponse(responseCode = "400", description = "Datos invalidos"),
                     @ApiResponse(responseCode = "404", description = "No encontrada")
             }
     )
     @PutMapping("/{id}")
     public ResponseEntity<CategoryResponse> update(
-            @Parameter(description = "ID de la categoría") @PathVariable Long id,
+            @Parameter(description = "ID de la categoria") @PathVariable Long id,
             @Valid @RequestBody CategoryRequest request) {
         return ResponseEntity.ok(categoryService.update(id, request));
     }
 
     @Operation(
-            summary = "Deshabilitar categoría",
-            description = "Deshabilita una categoría.",
-            operationId = "categoryDisable",
+            summary = "Deshabilitar categoria",
+            description = "Deshabilita una categoria.",
+            operationId = "disableCategory",
             tags = {"Categories"},
             responses = {
                     @ApiResponse(responseCode = "204", description = "Deshabilitada"),
@@ -115,7 +115,7 @@ public class CategoryController {
     )
     @PostMapping("/{id}/disable")
     public ResponseEntity<Void> disable(
-            @Parameter(description = "ID de la categoría") @PathVariable Long id) {
+            @Parameter(description = "ID de la categoria") @PathVariable Long id) {
         categoryService.disable(id);
         return ResponseEntity.noContent().build();
     }

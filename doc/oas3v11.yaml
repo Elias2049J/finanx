@@ -9,8 +9,9 @@ paths:
   /users/{id}:
     get:
       tags:
-        - user-controller
-      operationId: findById
+        - Users
+      summary: Buscar usuario por ID
+      operationId: findUserById
       parameters:
         - name: id
           in: path
@@ -27,8 +28,9 @@ paths:
                 $ref: "#/components/schemas/UserResponse"
     put:
       tags:
-        - user-controller
-      operationId: update
+        - Users
+      summary: Actualizar datos de usuario
+      operationId: updateUser
       parameters:
         - name: id
           in: path
@@ -49,25 +51,13 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/UserResponse"
-    post:
-      tags:
-        - user-controller
-      operationId: delete
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
   /transactions/{id}:
     get:
       tags:
-        - transaction-controller
-      operationId: findById_1
+        - Transactions
+      summary: Buscar transaccion
+      description: Obtiene una transaccion por ID.
+      operationId: findTransactionById
       parameters:
         - name: id
           in: path
@@ -84,8 +74,10 @@ paths:
                 $ref: "#/components/schemas/TransactionResponse"
     put:
       tags:
-        - transaction-controller
-      operationId: update_1
+        - Transactions
+      summary: Actualizar transaccion
+      description: Actualiza una transaccion.
+      operationId: updateTransaction
       parameters:
         - name: id
           in: path
@@ -108,8 +100,10 @@ paths:
                 $ref: "#/components/schemas/TransactionResponse"
     delete:
       tags:
-        - transaction-controller
-      operationId: disable
+        - Transactions
+      summary: Eliminar transaccion
+      description: Deshabilita una transaccion.
+      operationId: transactionDelete
       parameters:
         - name: id
           in: path
@@ -123,11 +117,14 @@ paths:
   /schedule/{id}:
     put:
       tags:
-        - schedule-controller
-      operationId: update_2
+        - Schedule
+      summary: Actualizar programacion
+      description: Actualiza una programacion existente.
+      operationId: updateSchedule
       parameters:
         - name: id
           in: path
+          description: ID de la programacion
           required: true
           schema:
             type: integer
@@ -143,7 +140,25 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Actualizada
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ScheduleResponse"
+                  - $ref: "#/components/schemas/BudgetScheduleResponse"
+                  - $ref: "#/components/schemas/TransactionScheduleResponse"
+        "400":
+          description: Datos invalidos
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ScheduleResponse"
+                  - $ref: "#/components/schemas/BudgetScheduleResponse"
+                  - $ref: "#/components/schemas/TransactionScheduleResponse"
+        "404":
+          description: No encontrada
           content:
             '*/*':
               schema:
@@ -154,26 +169,37 @@ paths:
   /savings/{id}:
     get:
       tags:
-        - saving-goal-controller
-      operationId: findById_2
+        - Savings
+      summary: Obtener una meta de ahorro
+      description: Obtiene una meta de ahorro por ID.
+      operationId: findSavingGoalById
       parameters:
         - name: id
           in: path
+          description: ID meta
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SavingGoalResponse"
+        "404":
+          description: No encontrada
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SavingGoalResponse"
     put:
       tags:
-        - saving-goal-controller
-      operationId: update_3
+        - Savings
+      summary: Actualizar meta
+      description: Actualiza una meta de ahorro.
+      operationId: updateSavingGoal
       parameters:
         - name: id
           in: path
@@ -197,29 +223,41 @@ paths:
   /reasons/{id}:
     get:
       tags:
-        - reason-controller
-      operationId: findById_3
+        - Reasons
+      summary: Buscar razon
+      description: Obtiene una razon por ID.
+      operationId: findReasonById
       parameters:
         - name: id
           in: path
+          description: ID de la razon
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReasonResponse"
+        "404":
+          description: No encontrada
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ReasonResponse"
     put:
       tags:
-        - reason-controller
-      operationId: update_4
+        - Reasons
+      summary: Actualizar razon
+      description: Actualiza una razon existente.
+      operationId: updateReason
       parameters:
         - name: id
           in: path
+          description: ID de la razon
           required: true
           schema:
             type: integer
@@ -232,51 +270,61 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Actualizada
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ReasonResponse"
-    post:
-      tags:
-        - reason-controller
-      operationId: disable_1
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
+        "400":
+          description: Datos invalidos
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReasonResponse"
+        "404":
+          description: No encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReasonResponse"
   /categories/{id}:
     get:
       tags:
-        - category-controller
-      operationId: findById_4
+        - Categories
+      summary: Buscar categoria por ID
+      description: Obtiene una categoria especifica.
+      operationId: findCategoryById
       parameters:
         - name: id
           in: path
+          description: ID de la categoria
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Categoria encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "404":
+          description: No encontrada
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/CategoryResponse"
     put:
       tags:
-        - category-controller
-      operationId: update_5
+        - Categories
+      summary: Actualizar categoria
+      description: Actualiza una categoria existente.
+      operationId: updateCategory
       parameters:
         - name: id
           in: path
+          description: ID de la categoria
           required: true
           schema:
             type: integer
@@ -289,7 +337,19 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Actualizada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "400":
+          description: Datos invalidos
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "404":
+          description: No encontrada
           content:
             '*/*':
               schema:
@@ -297,8 +357,10 @@ paths:
   /budgets/{id}:
     get:
       tags:
-        - budget-controller
-      operationId: findById_5
+        - Budgets
+      summary: Buscar presupuesto
+      description: Obtiene un presupuesto por ID.
+      operationId: findBudgetById
       parameters:
         - name: id
           in: path
@@ -308,15 +370,23 @@ paths:
             format: int64
       responses:
         "200":
-          description: OK
+          description: Encontrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BudgetResponse"
+        "404":
+          description: No encontrado
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/BudgetResponse"
     put:
       tags:
-        - budget-controller
-      operationId: update_6
+        - Budgets
+      summary: Actualizar presupuesto
+      description: Actualiza un presupuesto.
+      operationId: updateBudget
       parameters:
         - name: id
           in: path
@@ -337,11 +407,28 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/BudgetResponse"
+  /users/{id}/reset-data:
+    post:
+      tags:
+        - Users
+      summary: Resetear datos de usuario
+      operationId: resetUserData
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
   /users/{id}/disable:
     post:
       tags:
-        - user-controller
-      operationId: disable_2
+        - Users
+      summary: Deshabilitar usuario
+      operationId: disableUser
       parameters:
         - name: id
           in: path
@@ -359,8 +446,9 @@ paths:
   /users/{id}/block:
     post:
       tags:
-        - user-controller
-      operationId: block
+        - Users
+      summary: Bloquear usuario
+      operationId: blockUser
       parameters:
         - name: id
           in: path
@@ -378,8 +466,9 @@ paths:
   /users/{id}/activate:
     post:
       tags:
-        - user-controller
-      operationId: enable
+        - Users
+      summary: Habilitar usuario
+      operationId: enableUser
       parameters:
         - name: id
           in: path
@@ -397,8 +486,9 @@ paths:
   /users/register:
     post:
       tags:
-        - user-controller
-      operationId: register
+        - Users
+      summary: Registrar un nuevo usuario
+      operationId: registerUser
       requestBody:
         content:
           application/json:
@@ -415,8 +505,10 @@ paths:
   /transactions:
     post:
       tags:
-        - transaction-controller
-      operationId: create
+        - Transactions
+      summary: Crear transaccion
+      description: Crea una nueva transaccion.
+      operationId: createTransaction
       requestBody:
         content:
           application/json:
@@ -433,20 +525,32 @@ paths:
   /schedule:
     post:
       tags:
-        - schedule-controller
-      operationId: create_1
+        - Schedule
+      summary: Crear programacion
+      description: Crea una nueva programacion.
+      operationId: createSchedule
       requestBody:
         content:
           application/json:
             schema:
+              description: Datos de la programacion
               oneOf:
                 - $ref: "#/components/schemas/ScheduleRequest"
                 - $ref: "#/components/schemas/BudgetScheduleRequest"
                 - $ref: "#/components/schemas/TransactionScheduleRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Programacion creada
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ScheduleResponse"
+                  - $ref: "#/components/schemas/BudgetScheduleResponse"
+                  - $ref: "#/components/schemas/TransactionScheduleResponse"
+        "400":
+          description: Datos invalidos
           content:
             '*/*':
               schema:
@@ -457,53 +561,70 @@ paths:
   /schedule/{id}/resume:
     post:
       tags:
-        - schedule-controller
-      operationId: resume
+        - Schedule
+      summary: Reanudar programacion
+      description: Reanuda una programacion pausada.
+      operationId: resumeSchedule
       parameters:
         - name: id
           in: path
+          description: ID de la programacion
           required: true
           schema:
             type: integer
             format: int64
       responses:
-        "200":
-          description: OK
+        "204":
+          description: Reanudada
+        "404":
+          description: No encontrada
   /schedule/{id}/pause:
     post:
       tags:
-        - schedule-controller
-      operationId: pause
+        - Schedule
+      summary: Pausar programacion
+      description: Pausa una programacion.
+      operationId: pauseSchedule
       parameters:
         - name: id
           in: path
+          description: ID de la programacion
           required: true
           schema:
             type: integer
             format: int64
       responses:
-        "200":
-          description: OK
+        "204":
+          description: Pausada
+        "404":
+          description: No encontrada
   /schedule/{id}/cancel:
     post:
       tags:
-        - schedule-controller
-      operationId: cancel
+        - Schedule
+      summary: Cancelar programacion
+      description: Cancela una programacion.
+      operationId: cancelSchedule
       parameters:
         - name: id
           in: path
+          description: ID de la programacion
           required: true
           schema:
             type: integer
             format: int64
       responses:
-        "200":
-          description: OK
+        "204":
+          description: Cancelada
+        "404":
+          description: No encontrada
   /savings:
     post:
       tags:
-        - saving-goal-controller
-      operationId: create_2
+        - Savings
+      summary: Crear meta
+      description: Crea una nueva meta de ahorro.
+      operationId: createSavingGoal
       requestBody:
         content:
           application/json:
@@ -511,8 +632,14 @@ paths:
               $ref: "#/components/schemas/SavingGoalRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Creada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SavingGoalResponse"
+        "400":
+          description: Datos invalidos
           content:
             '*/*':
               schema:
@@ -520,8 +647,10 @@ paths:
   /savings/{id}/disable:
     post:
       tags:
-        - saving-goal-controller
-      operationId: disable_3
+        - Savings
+      summary: Deshabilitar meta
+      description: Deshabilita una meta.
+      operationId: disableSavingGoal
       parameters:
         - name: id
           in: path
@@ -535,8 +664,10 @@ paths:
   /savings/{id}/cancel:
     post:
       tags:
-        - saving-goal-controller
-      operationId: cancel_1
+        - Savings
+      summary: Cancelar meta
+      description: Cancela una meta de ahorro.
+      operationId: cancelSavingGoal
       parameters:
         - name: id
           in: path
@@ -550,8 +681,10 @@ paths:
   /reasons:
     post:
       tags:
-        - reason-controller
-      operationId: create_3
+        - Reasons
+      summary: Crear razon
+      description: Crea una nueva razon.
+      operationId: createReason
       requestBody:
         content:
           application/json:
@@ -559,37 +692,69 @@ paths:
               $ref: "#/components/schemas/ReasonRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Creada
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ReasonResponse"
+        "400":
+          description: Datos invalidos
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReasonResponse"
+  /reasons/{id}/disable:
+    post:
+      tags:
+        - Reasons
+      summary: Deshabilitar razon
+      description: Deshabilita una razon.
+      operationId: disableReason
+      parameters:
+        - name: id
+          in: path
+          description: ID de la razon
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: Deshabilitada
+        "404":
+          description: No encontrada
   /notifications/user/{userId}/purge-older-than:
     post:
       tags:
-        - notification-controller
-      operationId: purge
+        - Notifications
+      summary: Eliminar notificaciones antiguas
+      description: Elimina notificaciones anteriores a una fecha.
+      operationId: purgeNotifications
       parameters:
         - name: userId
           in: path
+          description: ID usuario
           required: true
           schema:
             type: integer
             format: int64
         - name: dateTime
           in: query
+          description: Fecha limite
           required: true
           schema:
             type: string
             format: date-time
       responses:
-        "200":
-          description: OK
+        "204":
+          description: Eliminadas
   /notifications/mark-as-read:
     post:
       tags:
-        - notification-controller
+        - Notifications
+      summary: Marcar como leida
+      description: Marca una notificacion como leida.
       operationId: markAsRead
       requestBody:
         content:
@@ -597,30 +762,40 @@ paths:
             schema:
               type: integer
               format: int64
+              description: ID de la notificacion
         required: true
       responses:
-        "200":
-          description: OK
+        "204":
+          description: Actualizada
+        "404":
+          description: No encontrada
   /notifications/discard:
     post:
       tags:
-        - notification-controller
-      operationId: discard
+        - Notifications
+      summary: Descartar notificacion
+      description: Marca una notificacion como descartada.
+      operationId: discardNotification
       requestBody:
         content:
           application/json:
             schema:
               type: integer
               format: int64
+              description: ID de la notificacion
         required: true
       responses:
-        "200":
-          description: OK
+        "204":
+          description: Descartada
+        "404":
+          description: No encontrada
   /categories:
     post:
       tags:
-        - category-controller
-      operationId: create_4
+        - Categories
+      summary: Crear categoria
+      description: Crea una nueva categoria.
+      operationId: createCategory
       requestBody:
         content:
           application/json:
@@ -628,8 +803,14 @@ paths:
               $ref: "#/components/schemas/CategoryRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Categoria creada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "400":
+          description: Datos invalidos
           content:
             '*/*':
               schema:
@@ -637,23 +818,30 @@ paths:
   /categories/{id}/disable:
     post:
       tags:
-        - category-controller
-      operationId: disable_4
+        - Categories
+      summary: Deshabilitar categoria
+      description: Deshabilita una categoria.
+      operationId: disableCategory
       parameters:
         - name: id
           in: path
+          description: ID de la categoria
           required: true
           schema:
             type: integer
             format: int64
       responses:
-        "200":
-          description: OK
+        "204":
+          description: Deshabilitada
+        "404":
+          description: No encontrada
   /budgets:
     post:
       tags:
-        - budget-controller
-      operationId: create_5
+        - Budgets
+      summary: Crear presupuesto
+      description: Crea un nuevo presupuesto.
+      operationId: createBudget
       requestBody:
         content:
           application/json:
@@ -661,8 +849,14 @@ paths:
               $ref: "#/components/schemas/BudgetRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Creado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BudgetResponse"
+        "400":
+          description: Datos invalidos
           content:
             '*/*':
               schema:
@@ -670,8 +864,10 @@ paths:
   /budgets/{id}/disable:
     post:
       tags:
-        - budget-controller
-      operationId: disable_5
+        - Budgets
+      summary: Deshabilitar presupuesto
+      description: Deshabilita un presupuesto.
+      operationId: disableBudget
       parameters:
         - name: id
           in: path
@@ -685,8 +881,10 @@ paths:
   /budgets/{id}/cancel:
     post:
       tags:
-        - budget-controller
-      operationId: cancel_2
+        - Budgets
+      summary: Cancelar presupuesto
+      description: Cancela un presupuesto.
+      operationId: cancelBudget
       parameters:
         - name: id
           in: path
@@ -700,8 +898,10 @@ paths:
   /budgets/{health}:
     post:
       tags:
-        - budget-controller
-      operationId: getBudgetsByHealth
+        - Budgets
+      summary: Filtrar por salud
+      description: Filtra presupuestos por health.
+      operationId: findAllBudgetsByPeriodAndHealth
       parameters:
         - name: health
           in: path
@@ -729,8 +929,10 @@ paths:
   /auth/register:
     post:
       tags:
-        - auth-controller
-      operationId: register_1
+        - Auth
+      summary: Registro
+      description: Registro de nuevo usuario.
+      operationId: authRegister
       requestBody:
         content:
           application/json:
@@ -739,7 +941,13 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Registro exitoso
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Datos invalidos
           content:
             '*/*':
               schema:
@@ -747,7 +955,9 @@ paths:
   /auth/login:
     post:
       tags:
-        - auth-controller
+        - Auth
+      summary: Login
+      description: Autenticacion de usuario.
       operationId: login
       requestBody:
         content:
@@ -757,7 +967,13 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Login exitoso
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Credenciales invalidas
           content:
             '*/*':
               schema:
@@ -765,8 +981,10 @@ paths:
   /auth/google:
     post:
       tags:
-        - auth-controller
-      operationId: google
+        - Auth
+      summary: Login con Google
+      description: Autenticacion mediante Google.
+      operationId: authWithGoogle
       requestBody:
         content:
           application/json:
@@ -775,7 +993,13 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Login exitoso
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Token invalido
           content:
             '*/*':
               schema:
@@ -783,8 +1007,10 @@ paths:
   /analytics/dashboard/budgets:
     post:
       tags:
-        - analytics-controller
-      operationId: budgets
+        - Analytics
+      summary: Dashboard de presupuestos
+      description: Genera el dashboard de presupuestos.
+      operationId: getBudgetsDashboard
       parameters:
         - name: prompt
           in: query
@@ -799,7 +1025,17 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Dashboard generado
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/BudgetsDashboard"
+                  - $ref: "#/components/schemas/SavingGoalsDashboard"
+                  - $ref: "#/components/schemas/TSchedulesDashboard"
+                  - $ref: "#/components/schemas/TransactionsDashboard"
+        "400":
+          description: Request invalido
           content:
             '*/*':
               schema:
@@ -811,11 +1047,15 @@ paths:
   /analytics/dashboard/balance:
     post:
       tags:
-        - analytics-controller
-      operationId: balance
+        - Analytics
+      summary: Dashboard de balance
+      description: Genera el dashboard de balance basado en un periodo y un prompt
+        opcional.
+      operationId: getBalanceDashboard
       parameters:
         - name: prompt
           in: query
+          description: Prompt opcional
           required: false
           schema:
             type: string
@@ -827,7 +1067,17 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Dashboard generado
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/BudgetsDashboard"
+                  - $ref: "#/components/schemas/SavingGoalsDashboard"
+                  - $ref: "#/components/schemas/TSchedulesDashboard"
+                  - $ref: "#/components/schemas/TransactionsDashboard"
+        "400":
+          description: Request invalido
           content:
             '*/*':
               schema:
@@ -839,18 +1089,27 @@ paths:
   /analytics/budgets/{id}/execution:
     post:
       tags:
-        - analytics-controller
-      operationId: getExecution
+        - Analytics
+      summary: Ejecucion de presupuesto
+      description: Obtiene la ejecucion de un presupuesto por ID.
+      operationId: getBudgetExecution
       parameters:
         - name: id
           in: path
+          description: ID presupuesto
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Ejecucion encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BudgetExecutionResponse"
+        "404":
+          description: No encontrado
           content:
             '*/*':
               schema:
@@ -858,8 +1117,10 @@ paths:
   /analytics/budgets/executions:
     post:
       tags:
-        - analytics-controller
-      operationId: getExecutionsByPeriod
+        - Analytics
+      summary: Ejecuciones por periodo
+      description: Obtiene ejecuciones de presupuestos por periodo.
+      operationId: getBudgetsExecutionsByPeriod
       requestBody:
         content:
           application/json:
@@ -868,7 +1129,15 @@ paths:
         required: true
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetExecutionResponse"
+        "400":
+          description: Request invalido
           content:
             '*/*':
               schema:
@@ -878,8 +1147,9 @@ paths:
   /users:
     get:
       tags:
-        - user-controller
-      operationId: findAll
+        - Users
+      summary: Listar todos los usuarios
+      operationId: findAllUser
       responses:
         "200":
           description: OK
@@ -892,7 +1162,8 @@ paths:
   /users/timezones:
     get:
       tags:
-        - user-controller
+        - Users
+      summary: Listar zonas horarias disponibles
       operationId: listTimeZones
       responses:
         "200":
@@ -914,8 +1185,9 @@ paths:
   /users/search:
     get:
       tags:
-        - user-controller
-      operationId: searchByName
+        - Users
+      summary: Buscar usuarios por nombre
+      operationId: searchUserByName
       parameters:
         - name: string
           in: query
@@ -931,11 +1203,13 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/UserResponse"
-  /transactions/{userId}:
+  /transactions/user/{userId}:
     get:
       tags:
-        - transaction-controller
-      operationId: findAllByUser
+        - Transactions
+      summary: Listar transacciones por usuario
+      description: Obtiene todas las transacciones de un usuario.
+      operationId: findAllTransactionByUser
       parameters:
         - name: userId
           in: path
@@ -955,8 +1229,10 @@ paths:
   /transactions/user/{userId}/category/{categoryId}/between:
     get:
       tags:
-        - transaction-controller
-      operationId: findAllByCategoryAndDateBetween
+        - Transactions
+      summary: Filtrar por categoria y fecha
+      description: Obtiene transacciones por categoria y rango de fechas.
+      operationId: findAllTransactionByCategoryAndDateBetween
       parameters:
         - name: userId
           in: path
@@ -994,8 +1270,10 @@ paths:
   /transactions/user/{userId}/between:
     get:
       tags:
-        - transaction-controller
-      operationId: findAllByUserBetween
+        - Transactions
+      summary: Listar transacciones por rango
+      description: Obtiene transacciones en un rango de fechas.
+      operationId: findAllTransactionsByUserBetween
       parameters:
         - name: userId
           in: path
@@ -1027,11 +1305,14 @@ paths:
   /transactions/user/{userId}/active:
     get:
       tags:
-        - transaction-controller
-      operationId: findAllActiveByUser
+        - Transactions
+      summary: Listar transacciones activas
+      description: Obtiene todas las transacciones activas de un usuario.
+      operationId: findAllActiveTransactionByUser
       parameters:
         - name: userId
           in: path
+          description: ID usuario
           required: true
           schema:
             type: integer
@@ -1048,17 +1329,21 @@ paths:
   /schedule/user/{idUser}/{state}:
     get:
       tags:
-        - schedule-controller
-      operationId: findAllByUserAndState
+        - Schedule
+      summary: Listar programaciones por usuario y estado
+      description: Obtiene programaciones activas filtradas por usuario y estado.
+      operationId: findAllScheduleByUserAndState
       parameters:
         - name: idUser
           in: path
+          description: ID usuario
           required: true
           schema:
             type: integer
             format: int64
         - name: state
           in: path
+          description: Estado de la programacion
           required: true
           schema:
             type: string
@@ -1071,7 +1356,7 @@ paths:
               - ERROR
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
           content:
             '*/*':
               schema:
@@ -1084,17 +1369,21 @@ paths:
   /schedule/transactions/user/{idUser}/{state}:
     get:
       tags:
-        - transaction-schedule-controller
-      operationId: findAllByUserAndState_1
+        - Schedule-Transactions
+      summary: Listar programaciones de transacciones
+      description: Obtiene programaciones de transacciones por usuario y estado.
+      operationId: findAllTScheduleByUserAndState
       parameters:
         - name: idUser
           in: path
+          description: ID usuario
           required: true
           schema:
             type: integer
             format: int64
         - name: state
           in: path
+          description: Estado
           required: true
           schema:
             type: string
@@ -1107,7 +1396,7 @@ paths:
               - ERROR
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
           content:
             '*/*':
               schema:
@@ -1117,17 +1406,21 @@ paths:
   /schedule/budgets/user/{idUser}/{state}:
     get:
       tags:
-        - budget-schedule-controller
-      operationId: findAllByUserAndState_2
+        - Schedule-Budgets
+      summary: Listar programaciones de presupuestos
+      description: Obtiene programaciones de presupuestos por usuario y estado.
+      operationId: findAllBudgetScheduleByUserAndState
       parameters:
         - name: idUser
           in: path
+          description: ID usuario
           required: true
           schema:
             type: integer
             format: int64
         - name: state
           in: path
+          description: Estado
           required: true
           schema:
             type: string
@@ -1140,7 +1433,7 @@ paths:
               - ERROR
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
           content:
             '*/*':
               schema:
@@ -1150,18 +1443,21 @@ paths:
   /savings/user/{idUser}:
     get:
       tags:
-        - saving-goal-controller
-      operationId: findAllActiveByUser_1
+        - Savings
+      summary: Listar metas activas
+      description: Obtiene metas de ahorro activas por usuario.
+      operationId: findAllActiveSavingGoalByUser
       parameters:
         - name: idUser
           in: path
+          description: ID usuario
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
           content:
             '*/*':
               schema:
@@ -1171,18 +1467,29 @@ paths:
   /reasons/user/{idUser}:
     get:
       tags:
-        - reason-controller
-      operationId: findAllByUser_1
+        - Reasons
+      summary: Listar razones por usuario
+      description: Obtiene todas las razones asociadas a un usuario.
+      operationId: findAllReasonByUser
       parameters:
         - name: idUser
           in: path
+          description: ID del usuario
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReasonResponse"
+        "404":
+          description: Usuario no encontrado
           content:
             '*/*':
               schema:
@@ -1192,18 +1499,27 @@ paths:
   /notifications/{id}:
     get:
       tags:
-        - notification-controller
-      operationId: findById_6
+        - Notifications
+      summary: Buscar notificacion
+      description: Obtiene una notificacion por ID.
+      operationId: findNotificationById
       parameters:
         - name: id
           in: path
+          description: ID notificacion
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationDTO"
+        "404":
+          description: No encontrada
           content:
             '*/*':
               schema:
@@ -1211,18 +1527,29 @@ paths:
   /notifications/user/{idUser}:
     get:
       tags:
-        - notification-controller
-      operationId: findAllByUser_2
+        - Notifications
+      summary: Listar notificaciones por usuario
+      description: Obtiene todas las notificaciones de un usuario.
+      operationId: findAllNotificationByUser
       parameters:
         - name: idUser
           in: path
+          description: ID usuario
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationDTO"
+        "404":
+          description: Usuario no encontrado
           content:
             '*/*':
               schema:
@@ -1232,17 +1559,21 @@ paths:
   /notifications/user/{idUser}/{state}:
     get:
       tags:
-        - notification-controller
-      operationId: findAllByUserAndState_3
+        - Notifications
+      summary: Listar por estado
+      description: Obtiene notificaciones filtradas por estado.
+      operationId: findAllNotificationsByUserAndState
       parameters:
         - name: idUser
           in: path
+          description: ID usuario
           required: true
           schema:
             type: integer
             format: int64
         - name: state
           in: path
+          description: Estado
           required: true
           schema:
             type: string
@@ -1253,7 +1584,7 @@ paths:
               - DISCARD
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
           content:
             '*/*':
               schema:
@@ -1263,18 +1594,29 @@ paths:
   /categories/user/{idUser}:
     get:
       tags:
-        - category-controller
-      operationId: findAllByUser_3
+        - Categories
+      summary: Listar categorias por usuario
+      description: Obtiene todas las categorias asociadas a un usuario.
+      operationId: findAllCategoriesByUser
       parameters:
         - name: idUser
           in: path
+          description: ID del usuario
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryResponse"
+        "404":
+          description: Usuario no encontrado
           content:
             '*/*':
               schema:
@@ -1284,23 +1626,27 @@ paths:
   /categories/user/{idUser}/{active}:
     get:
       tags:
-        - category-controller
-      operationId: findAllByUserAndActive
+        - Categories
+      summary: Listar categorias por usuario y estado
+      description: Obtiene categorias filtradas por estado activo/inactivo.
+      operationId: findAllCategoriesyUserAndActive
       parameters:
         - name: idUser
           in: path
+          description: ID del usuario
           required: true
           schema:
             type: integer
             format: int64
         - name: active
           in: path
+          description: Estado activo
           required: true
           schema:
             type: boolean
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
           content:
             '*/*':
               schema:
@@ -1310,18 +1656,29 @@ paths:
   /budgets/user/{idUser}:
     get:
       tags:
-        - budget-controller
-      operationId: findAllByUser_4
+        - Budgets
+      summary: Listar presupuestos por usuario
+      description: Obtiene todos los presupuestos de un usuario.
+      operationId: findAllBudgetsByUser
       parameters:
         - name: idUser
           in: path
+          description: ID usuario
           required: true
           schema:
             type: integer
             format: int64
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetResponse"
+        "404":
+          description: Usuario no encontrado
           content:
             '*/*':
               schema:
@@ -1331,8 +1688,10 @@ paths:
   /budgets/user/{idUser}/{state}:
     get:
       tags:
-        - budget-controller
-      operationId: findAllByUserAndState_4
+        - Budgets
+      summary: Listar por usuario y estado
+      description: Obtiene presupuestos filtrados por estado.
+      operationId: findAllBudgetsByUserAndState
       parameters:
         - name: idUser
           in: path
@@ -1352,18 +1711,19 @@ paths:
               - FINALIZED
       responses:
         "200":
-          description: OK
+          description: Listado obtenido
           content:
             '*/*':
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/BudgetResponse"
-  /schedule/{id}/disable:
+  /users/{id}/delete:
     delete:
       tags:
-        - schedule-controller
-      operationId: disable_6
+        - Users
+      summary: Eliminar usuario
+      operationId: deleteUser
       parameters:
         - name: id
           in: path
@@ -1374,29 +1734,61 @@ paths:
       responses:
         "200":
           description: OK
+  /schedule/{id}/disable:
+    delete:
+      tags:
+        - Schedule
+      summary: Deshabilitar programacion
+      description: Deshabilita una programacion.
+      operationId: disableSchedule
+      parameters:
+        - name: id
+          in: path
+          description: ID de la programacion
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: Deshabilitada
+        "404":
+          description: No encontrada
 components:
   schemas:
     UserRequest:
       type: object
+      description: Solicitud para registrar un nuevo usuario en el sistema
       properties:
         name:
           type: string
+          description: Nombres del usuario
+          example: Jorge Jackson
           minLength: 1
         lastname:
           type: string
+          description: Apellidos del usuario
+          example: Valdivia Torreon
           minLength: 1
         email:
           type: string
           format: email
+          description: Correo electronico del usuario
+          example: jorge.valdivia@example.com
           minLength: 1
         username:
           type: string
+          description: Nombre de usuario unico
+          example: UsuarioFin2026
           minLength: 1
         password:
           type: string
+          description: ContraseÃ±a del usuario
+          example: StrongPassword123!
           minLength: 1
         timeZone:
           type: string
+          description: Zona horaria preferida del usuario
           enum:
             - AMERICA_LIMA
             - AMERICA_BOGOTA
@@ -1405,6 +1797,7 @@ components:
             - AMERICA_BUENOS_AIRES
             - AMERICA_NEW_YORK
             - AMERICA_LOS_ANGELES
+          example: AMERICA_LIMA
       required:
         - email
         - lastname
@@ -1414,41 +1807,65 @@ components:
         - username
     UserResponse:
       type: object
+      description: Respuesta que representa un usuario registrado en el sistema
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico del usuario
+          example: 42
         name:
           type: string
+          description: Nombres del usuario
+          example: Jorge Jackson
         lastname:
           type: string
+          description: Apellidos del usuario
+          example: Valdivia Torreon
         email:
           type: string
+          description: Correo electronico del usuario
+          example: jorge.valdivia@example.com
         username:
           type: string
+          description: Nombre de usuario unico
+          example: UsuarioFin2026
         role:
           type: string
+          description: Rol asignado al usuario
           enum:
             - USER
             - SYSTEM
+          example: USER
         state:
           type: string
+          description: Estado actual del usuario
           enum:
             - ENABLED
             - BLOCKED
             - DISABLED
+          example: ENABLED
         moneyBalance:
           type: number
+          description: Balance monetario del usuario
+          example: "1500.00"
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion del usuario
+          example: 2026-06-25T23:59:59
         disabledAt:
           type: string
           format: date-time
+          description: "Fecha y hora en que el usuario fue deshabilitado, si aplica"
+          example: 2026-07-01T12:00:00
         fullName:
           type: string
+          description: Nombre completo del usuario en formato concatenado
+          example: JORGE JACKSON VALDIVIA TORREON
         timeZone:
           type: string
+          description: Zona horaria preferida del usuario
           enum:
             - AMERICA_LIMA
             - AMERICA_BOGOTA
@@ -1457,28 +1874,44 @@ components:
             - AMERICA_BUENOS_AIRES
             - AMERICA_NEW_YORK
             - AMERICA_LOS_ANGELES
+          example: AMERICA_LIMA
     TransactionRequest:
       type: object
+      description: "Solicitud para registrar una transaccion asociada a un usuario,\
+        \ categoria y opcionalmente a un motivo o meta de ahorro"
       properties:
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado a la transaccion
+          example: 42
         categoryId:
           type: integer
           format: int64
+          description: Identificador unico de la categoria asociada a la transaccion
+          example: 101
         reasonId:
           type: integer
           format: int64
+          description: "Identificador del motivo asociado a la transaccion, si aplica"
+          example: 501
         description:
           type: string
+          description: Descripcion de la transaccion
+          example: Compra de libros universitarios
         savingGoalId:
           type: integer
           format: int64
+          description: "Identificador de la meta de ahorro asociada, si aplica"
+          example: 3001
         amount:
           type: number
+          description: Monto de la transaccion (debe ser mayor a 0)
+          example: "150.75"
           minimum: 0.00
         paymentMethod:
           type: string
+          description: Metodo de pago utilizado en la transaccion
           enum:
             - CASH
             - CREDIT_CARD
@@ -1487,11 +1920,14 @@ components:
             - YAPE
             - PLIN
             - OTHER
+          example: CREDIT_CARD
         type:
           type: string
+          description: Tipo de transaccion (ingreso o gasto)
           enum:
             - SPENT
             - INCOME
+          example: SPENT
       required:
         - amount
         - categoryId
@@ -1500,33 +1936,53 @@ components:
         - userId
     TransactionResponse:
       type: object
+      description: Respuesta que representa una transaccion registrada en el sistema
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico de la transaccion
+          example: 10001
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado a la transaccion
+          example: 42
         categoryId:
           type: integer
           format: int64
+          description: Identificador unico de la categoria asociada a la transaccion
+          example: 101
         categoryName:
           type: string
+          description: Nombre de la categoria asociada a la transaccion
+          example: Alimentacion
         reasonId:
           type: integer
           format: int64
+          description: "Identificador del motivo asociado a la transaccion, si aplica"
+          example: 501
         reasonDescription:
           type: string
+          description: Descripcion del motivo asociado a la transaccion
+          example: Compra de utiles escolares
         savingGoalId:
           type: integer
           format: int64
+          description: "Identificador de la meta de ahorro asociada, si aplica"
+          example: 3001
         scheduleId:
           type: integer
           format: int64
+          description: "Identificador de la programacion asociada, si aplica"
+          example: 2001
         amount:
           type: number
+          description: Monto de la transaccion
+          example: "150.75"
         paymentMethod:
           type: string
+          description: Metodo de pago utilizado en la transaccion
           enum:
             - CASH
             - CREDIT_CARD
@@ -1535,19 +1991,28 @@ components:
             - YAPE
             - PLIN
             - OTHER
+          example: CREDIT_CARD
         type:
           type: string
+          description: Tipo de transaccion (ingreso o gasto)
           enum:
             - SPENT
             - INCOME
+          example: SPENT
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion de la transaccion
+          example: 2026-06-25T23:59:59
         disabledAt:
           type: string
           format: date-time
+          description: "Fecha y hora en que la transaccion fue deshabilitada, si aplica"
+          example: 2026-07-01T12:00:00
         active:
           type: boolean
+          description: Indica si la transaccion esta activa
+          example: true
     BudgetScheduleRequest:
       allOf:
         - $ref: "#/components/schemas/ScheduleRequest"
@@ -1555,14 +2020,24 @@ components:
           properties:
             alertable:
               type: boolean
+              description: Indica si el presupuesto debe generar alertas
+              example: true
             percentAlert:
               type: integer
               format: int32
+              description: Porcentaje de alerta respecto al limite del presupuesto
+              example: 80
             limitAmount:
               type: number
+              description: Monto limite del presupuesto
+              example: "1500.00"
             description:
               type: string
+              description: Descripcion del presupuesto
+              example: Presupuesto mensual de alimentacion
               minLength: 1
+      description: Solicitud para crear o actualizar una programacion de presupuesto
+        con limites y alertas
       required:
         - alertable
         - categoryId
@@ -1572,20 +2047,28 @@ components:
         - userId
     RecurrenceRuleRequest:
       type: object
+      description: Solicitud para definir una regla de recurrencia en transacciones
+        o presupuestos
       properties:
         recurrenceType:
           type: string
+          description: "Tipo de recurrencia (diaria, semanal, mensual, anual)"
           enum:
             - NONE
             - DAILY
             - WEEKLY
             - MONTHLY
             - YEARLY
+          example: WEEKLY
         interval:
           type: integer
           format: int32
+          description: Intervalo de repeticion segun el tipo de recurrencia
+          example: 2
         dayOfWeek:
           type: string
+          description: Dia especifico de la semana en que aplica la recurrencia (solo
+            relevante si recurrenceType = WEEKLY)
           enum:
             - MONDAY
             - TUESDAY
@@ -1594,12 +2077,17 @@ components:
             - FRIDAY
             - SATURDAY
             - SUNDAY
+          example: MONDAY
         start:
           type: string
           format: date
+          description: Fecha de inicio de la recurrencia (formato yyyy-MM-dd)
+          example: 2026-07-01
         end:
           type: string
           format: date
+          description: Fecha de fin de la recurrencia (formato yyyy-MM-dd)
+          example: 2026-12-31
       required:
         - end
         - interval
@@ -1607,17 +2095,24 @@ components:
         - start
     ScheduleRequest:
       type: object
+      description: Solicitud base para crear o actualizar una programacion asociada
+        a un usuario y categoria
       discriminator:
         propertyName: type
       properties:
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado a la programacion
+          example: 42
         categoryId:
           type: integer
           format: int64
+          description: Identificador unico de la categoria asociada a la programacion
+          example: 101
         recurrenceRule:
           $ref: "#/components/schemas/RecurrenceRuleRequest"
+          description: Regla de recurrencia que define la periodicidad de la programacion
         type:
           type: string
       required:
@@ -1632,13 +2127,20 @@ components:
             reasonId:
               type: integer
               format: int64
+              description: Identificador del motivo asociado a la transaccion
+              example: 501
             description:
               type: string
+              description: Descripcion de la transaccion programada
+              example: Pago mensual de suscripcion a Netflix
             amount:
               type: number
+              description: Monto de la transaccion programada (debe ser mayor a 0)
+              example: "29.99"
               minimum: 0.00
             paymentMethod:
               type: string
+              description: Metodo de pago de la transaccion
               enum:
                 - CASH
                 - CREDIT_CARD
@@ -1647,11 +2149,16 @@ components:
                 - YAPE
                 - PLIN
                 - OTHER
+              example: CREDIT_CARD
             transactionType:
               type: string
+              description: Tipo de transaccion (ingreso o gasto)
               enum:
                 - SPENT
                 - INCOME
+              example: SPENT
+      description: Solicitud para crear o actualizar una programacion de transacciones
+        asociada a un usuario y categoria
       required:
         - amount
         - categoryId
@@ -1665,32 +2172,52 @@ components:
           properties:
             alertable:
               type: boolean
+              description: Indica si el presupuesto debe generar alertas
+              example: true
             percentAlert:
               type: integer
               format: int32
+              description: Porcentaje de alerta respecto al limite del presupuesto
+              example: 80
             limitAmount:
               type: number
+              description: Monto limite del presupuesto
+              example: "1500.00"
             description:
               type: string
+              description: Descripcion del presupuesto
+              example: Presupuesto mensual de alimentacion
+      description: Respuesta que representa una programacion de presupuesto con limites
+        y alertas
     RecurrenceRuleResponse:
       type: object
+      description: Respuesta que representa una regla de recurrencia aplicada a transacciones
+        o presupuestos
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico de la regla de recurrencia
+          example: 1001
         recurrenceType:
           type: string
+          description: "Tipo de recurrencia (diaria, semanal, mensual, anual)"
           enum:
             - NONE
             - DAILY
             - WEEKLY
             - MONTHLY
             - YEARLY
+          example: WEEKLY
         interval:
           type: integer
           format: int32
+          description: Intervalo de repeticion segun el tipo de recurrencia
+          example: 2
         dayOfWeek:
           type: string
+          description: Dia especifico de la semana en que aplica la recurrencia (solo
+            relevante si recurrenceType = WEEKLY)
           enum:
             - MONDAY
             - TUESDAY
@@ -1699,47 +2226,76 @@ components:
             - FRIDAY
             - SATURDAY
             - SUNDAY
+          example: MONDAY
         start:
           type: string
           format: date-time
+          description: Fecha y hora de inicio de la recurrencia
+          example: 2026-07-01T08:00:00
         end:
           type: string
           format: date-time
+          description: Fecha y hora de fin de la recurrencia
+          example: 2026-12-31T23:59:59
         durationDays:
           type: integer
           format: int64
+          description: Duracion total del periodo de recurrencia en dias
+          example: 183
     ScheduleResponse:
       type: object
+      description: "Respuesta que representa una programacion asociada a un usuario\
+        \ y categoria, incluyendo estado y regla de recurrencia"
       discriminator:
         propertyName: type
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico de la programacion
+          example: 2001
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado a la programacion
+          example: 42
         categoryId:
           type: integer
           format: int64
+          description: Identificador unico de la categoria asociada a la programacion
+          example: 101
         categoryName:
           type: string
+          description: Nombre de la categoria asociada a la programacion
+          example: Alimentacion
         nextRunAt:
           type: string
           format: date-time
+          description: Fecha y hora de la proxima ejecucion programada
+          example: 2026-07-01T08:00:00
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion de la programacion
+          example: 2026-06-25T23:59:59
         lastRunAt:
           type: string
           format: date-time
+          description: Fecha y hora de la ultima ejecucion realizada
+          example: 2026-06-20T08:00:00
         disabledAt:
           type: string
           format: date-time
+          description: "Fecha y hora en que la programacion fue deshabilitada, si\
+            \ aplica"
+          example: 2026-07-15T12:00:00
         active:
           type: boolean
+          description: Indica si la programacion esta activa
+          example: true
         state:
           type: string
+          description: Estado actual de la programacion
           enum:
             - RUNNING
             - PAUSED
@@ -1747,8 +2303,10 @@ components:
             - CANCELLED
             - CREATED
             - ERROR
+          example: RUNNING
         recurrenceRule:
           $ref: "#/components/schemas/RecurrenceRuleResponse"
+          description: Regla de recurrencia asociada a la programacion
         type:
           type: string
       required:
@@ -1761,12 +2319,19 @@ components:
             reasonId:
               type: integer
               format: int64
+              description: Identificador del motivo asociado a la transaccion
+              example: 501
             reasonDesc:
               type: string
+              description: Descripcion del motivo asociado a la transaccion
+              example: Pago mensual de suscripcion a Netflix
             amount:
               type: number
+              description: Monto de la transaccion programada
+              example: "29.99"
             paymentMethod:
               type: string
+              description: Metodo de pago de la transaccion
               enum:
                 - CASH
                 - CREDIT_CARD
@@ -1775,25 +2340,39 @@ components:
                 - YAPE
                 - PLIN
                 - OTHER
+              example: CREDIT_CARD
             transactionType:
               type: string
+              description: Tipo de transaccion (ingreso o gasto)
               enum:
                 - SPENT
                 - INCOME
+              example: SPENT
+      description: Respuesta que representa una programacion de transacciones asociada
+        a un usuario y categoria
     SavingGoalRequest:
       type: object
+      description: Solicitud para registrar una nueva meta de ahorro en el sistema
       properties:
         description:
           type: string
+          description: Descripcion de la meta de ahorro
+          example: Ahorro para comprar una laptop
           minLength: 1
         targetAmount:
           type: number
+          description: Monto objetivo de la meta de ahorro
+          example: "2500.00"
         deadline:
           type: string
           format: date
+          description: Fecha limite para alcanzar la meta (formato yyyy-MM-dd)
+          example: 2026-12-31
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado a la meta
+          example: 42
       required:
         - deadline
         - description
@@ -1801,105 +2380,171 @@ components:
         - userId
     SavingGoalResponse:
       type: object
+      description: Respuesta que representa una meta de ahorro con su estado y metricas
+        de progreso
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico de la meta de ahorro
+          example: 1001
         description:
           type: string
+          description: Descripcion de la meta de ahorro
+          example: Ahorro para comprar una laptop
         targetAmount:
           type: number
+          description: Monto objetivo de la meta de ahorro
+          example: "2500.00"
         accumulated:
           type: number
+          description: Monto acumulado hasta el momento
+          example: "1200.00"
         deadline:
           type: string
           format: date-time
+          description: Fecha limite para alcanzar la meta
+          example: 2026-12-31T23:59:59
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion de la meta
+          example: 2026-06-25T23:59:59
         completedAt:
           type: string
           format: date-time
+          description: "Fecha y hora en que la meta fue completada, si aplica"
+          example: 2026-11-15T10:00:00
         disabledAt:
           type: string
           format: date-time
+          description: "Fecha y hora en que la meta fue deshabilitada, si aplica"
+          example: 2026-11-20T12:00:00
         state:
           type: string
+          description: Estado actual de la meta de ahorro
           enum:
             - RUNNING
             - COMPLETED
             - CANCELLED
+          example: RUNNING
         active:
           type: boolean
+          description: Indica si la meta esta activa
+          example: true
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado a la meta
+          example: 42
         progressPercentage:
           type: number
           format: double
+          description: Porcentaje de progreso hacia la meta
+          example: "48.0"
         transactionsCount:
           type: integer
           format: int32
+          description: Cantidad de transacciones asociadas a la meta
+          example: 15
         outstanding:
           type: number
+          description: Monto pendiente para alcanzar la meta
+          example: "1300.00"
         daysRemaining:
           type: integer
           format: int64
+          description: Numero de dias restantes hasta la fecha limite
+          example: 180
         averageContribution:
           type: number
+          description: Monto promedio aportado por transaccion
+          example: "80.00"
         completed:
           type: boolean
+          description: Indica si la meta ya fue completada
+          example: false
         estimatedCompletionDate:
           type: string
           format: date-time
+          description: "Fecha estimada de cumplimiento de la meta, calculada en base\
+            \ al ritmo de aportes"
+          example: 2026-11-30T23:59:59
     ReasonRequest:
       type: object
+      description: Datos de la razon
       properties:
         description:
           type: string
+          description: Descripcion del motivo
+          example: Compra de utiles escolares
           minLength: 1
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado al motivo
+          example: 42
       required:
         - description
         - userId
     ReasonResponse:
       type: object
+      description: Respuesta que representa un motivo asociado a una transaccion
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico del motivo
+          example: 501
         description:
           type: string
+          description: Descripcion del motivo
+          example: Pago de servicios basicos
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado al motivo
+          example: 42
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion del motivo
+          example: 2026-06-25T23:59:59
         disabledAt:
           type: string
           format: date-time
+          description: "Fecha y hora en que el motivo fue deshabilitado, si aplica"
+          example: 2026-07-01T12:00:00
         active:
           type: boolean
+          description: Indica si el motivo esta activo
+          example: true
     CategoryRequest:
       type: object
+      description: Datos de la categoria
       properties:
         name:
           type: string
+          description: Nombre de la categoria
+          example: Alimentacion
           minLength: 1
         description:
           type: string
+          description: Descripcion de la categoria
+          example: "Compras de alimentos, restaurantes y productos de consumo diario"
           minLength: 1
         userId:
           type: integer
           format: int64
+          description: Identificador del usuario propietario de la categoria
+          example: 123
         type:
           type: string
+          description: Tipo de transaccion asociado a la categoria
           enum:
             - SPENT
             - INCOME
+          example: SPENT
       required:
         - description
         - name
@@ -1907,55 +2552,89 @@ components:
         - userId
     CategoryResponse:
       type: object
+      description: Respuesta que representa una categoria de transaccion registrada
+        en el sistema
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico de la categoria
+          example: 101
         name:
           type: string
+          description: Nombre de la categoria
+          example: Alimentacion
         description:
           type: string
+          description: Descripcion detallada de la categoria
+          example: "Compras de alimentos, restaurantes y productos de consumo diario"
         type:
           type: string
+          description: Tipo de transaccion asociado a la categoria
           enum:
             - SPENT
             - INCOME
+          example: SPENT
         active:
           type: boolean
+          description: Indica si la categoria esta activa
+          example: true
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion de la categoria
+          example: 2026-06-25T23:59:59
         disabledAt:
           type: string
           format: date-time
+          description: "Fecha y hora en que la categoria fue deshabilitada, si aplica"
+          example: 2026-07-01T12:00:00
     BudgetRequest:
       type: object
+      description: "Solicitud para crear o actualizar un presupuesto con limites,\
+        \ alertas y periodo definido"
       properties:
         alertable:
           type: boolean
+          description: Indica si el presupuesto debe generar alertas
+          example: true
         percentAlert:
           type: integer
           format: int32
+          description: Porcentaje de alerta respecto al limite definido
+          example: 80
           maximum: 100
           minimum: 0
         limitAmount:
           type: number
+          description: Monto limite del presupuesto
+          example: "5000.00"
           minimum: 0.00
         description:
           type: string
+          description: Descripcion del presupuesto
+          example: Presupuesto mensual para alimentos
           minLength: 1
         userId:
           type: integer
           format: int64
+          description: Identificador del usuario propietario del presupuesto
+          example: 123
         categoryId:
           type: integer
           format: int64
+          description: Identificador de la categoria asociada al presupuesto
+          example: 45
         start:
           type: string
           format: date
+          description: Fecha de inicio del presupuesto
+          example: 2026-07-01
         end:
           type: string
           format: date
+          description: Fecha de fin del presupuesto
+          example: 2026-07-31
       required:
         - alertable
         - categoryId
@@ -1966,93 +2645,147 @@ components:
         - userId
     BudgetResponse:
       type: object
+      description: "Respuesta de presupuesto con informacion detallada de limites,\
+        \ estado y periodo"
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico del presupuesto
+          example: 101
         userId:
           type: integer
           format: int64
+          description: Identificador del usuario propietario del presupuesto
+          example: 123
         categoryId:
           type: integer
           format: int64
+          description: Identificador de la categoria asociada al presupuesto
+          example: 45
         categoryName:
           type: string
+          description: Nombre de la categoria asociada al presupuesto
+          example: Alimentos
         scheduleId:
           type: integer
           format: int64
+          description: Identificador de la programacion asociada al presupuesto
+          example: 12
         alertable:
           type: boolean
+          description: Indica si el presupuesto debe generar alertas
+          example: true
         percentAlert:
           type: integer
           format: int32
+          description: Porcentaje de alerta respecto al limite definido
+          example: 80
         limitAmount:
           type: number
+          description: Monto limite del presupuesto
+          example: "5000.00"
         description:
           type: string
+          description: Descripcion del presupuesto
+          example: Presupuesto mensual para alimentos
         state:
           type: string
+          description: Estado actual del presupuesto
           enum:
             - ACTIVE
             - CANCELLED
             - DISABLED
             - FINALIZED
+          example: ACTIVE
         health:
           type: string
+          description: Salud del presupuesto segun su ejecucion
           enum:
             - OK
             - NEAR_LIMIT
             - EXCEEDED
             - INACTIVE
+          example: OK
         start:
           type: string
           format: date-time
+          description: Fecha y hora de inicio del presupuesto
+          example: 2026-07-01T00:00:00
         end:
           type: string
           format: date-time
+          description: Fecha y hora de fin del presupuesto
+          example: 2026-07-31T23:59:59
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion del presupuesto
+          example: 2026-06-25T12:00:00
         disabledAt:
           type: string
           format: date-time
+          description: Fecha y hora de desactivacion del presupuesto
+          example: 2026-06-30T18:00:00
     LoginResponse:
       type: object
+      description: Respuesta de login que contiene el usuario autenticado y el token
+        JWT
       properties:
         user:
           $ref: "#/components/schemas/UserResponse"
+          description: Informacion del usuario autenticado
         token:
           type: string
+          description: Token JWT generado tras la autenticacion
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     PeriodRequest:
       type: object
+      description: Periodo
       properties:
         start:
           type: string
           format: date
+          description: Fecha de inicio del periodo (formato yyyy-MM-dd)
+          example: 2026-06-01
         end:
           type: string
           format: date
+          description: Fecha de fin del periodo (formato yyyy-MM-dd)
+          example: 2026-06-30
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado al periodo
+          example: 42
       required:
         - end
         - start
         - userId
     PeriodResponse:
       type: object
+      description: "Respuesta que representa un periodo de fechas asociado a un usuario,\
+        \ incluyendo una version legible en texto"
       properties:
         start:
           type: string
           format: date
+          description: Fecha de inicio del periodo (formato yyyy-MM-dd)
+          example: 2026-06-01
         end:
           type: string
           format: date
+          description: Fecha de fin del periodo (formato yyyy-MM-dd)
+          example: 2026-06-30
         userId:
           type: integer
           format: int64
+          description: Identificador unico del usuario asociado al periodo
+          example: 42
         readableString:
           type: string
+          description: Representacion legible del periodo en texto
+          example: 01 junio 2026 a 30 junio 2026
     TimeBoundListBudgetResponse:
       type: object
       properties:
@@ -2067,40 +2800,62 @@ components:
           format: int64
     LoginRequest:
       type: object
+      description: Solicitud de login interno con email y contraseÃ±a
       properties:
         email:
           type: string
+          description: Correo electronico del usuario
+          example: usuario@example.com
           minLength: 1
         password:
           type: string
+          description: ContraseÃ±a del usuario
+          example: MiContraseÃ±aSegura123
           minLength: 1
       required:
         - email
         - password
     GoogleLoginRequest:
       type: object
+      description: "Solicitud de login con Google, contiene el ID Token emitido por\
+        \ Google Identity"
       properties:
         idToken:
           type: string
+          description: ID Token JWT emitido por Google tras la autenticacion
+          example: eyJhbGciOiJSUzI1NiIsImtpZCI6IjE2Y...
           minLength: 1
       required:
         - idToken
     Aggregate:
       type: object
+      description: Resumen/Agregado
       properties:
         title:
           type: string
+          description: Titulo o nombre del agregado
+          example: Transacciones de Junio
         totalAmount:
           type: number
+          description: Monto total acumulado
+          example: "12500.75"
         averageAmount:
           type: number
+          description: Monto promedio calculado
+          example: "3125.18"
         occurrenceCount:
           type: integer
           format: int64
+          description: Numero de ocurrencias consideradas
+          example: 4
         max:
           type: number
+          description: Valor maximo encontrado
+          example: "5000.00"
         min:
           type: number
+          description: Valor minimo encontrado
+          example: "100.00"
     AggregateByBudgetExecutionResponse:
       type: object
       properties:
@@ -2222,62 +2977,101 @@ components:
           type: number
     BudgetExecutionResponse:
       type: object
+      description: "Respuesta de ejecucion de presupuesto con montos gastados, restantes\
+        \ y porcentaje de ejecucion"
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico del presupuesto
+          example: 101
         userId:
           type: integer
           format: int64
+          description: Identificador del usuario propietario del presupuesto
+          example: 123
         categoryId:
           type: integer
           format: int64
+          description: Identificador de la categoria asociada al presupuesto
+          example: 45
         categoryName:
           type: string
+          description: Nombre de la categoria asociada al presupuesto
+          example: Alimentos
         scheduleId:
           type: integer
           format: int64
+          description: Identificador de la programacion asociada al presupuesto
+          example: 12
         alertable:
           type: boolean
+          description: Indica si el presupuesto debe generar alertas
+          example: true
         percentAlert:
           type: integer
           format: int32
+          description: Porcentaje de alerta respecto al limite definido
+          example: 80
         limitAmount:
           type: number
+          description: Monto limite del presupuesto
+          example: "5000.00"
         description:
           type: string
+          description: Descripcion del presupuesto
+          example: Presupuesto mensual para alimentos
         state:
           type: string
+          description: Estado actual del presupuesto
           enum:
             - ACTIVE
             - CANCELLED
             - DISABLED
             - FINALIZED
+          example: ACTIVE
         health:
           type: string
+          description: Salud del presupuesto segun su ejecucion
           enum:
             - OK
             - NEAR_LIMIT
             - EXCEEDED
             - INACTIVE
+          example: OK
         start:
           type: string
           format: date-time
+          description: Fecha y hora de inicio del presupuesto
+          example: 2026-07-01T00:00:00
         end:
           type: string
           format: date-time
+          description: Fecha y hora de fin del presupuesto
+          example: 2026-07-31T23:59:59
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion del presupuesto
+          example: 2026-06-25T12:00:00
         disabledAt:
           type: string
           format: date-time
+          description: Fecha y hora de desactivacion del presupuesto
+          example: 2026-06-30T18:00:00
         spentAmount:
           type: number
+          description: Monto total gastado en el presupuesto
+          example: "2500.00"
         remainingAmount:
           type: number
+          description: Monto restante disponible en el presupuesto
+          example: "500.00"
         executionPercentage:
           type: number
+          description: Porcentaje de ejecucion del presupuesto respecto al limite
+            definido
+          example: "83.33"
     BudgetsDashboard:
       allOf:
         - $ref: "#/components/schemas/DashboardResponse"
@@ -2285,77 +3079,116 @@ components:
           properties:
             byHealth:
               type: array
+              description: Lista de agregados por estado de salud del presupuesto
               items:
                 $ref: "#/components/schemas/AggregateByBudgetHealth"
             byCategory:
               type: array
+              description: Lista de agregados por categoria de ejecucion presupuestal
               items:
                 $ref: "#/components/schemas/AggregateByBudgetExecutionResponse"
             executionEvolution:
               $ref: "#/components/schemas/TimeLineBudgetExecutionResponse"
+              description: Linea de tiempo de la evolucion de ejecucion de presupuestos
             mostExecuted:
               $ref: "#/components/schemas/RankingCategoryResponse"
+              description: Ranking de categorias mas ejecutadas
             mostRemaining:
               $ref: "#/components/schemas/RankingCategoryResponse"
+              description: Ranking de categorias con mayor saldo restante
             totalBudgetLimitAmount:
               type: number
+              description: Monto limite total de todos los presupuestos
+              example: "50000.00"
             totalBudgetSpentAmount:
               type: number
+              description: Monto total gastado en todos los presupuestos
+              example: "37500.00"
             totalBudgetRemainingAmount:
               type: number
+              description: Monto total restante en todos los presupuestos
+              example: "12500.00"
+      description: "Dashboard de presupuestos con agregados por salud y categoria,\
+        \ evolucion de ejecucion y metricas globales"
     CategorySummary:
       type: object
+      description: Resumen de una categoria con identificador y nombre
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico de la categoria
+          example: 5
         name:
           type: string
+          description: Nombre de la categoria
+          example: Transporte
     DashboardResponse:
       type: object
+      description: "Respuesta base de un dashboard con periodo, titulo, fecha de creacion,\
+        \ resumen de insights y metricas agregadas"
       discriminator:
         propertyName: type
       properties:
         periodResponse:
           $ref: "#/components/schemas/PeriodResponse"
+          description: Periodo de referencia del dashboard
         title:
           type: string
+          description: Titulo descriptivo del dashboard
+          example: Resumen financiero mensual
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion del dashboard
+          example: 2026-06-25T23:57:00
         insightSummary:
           $ref: "#/components/schemas/InsightSummary"
+          description: Resumen de insights generados para el periodo
         aggregate:
           $ref: "#/components/schemas/Aggregate"
+          description: Agregado general con metricas calculadas
         type:
           type: string
       required:
         - type
     Insight:
       type: object
+      description: "Objeto que representa un insight con severidad, titulo, descripcion\
+        \ y accion recomendada"
       properties:
         severity:
           type: string
+          description: Nivel de severidad
           enum:
             - INFO
             - WARNING
             - CRITICAL
+          example: WARNING
         title:
           type: string
+          description: Titulo breve
+          example: Presupuesto cercano al limite
         description:
           type: string
+          description: Descripcion detallada
+          example: El gasto ha alcanzado el 85% del presupuesto asignado
         action:
           type: string
+          description: Accion recomendada
+          example: Revisar gastos futuros y ajustar si es necesario
     InsightSummary:
       type: object
+      description: Resumen de insights generados
       properties:
         insights:
-          type: array
-          items:
-            $ref: "#/components/schemas/Insight"
+          $ref: "#/components/schemas/Insight"
+          description: Lista de insights
         insightsCount:
           type: integer
           format: int32
+          description: Numero total de insights
+          example: 5
     RankingCategoryResponse:
       type: object
       properties:
@@ -2490,12 +3323,17 @@ components:
             $ref: "#/components/schemas/RankingItemTransactionType"
     ReasonSummary:
       type: object
+      description: Resumen de un motivo asociado a una transaccion
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico del motivo
+          example: 501
         description:
           type: string
+          description: Descripcion breve del motivo
+          example: Compra de alimentos
     SavingGoalsDashboard:
       allOf:
         - $ref: "#/components/schemas/DashboardResponse"
@@ -2714,76 +3552,121 @@ components:
           properties:
             summaryByCategory:
               $ref: "#/components/schemas/RankingCategorySummary"
+              description: Ranking de categorias con metricas resumidas
             summaryByPaymentMethod:
               $ref: "#/components/schemas/RankingPaymentMethod"
+              description: Ranking de metodos de pago con metricas resumidas
             summaryByType:
               $ref: "#/components/schemas/RankingTransactionType"
+              description: Ranking por tipo de transaccion con metricas resumidas
             dailyExpenses:
               $ref: "#/components/schemas/TimeLineTransactionResponse"
+              description: Linea de tiempo de gastos diarios
             dailyIncome:
               $ref: "#/components/schemas/TimeLineTransactionResponse"
+              description: Linea de tiempo de ingresos diarios
             topCategories:
               $ref: "#/components/schemas/RankingCategorySummary"
+              description: Ranking de las categorias principales
             topSpentReasons:
               $ref: "#/components/schemas/RankingReasonSummary"
+              description: Ranking de los principales motivos de gasto
             topIncomeReasons:
               $ref: "#/components/schemas/RankingReasonSummary"
+              description: Ranking de los principales motivos de ingreso
+      description: Dashboard de transacciones con rankings y lineas de tiempo de ingresos
+        y gastos
     NotificationDTO:
       type: object
+      description: Objeto de transferencia que representa una notificacion generada
+        en el sistema
       properties:
         id:
           type: integer
           format: int64
+          description: Identificador unico de la notificacion
+          example: 1001
         userId:
           type: integer
           format: int64
+          description: Identificador del usuario asociado a la notificacion
+          example: 42
         userEmail:
           type: string
+          description: Correo electronico del usuario
+          example: usuario@ejemplo.com
         type:
           type: string
+          description: Tipo de notificacion
           enum:
             - WARNING
             - SUCCESS
             - ERROR
             - INFO
+          example: ALERTA_PRESUPUESTO
         message:
           type: string
+          description: Mensaje de la notificacion
+          example: Has alcanzado el 80% de tu presupuesto de alimentacion
         createdAt:
           type: string
           format: date-time
+          description: Fecha y hora de creacion de la notificacion
+          example: 2026-06-25T23:59:59
         disabledAt:
           type: string
           format: date-time
+          description: "Fecha y hora en que la notificacion fue deshabilitada, si\
+            \ aplica"
+          example: 2026-07-01T12:00:00
         scheduledAt:
           type: string
           format: date-time
+          description: Fecha y hora programada para enviar la notificacion
+          example: 2026-06-30T08:00:00
         sentAt:
           type: string
           format: date-time
+          description: Fecha y hora en que la notificacion fue enviada
+          example: 2026-06-30T08:01:00
         state:
           type: string
+          description: Estado actual de la notificacion
           enum:
             - SCHEDULED
             - SENT
             - READ
             - DISCARD
+          example: SENT
         scheduleId:
           type: integer
           format: int64
+          description: Identificador de la programacion asociada
+          example: 200
         budgetId:
           type: integer
           format: int64
+          description: Identificador del presupuesto asociado
+          example: 300
         budgetDescription:
           type: string
+          description: Descripcion del presupuesto asociado
+          example: Presupuesto de transporte
         budgetState:
           type: string
+          description: Estado del presupuesto asociado
           enum:
             - ACTIVE
             - CANCELLED
             - DISABLED
             - FINALIZED
+          example: ACTIVE
         savingGoalId:
           type: integer
           format: int64
+          description: Identificador de la meta de ahorro asociada
+          example: 400
         savingGoalDescription:
           type: string
+          description: Descripcion de la meta de ahorro asociada
+          example: Ahorro para viaje

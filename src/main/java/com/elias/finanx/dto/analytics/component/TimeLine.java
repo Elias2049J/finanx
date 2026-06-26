@@ -1,6 +1,7 @@
 package com.elias.finanx.dto.analytics.component;
 
 import com.elias.finanx.dto.date.PeriodResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,9 +14,14 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TimeLine<T> {
+
     private PeriodResponse periodResponse;
+
     private String title;
+
     private List<TimeSeriesPoint<T>> points;
+
     private Aggregate aggregate;
+
     private long count;
 }

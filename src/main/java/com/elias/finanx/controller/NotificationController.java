@@ -24,7 +24,7 @@ public class NotificationController {
     @Operation(
             summary = "Listar notificaciones por usuario",
             description = "Obtiene todas las notificaciones de un usuario.",
-            operationId = "notificationFindAllByUser",
+            operationId = "findAllNotificationByUser",
             tags = {"Notifications"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
@@ -38,9 +38,9 @@ public class NotificationController {
     }
 
     @Operation(
-            summary = "Buscar notificación",
-            description = "Obtiene una notificación por ID.",
-            operationId = "notificationFindById",
+            summary = "Buscar notificacion",
+            description = "Obtiene una notificacion por ID.",
+            operationId = "findNotificationById",
             tags = {"Notifications"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Encontrada"),
@@ -49,14 +49,14 @@ public class NotificationController {
     )
     @GetMapping("/{id}")
     public ResponseEntity<NotificationDTO> findById(
-            @Parameter(description = "ID notificación") @PathVariable Long id) {
+            @Parameter(description = "ID notificacion") @PathVariable Long id) {
         return ResponseEntity.ok(notificationService.findById(id));
     }
 
     @Operation(
             summary = "Listar por estado",
             description = "Obtiene notificaciones filtradas por estado.",
-            operationId = "notificationFindByUserAndState",
+            operationId = "findAllNotificationsByUserAndState",
             tags = {"Notifications"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
@@ -70,9 +70,9 @@ public class NotificationController {
     }
 
     @Operation(
-            summary = "Descartar notificación",
-            description = "Marca una notificación como descartada.",
-            operationId = "notificationDiscard",
+            summary = "Descartar notificacion",
+            description = "Marca una notificacion como descartada.",
+            operationId = "discardNotification",
             tags = {"Notifications"},
             responses = {
                     @ApiResponse(responseCode = "204", description = "Descartada"),
@@ -81,15 +81,15 @@ public class NotificationController {
     )
     @PostMapping("/discard")
     public ResponseEntity<Void> discard(
-            @Parameter(description = "ID de la notificación") @RequestBody Long idNotification) {
+            @Parameter(description = "ID de la notificacion") @RequestBody Long idNotification) {
         notificationService.discard(idNotification);
         return ResponseEntity.noContent().build();
     }
 
     @Operation(
-            summary = "Marcar como leída",
-            description = "Marca una notificación como leída.",
-            operationId = "notificationMarkAsRead",
+            summary = "Marcar como leida",
+            description = "Marca una notificacion como leida.",
+            operationId = "markAsRead",
             tags = {"Notifications"},
             responses = {
                     @ApiResponse(responseCode = "204", description = "Actualizada"),
@@ -98,7 +98,7 @@ public class NotificationController {
     )
     @PostMapping("/mark-as-read")
     public ResponseEntity<Void> markAsRead(
-            @Parameter(description = "ID de la notificación") @RequestBody Long idNotification) {
+            @Parameter(description = "ID de la notificacion") @RequestBody Long idNotification) {
         notificationService.markAsRead(idNotification);
         return ResponseEntity.noContent().build();
     }
@@ -106,7 +106,7 @@ public class NotificationController {
     @Operation(
             summary = "Eliminar notificaciones antiguas",
             description = "Elimina notificaciones anteriores a una fecha.",
-            operationId = "notificationPurge",
+            operationId = "purgeNotifications",
             tags = {"Notifications"},
             responses = {
                     @ApiResponse(responseCode = "204", description = "Eliminadas")
@@ -115,7 +115,7 @@ public class NotificationController {
     @PostMapping("/user/{userId}/purge-older-than")
     public ResponseEntity<Void> purge(
             @Parameter(description = "ID usuario") @PathVariable Long userId,
-            @Parameter(description = "Fecha límite")
+            @Parameter(description = "Fecha limite")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTime) {
         notificationService.purgeOlderThan(dateTime, userId);
         return ResponseEntity.noContent().build();

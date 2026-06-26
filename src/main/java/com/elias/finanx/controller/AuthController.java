@@ -25,12 +25,12 @@ public class AuthController {
 
     @Operation(
             summary = "Login",
-            description = "Autenticación de usuario.",
-            operationId = "authLogin",
+            description = "Autenticacion de usuario.",
+            operationId = "login",
             tags = {"Auth"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Login exitoso"),
-                    @ApiResponse(responseCode = "400", description = "Credenciales inválidas")
+                    @ApiResponse(responseCode = "400", description = "Credenciales invalidas")
             }
     )
     @PostMapping("/login")
@@ -45,7 +45,7 @@ public class AuthController {
             tags = {"Auth"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Registro exitoso"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos")
+                    @ApiResponse(responseCode = "400", description = "Datos invalidos")
             }
     )
     @PostMapping("/register")
@@ -55,12 +55,12 @@ public class AuthController {
 
     @Operation(
             summary = "Login con Google",
-            description = "Autenticación mediante Google.",
-            operationId = "authGoogle",
+            description = "Autenticacion mediante Google.",
+            operationId = "authWithGoogle",
             tags = {"Auth"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Login exitoso"),
-                    @ApiResponse(responseCode = "400", description = "Token inválido")
+                    @ApiResponse(responseCode = "400", description = "Token invalido")
             }
     )
     @PostMapping("/google")

@@ -22,7 +22,7 @@ public class BudgetScheduleController {
     @Operation(
             summary = "Listar programaciones de presupuestos",
             description = "Obtiene programaciones de presupuestos por usuario y estado.",
-            operationId = "budgetScheduleFindByUserAndState",
+            operationId = "findAllBudgetScheduleByUserAndState",
             tags = {"Schedule-Budgets"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")

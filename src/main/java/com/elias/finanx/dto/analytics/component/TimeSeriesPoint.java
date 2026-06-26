@@ -1,5 +1,6 @@
 package com.elias.finanx.dto.analytics.component;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,8 +13,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TimeSeriesPoint<T> {
+
     private LocalDate date;
+
     private BigDecimal amount;
+
     private long occurrenceCount;
+
     private List<T> context;
 }

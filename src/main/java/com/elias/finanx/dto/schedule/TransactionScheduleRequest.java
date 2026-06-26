@@ -2,6 +2,7 @@ package com.elias.finanx.dto.schedule;
 
 import com.elias.finanx.entity.enums.PaymentMethod;
 import com.elias.finanx.entity.enums.TransactionType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import jakarta.validation.constraints.*;
 
@@ -11,14 +12,43 @@ import java.math.BigDecimal;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Schema(description = "Solicitud para crear o actualizar una programacion de transacciones asociada a un usuario y categoria")
 public class TransactionScheduleRequest extends ScheduleRequest {
+
+    @Schema(
+            description = "Identificador del motivo asociado a la transaccion",
+            example = "501"
+    )
     private Long reasonId;
+
+    @Schema(
+            description = "Descripcion de la transaccion programada",
+            example = "Pago mensual de suscripcion a Netflix"
+    )
     private String description;
+
     @NotNull
     @DecimalMin(value = "0.00", inclusive = false)
+    @Schema(
+            description = "Monto de la transaccion programada (debe ser mayor a 0)",
+            example = "29.99"
+    )
     private BigDecimal amount;
+
     @NotNull
+    @Schema(
+            description = "Metodo de pago de la transaccion",
+            implementation = PaymentMethod.class,
+            example = "CREDIT_CARD"
+    )
     private PaymentMethod paymentMethod;
+
     @NotNull
+    @Schema(
+            description = "Tipo de transaccion (ingreso o gasto)",
+            implementation = TransactionType.class,
+            example = "SPENT"
+    )
     private TransactionType transactionType;
 }
+

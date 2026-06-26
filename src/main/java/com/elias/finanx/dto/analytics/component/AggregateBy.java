@@ -1,5 +1,6 @@
 package com.elias.finanx.dto.analytics.component;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 

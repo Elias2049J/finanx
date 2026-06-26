@@ -1,7 +1,7 @@
 package com.elias.finanx.service.impl.analytics;
 
 import com.elias.finanx.dto.ai.PromptRequest;
-import com.elias.finanx.dto.analytics.TimeBoundList;
+import com.elias.finanx.dto.analytics.component.TimeBoundList;
 import com.elias.finanx.dto.analytics.dashboard.DashboardResponse;
 import com.elias.finanx.dto.date.PeriodRequest;
 import com.elias.finanx.dto.analytics.component.*;

@@ -1,6 +1,6 @@
 package com.elias.finanx.service.impl;
 
-import com.elias.finanx.dto.analytics.TimeBoundList;
+import com.elias.finanx.dto.analytics.component.TimeBoundList;
 import com.elias.finanx.dto.date.PeriodRequest;
 import com.elias.finanx.dto.budget.BudgetRequest;
 import com.elias.finanx.dto.budget.BudgetResponse;
@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.OffsetDateTime;
 import java.util.List;

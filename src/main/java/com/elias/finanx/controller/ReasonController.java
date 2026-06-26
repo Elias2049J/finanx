@@ -23,7 +23,7 @@ public class ReasonController {
     @Operation(
             summary = "Listar razones por usuario",
             description = "Obtiene todas las razones asociadas a un usuario.",
-            operationId = "reasonFindAllByUser",
+            operationId = "findAllReasonByUser",
             tags = {"Reasons"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
@@ -37,9 +37,9 @@ public class ReasonController {
     }
 
     @Operation(
-            summary = "Buscar razón",
-            description = "Obtiene una razón por ID.",
-            operationId = "reasonFindById",
+            summary = "Buscar razon",
+            description = "Obtiene una razon por ID.",
+            operationId = "findReasonById",
             tags = {"Reasons"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Encontrada"),
@@ -48,58 +48,58 @@ public class ReasonController {
     )
     @GetMapping("/{id}")
     public ResponseEntity<ReasonResponse> findById(
-            @Parameter(description = "ID de la razón") @PathVariable Long id) {
+            @Parameter(description = "ID de la razon") @PathVariable Long id) {
         return ResponseEntity.ok(reasonService.findById(id));
     }
 
     @Operation(
-            summary = "Crear razón",
-            description = "Crea una nueva razón.",
-            operationId = "reasonCreate",
+            summary = "Crear razon",
+            description = "Crea una nueva razon.",
+            operationId = "createReason",
             tags = {"Reasons"},
             responses = {
                     @ApiResponse(responseCode = "201", description = "Creada"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos")
+                    @ApiResponse(responseCode = "400", description = "Datos invalidos")
             }
     )
     @PostMapping
     public ResponseEntity<ReasonResponse> create(
-            @Parameter(description = "Datos de la razón") @Valid @RequestBody ReasonRequest request) {
+            @Parameter(description = "Datos de la razon") @Valid @RequestBody ReasonRequest request) {
         ReasonResponse saved = reasonService.create(request);
         return ResponseEntity.created(URI.create("/reasons/" + saved.getId())).body(saved);
     }
 
     @Operation(
-            summary = "Actualizar razón",
-            description = "Actualiza una razón existente.",
-            operationId = "reasonUpdate",
+            summary = "Actualizar razon",
+            description = "Actualiza una razon existente.",
+            operationId = "updateReason",
             tags = {"Reasons"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Actualizada"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                    @ApiResponse(responseCode = "400", description = "Datos invalidos"),
                     @ApiResponse(responseCode = "404", description = "No encontrada")
             }
     )
     @PutMapping("/{id}")
     public ResponseEntity<ReasonResponse> update(
-            @Parameter(description = "ID de la razón") @PathVariable Long id,
+            @Parameter(description = "ID de la razon") @PathVariable Long id,
             @Valid @RequestBody ReasonRequest request) {
         return ResponseEntity.ok(reasonService.update(id, request));
     }
 
     @Operation(
-            summary = "Deshabilitar razón",
-            description = "Deshabilita una razón.",
-            operationId = "reasonDisable",
+            summary = "Deshabilitar razon",
+            description = "Deshabilita una razon.",
+            operationId = "disableReason",
             tags = {"Reasons"},
             responses = {
                     @ApiResponse(responseCode = "204", description = "Deshabilitada"),
                     @ApiResponse(responseCode = "404", description = "No encontrada")
             }
     )
-    @PostMapping("/{id}")
+    @PostMapping("/{id}/disable")
     public ResponseEntity<Void> disable(
-            @Parameter(description = "ID de la razón") @PathVariable Long id) {
+            @Parameter(description = "ID de la razon") @PathVariable Long id) {
         reasonService.disable(id);
         return ResponseEntity.noContent().build();
     }

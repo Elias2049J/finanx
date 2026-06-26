@@ -25,7 +25,7 @@ public class TransactionController {
     @Operation(
             summary = "Listar transacciones activas",
             description = "Obtiene todas las transacciones activas de un usuario.",
-            operationId = "transactionFindAllActive",
+            operationId = "findAllActiveTransactionByUser",
             tags = {"Transactions"}
     )
     @GetMapping("/user/{userId}/active")
@@ -35,9 +35,9 @@ public class TransactionController {
     }
 
     @Operation(
-            summary = "Buscar transacción",
-            description = "Obtiene una transacción por ID.",
-            operationId = "transactionFindById",
+            summary = "Buscar transaccion",
+            description = "Obtiene una transaccion por ID.",
+            operationId = "findTransactionById",
             tags = {"Transactions"}
     )
     @GetMapping("/{id}")
@@ -48,7 +48,7 @@ public class TransactionController {
     @Operation(
             summary = "Listar transacciones por usuario",
             description = "Obtiene todas las transacciones de un usuario.",
-            operationId = "transactionFindAllByUser",
+            operationId = "findAllTransactionByUser",
             tags = {"Transactions"}
     )
     @GetMapping("/user/{userId}")
@@ -59,7 +59,7 @@ public class TransactionController {
     @Operation(
             summary = "Listar transacciones por rango",
             description = "Obtiene transacciones en un rango de fechas.",
-            operationId = "transactionFindBetween",
+            operationId = "findAllTransactionsByUserBetween",
             tags = {"Transactions"}
     )
     @GetMapping("/user/{userId}/between")
@@ -71,9 +71,9 @@ public class TransactionController {
     }
 
     @Operation(
-            summary = "Crear transacción",
-            description = "Crea una nueva transacción.",
-            operationId = "transactionCreate",
+            summary = "Crear transaccion",
+            description = "Crea una nueva transaccion.",
+            operationId = "createTransaction",
             tags = {"Transactions"}
     )
     @PostMapping
@@ -83,9 +83,9 @@ public class TransactionController {
     }
 
     @Operation(
-            summary = "Actualizar transacción",
-            description = "Actualiza una transacción.",
-            operationId = "transactionUpdate",
+            summary = "Actualizar transaccion",
+            description = "Actualiza una transaccion.",
+            operationId = "updateTransaction",
             tags = {"Transactions"}
     )
     @PutMapping("/{id}")
@@ -96,8 +96,8 @@ public class TransactionController {
     }
 
     @Operation(
-            summary = "Eliminar transacción",
-            description = "Deshabilita una transacción.",
+            summary = "Eliminar transaccion",
+            description = "Deshabilita una transaccion.",
             operationId = "transactionDelete",
             tags = {"Transactions"}
     )
@@ -108,9 +108,9 @@ public class TransactionController {
     }
 
     @Operation(
-            summary = "Filtrar por categoría y fecha",
-            description = "Obtiene transacciones por categoría y rango de fechas.",
-            operationId = "transactionByCategoryAndDate",
+            summary = "Filtrar por categoria y fecha",
+            description = "Obtiene transacciones por categoria y rango de fechas.",
+            operationId = "findAllTransactionByCategoryAndDateBetween",
             tags = {"Transactions"}
     )
     @GetMapping("/user/{userId}/category/{categoryId}/between")

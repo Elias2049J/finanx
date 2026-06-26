@@ -28,11 +28,11 @@ public class AnalyticsController {
     @Operation(
             summary = "Dashboard de balance",
             description = "Genera el dashboard de balance basado en un periodo y un prompt opcional.",
-            operationId = "analyticsBalanceDashboard",
+            operationId = "getBalanceDashboard",
             tags = {"Analytics"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Dashboard generado"),
-                    @ApiResponse(responseCode = "400", description = "Request inválido")
+                    @ApiResponse(responseCode = "400", description = "Request invalido")
             }
     )
     @PostMapping("/dashboard/balance")
@@ -46,11 +46,11 @@ public class AnalyticsController {
     @Operation(
             summary = "Dashboard de presupuestos",
             description = "Genera el dashboard de presupuestos.",
-            operationId = "analyticsBudgetsDashboard",
+            operationId = "getBudgetsDashboard",
             tags = {"Analytics"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Dashboard generado"),
-                    @ApiResponse(responseCode = "400", description = "Request inválido")
+                    @ApiResponse(responseCode = "400", description = "Request invalido")
             }
     )
     @PostMapping("/dashboard/budgets")
@@ -62,12 +62,12 @@ public class AnalyticsController {
     }
 
     @Operation(
-            summary = "Ejecución de presupuesto",
-            description = "Obtiene la ejecución de un presupuesto por ID.",
-            operationId = "analyticsGetExecution",
+            summary = "Ejecucion de presupuesto",
+            description = "Obtiene la ejecucion de un presupuesto por ID.",
+            operationId = "getBudgetExecution",
             tags = {"Analytics"},
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Ejecución encontrada"),
+                    @ApiResponse(responseCode = "200", description = "Ejecucion encontrada"),
                     @ApiResponse(responseCode = "404", description = "No encontrado")
             }
     )
@@ -80,11 +80,11 @@ public class AnalyticsController {
     @Operation(
             summary = "Ejecuciones por periodo",
             description = "Obtiene ejecuciones de presupuestos por periodo.",
-            operationId = "analyticsExecutionsByPeriod",
+            operationId = "getBudgetsExecutionsByPeriod",
             tags = {"Analytics"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
-                    @ApiResponse(responseCode = "400", description = "Request inválido")
+                    @ApiResponse(responseCode = "400", description = "Request invalido")
             }
     )
     @PostMapping("/budgets/executions")

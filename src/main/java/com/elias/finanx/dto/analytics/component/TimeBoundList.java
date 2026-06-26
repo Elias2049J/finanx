@@ -1,7 +1,7 @@
-package com.elias.finanx.dto.analytics;
+package com.elias.finanx.dto.analytics.component;
 
-import com.elias.finanx.dto.date.PeriodRequest;
 import com.elias.finanx.dto.date.PeriodResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +14,11 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TimeBoundList<T> {
+
     private PeriodResponse periodResponse;
+
     private List<T> items;
+
     private long count;
 }
+

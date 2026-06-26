@@ -1,5 +1,6 @@
 package com.elias.finanx.dto.analytics.component;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -11,6 +12,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class RankingItem<F> {
     private AggregateBy<F> aggregate;
+
     private int rank;
+
     private BigDecimal metricValue;
 }

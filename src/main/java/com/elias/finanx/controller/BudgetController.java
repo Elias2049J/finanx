@@ -1,6 +1,6 @@
 package com.elias.finanx.controller;
 
-import com.elias.finanx.dto.analytics.TimeBoundList;
+import com.elias.finanx.dto.analytics.component.TimeBoundList;
 import com.elias.finanx.dto.date.PeriodRequest;
 import com.elias.finanx.dto.budget.BudgetRequest;
 import com.elias.finanx.dto.budget.BudgetResponse;
@@ -27,7 +27,7 @@ public class BudgetController {
     @Operation(
             summary = "Listar presupuestos por usuario",
             description = "Obtiene todos los presupuestos de un usuario.",
-            operationId = "budgetFindAllByUser",
+            operationId = "findAllBudgetsByUser",
             tags = {"Budgets"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
@@ -43,7 +43,7 @@ public class BudgetController {
     @Operation(
             summary = "Listar por usuario y estado",
             description = "Obtiene presupuestos filtrados por estado.",
-            operationId = "budgetFindByUserAndState",
+            operationId = "findAllBudgetsByUserAndState",
             tags = {"Budgets"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
@@ -59,7 +59,7 @@ public class BudgetController {
     @Operation(
             summary = "Buscar presupuesto",
             description = "Obtiene un presupuesto por ID.",
-            operationId = "budgetFindById",
+            operationId = "findBudgetById",
             tags = {"Budgets"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Encontrado"),
@@ -74,11 +74,11 @@ public class BudgetController {
     @Operation(
             summary = "Crear presupuesto",
             description = "Crea un nuevo presupuesto.",
-            operationId = "budgetCreate",
+            operationId = "createBudget",
             tags = {"Budgets"},
             responses = {
                     @ApiResponse(responseCode = "201", description = "Creado"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos")
+                    @ApiResponse(responseCode = "400", description = "Datos invalidos")
             }
     )
     @PostMapping
@@ -87,27 +87,43 @@ public class BudgetController {
         return ResponseEntity.created(URI.create("/reasons/" + saved.getId())).body(saved);
     }
 
-    @Operation(summary = "Actualizar presupuesto", description = "Actualiza un presupuesto.", operationId = "budgetUpdate", tags = {"Budgets"})
+    @Operation(
+            summary = "Actualizar presupuesto",
+            description = "Actualiza un presupuesto.",
+            operationId = "updateBudget",
+            tags = {"Budgets"})
     @PutMapping("/{id}")
     public ResponseEntity<BudgetResponse> update(@PathVariable Long id, @Valid @RequestBody BudgetRequest request) {
         return ResponseEntity.ok(budgetService.update(id, request));
     }
 
-    @Operation(summary = "Cancelar presupuesto", description = "Cancela un presupuesto.", operationId = "budgetCancel", tags = {"Budgets"})
+    @Operation(
+            summary = "Cancelar presupuesto",
+            description = "Cancela un presupuesto.",
+            operationId = "cancelBudget",
+            tags = {"Budgets"})
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Void> cancel(@PathVariable Long id) {
         budgetService.cancel(id);
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Deshabilitar presupuesto", description = "Deshabilita un presupuesto.", operationId = "budgetDisable", tags = {"Budgets"})
+    @Operation(
+            summary = "Deshabilitar presupuesto",
+            description = "Deshabilita un presupuesto.",
+            operationId = "disableBudget",
+            tags = {"Budgets"})
     @PostMapping("/{id}/disable")
     public ResponseEntity<Void> disable(@PathVariable Long id) {
         budgetService.disable(id);
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Filtrar por salud", description = "Filtra presupuestos por health.", operationId = "budgetByHealth", tags = {"Budgets"})
+    @Operation(
+            summary = "Filtrar por salud",
+            description = "Filtra presupuestos por health.",
+            operationId = "findAllBudgetsByPeriodAndHealth",
+            tags = {"Budgets"})
     @PostMapping("/{health}")
     public ResponseEntity<TimeBoundList<BudgetResponse>> getBudgetsByHealth(
             @PathVariable BudgetHealth health,

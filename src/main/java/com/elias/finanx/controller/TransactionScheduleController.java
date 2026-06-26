@@ -23,7 +23,7 @@ public class TransactionScheduleController {
     @Operation(
             summary = "Listar programaciones de transacciones",
             description = "Obtiene programaciones de transacciones por usuario y estado.",
-            operationId = "transactionScheduleFindByUserAndState",
+            operationId = "findAllTScheduleByUserAndState",
             tags = {"Schedule-Transactions"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
