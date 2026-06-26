@@ -58,6 +58,7 @@ public class WebSecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
 
+                        .requestMatchers("/users/{id}/delete").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/users/{id}/disable").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/users/{id}/reset-data").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/users/**").hasAnyRole("SYSTEM")
