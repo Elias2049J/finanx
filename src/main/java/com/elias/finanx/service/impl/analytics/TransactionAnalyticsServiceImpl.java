@@ -16,13 +16,10 @@ import com.elias.finanx.mapper.CategoryMapper;
 import com.elias.finanx.mapper.DateMapper;
 import com.elias.finanx.mapper.ReasonMapper;
 import com.elias.finanx.mapper.TransactionMapper;
-import com.elias.finanx.repository.CategoryRepository;
-import com.elias.finanx.repository.ReasonRepository;
-import com.elias.finanx.repository.TransactionRepository;
-import com.elias.finanx.repository.UserRepository;
-import com.elias.finanx.service.InsightService;
+import com.elias.finanx.repository.*;
 import com.elias.finanx.service.analytics.TransactionAnalyticsService;
 import com.elias.finanx.util.PeriodForQuery;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
 
@@ -35,8 +32,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-
-@Service
+@Slf4j
+@Service("transactionAnalyticsService")
 public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implements TransactionAnalyticsService {
     protected final TransactionRepository transactionRepository;
     protected final CategoryRepository categoryRepository;
@@ -48,12 +45,13 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
     public TransactionAnalyticsServiceImpl(
             DateMapper dateMapper,
             UserRepository userRepository,
-            InsightService insightService,
             TransactionRepository transactionRepository,
             CategoryRepository categoryRepository,
-            ReasonRepository reasonRepository, TransactionMapper tMapper, ReasonMapper reasonMapper, CategoryMapper categoryMapper
-    ) {
-        super(dateMapper, userRepository, insightService);
+            ReasonRepository reasonRepository,
+            TransactionMapper tMapper,
+            ReasonMapper reasonMapper,
+            CategoryMapper categoryMapper) {
+        super(dateMapper, userRepository);
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.reasonRepository = reasonRepository;
@@ -63,7 +61,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
     }
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request, String prompt) throws HttpException, IOException {
+    public DashboardResponse buildDashboard(PeriodRequest request) throws HttpException, IOException {
         TransactionsDashboard td = new TransactionsDashboard();
         PromptRequest promptRequest = new PromptRequest();
 
@@ -90,8 +88,15 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
                 .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())
                 .toList();
 
+        log.info("Period for query: {}", pq);
 
-        PeriodResponse pr = dateMapper.toResponse(request);
+        BigDecimal balance = BigDecimal.ZERO;
+
+        PeriodResponse pr = dateMapper.toResponse(
+                new PeriodRequest(
+                        pq.getStart().atZoneSameInstant(zoneId).toLocalDate(),
+                        pq.getEnd().atZoneSameInstant(zoneId).toLocalDate(), u.getId()
+                ));
         td.setPeriodResponse(pr);
 
         List<TransactionResponse> income = new ArrayList<>();
@@ -100,7 +105,11 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         for (TransactionResponse t : all) {
             if (t.getType() == TransactionType.SPENT) {
                 spent.add(t);
-            } else income.add(t);
+                balance = balance.subtract(t.getAmount());
+            } else {
+                income.add(t);
+                balance = balance.add(t.getAmount());
+            }
         }
 
         TimeLine<TransactionResponse> expenses = this.buildTimeLine(
@@ -153,7 +162,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         );
 
         Ranking<ReasonSummary> riRanking = this.buildRanking(
-                "Top " + topN + " motivos de ingresos",
+                "Top " + topN + " fuentes de ingresos",
                 incomeByReason,
                 agg -> agg.getAggregate().getTotalAmount(),
                 topN
@@ -227,9 +236,10 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
 
         td.setTitle(title);
         td.setCreatedAt(createdAt);
+        td.setBalance(balance);
         td.setDailyExpenses(expenses);
         td.setDailyIncome(incomes);
-        td.setPeriodResponse(dateMapper.toResponse(request));
+        td.setPeriodResponse(pr);
         td.setTopSpentReasons(rsRanking);
         td.setTopIncomeReasons(riRanking);
         td.setTopCategories(cRanking);
@@ -237,18 +247,13 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         td.setSummaryByType(summaryByType);
         td.setSummaryByPaymentMethod(summaryByPaymentMethod);
         td.setAggregate(generalAggregate);
-
-        if (prompt != null && !prompt.isBlank()) {
-            promptRequest.setUserPrompt(prompt);
-            promptRequest.setContext(buildContextSummary(td));
-            td.setInsightSummary(this.generateSmartInsightSummary(promptRequest, 3));
-        } else td.setInsightSummary(this.generateDefaultInsightSummary(td, 3));
+        td.setInsightSummary(this.generateDefaultInsightSummary(td, 2));
 
         return td;
     }
 
     @Override
-    protected String buildContextSummary(DashboardResponse dr) {
+    public String buildContextSummary(DashboardResponse dr) {
         TransactionsDashboard td = (TransactionsDashboard) dr;
 
         BigDecimal totalIncome = td.getDailyIncome().getAggregate().getTotalAmount();
@@ -334,9 +339,21 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
             catInsight.setTitle("Categoría dominante: " + top.getAggregate().getFactorName());
             catInsight.setDescription("Concentra el %.1f%% del total movido (%s).".formatted(
                     share, top.getAggregate().getAggregate().getTotalAmount()));
-            catInsight.setAction(isHigh
-                    ? "Una sola categoría supera el 50% del gasto. Evalúa si hay oportunidad de reducirla."
-                    : "Distribución de categorías dentro del rango normal.");
+
+            TransactionType type = top.getAggregate().getFactor().getType();
+
+            if (isHigh) {
+                if (TransactionType.SPENT == type) {
+                    catInsight.setAction("Una sola categoría de gasto supera el 50%. Evalúa si hay oportunidad de reducirla.");
+                } else if (TransactionType.INCOME == type) {
+                    catInsight.setAction("Una sola categoría de ingreso supera el 50%. Considera diversificar tus fuentes para reducir riesgos.");
+                } else {
+                    catInsight.setAction("Una sola categoría concentra más del 50%. Evalúa si esa concentración es saludable.");
+                }
+            } else {
+                catInsight.setAction("Distribución de categorías dentro del rango normal.");
+            }
+
             insights.add(catInsight);
         }
 

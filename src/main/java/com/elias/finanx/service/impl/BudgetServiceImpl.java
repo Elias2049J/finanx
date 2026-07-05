@@ -188,7 +188,7 @@ public class BudgetServiceImpl implements BudgetService {
                                                 ".\n Total gastado: " + finalSpent +
                                                 " de " + b.getLimitAmount() +
                                                 ".\n Último movimiento:" +
-                                                "\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt()) +
+                                                "\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt(), zoneId) +
                                                 ",\n Monto: " + finalLastTx.getAmount() +
                                                 ",\n Método: " + finalLastTx.getPaymentMethod().getDisplayName()
                                 ));
@@ -212,7 +212,7 @@ public class BudgetServiceImpl implements BudgetService {
                                         "Has alcanzado tu porcentaje de alerta de presupuesto para: " + c.getName() +
                                                 ".\n Total: " + finalSpent +
                                                 ".\n Último movimiento:" +
-                                                "\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt()) +
+                                                "\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt(), zoneId) +
                                                 ",\n Monto: " + finalLastTx.getAmount() +
                                                 ",\n Método: " + finalLastTx.getPaymentMethod().getDisplayName()
                                 ));

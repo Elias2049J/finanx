@@ -72,7 +72,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public List<NotificationDTO> findAllByUser(Long userId) {
-        return notificationRepository.findAllByUser_IdAndStateIsNot(userId, NotificationState.DISCARD)
+        return notificationRepository.findAllByUser_IdAndStateIsNotOrderByCreatedAtDesc(userId, NotificationState.DISCARD)
                 .stream().map(notificationMapper::toResponse)
                 .toList();
     }

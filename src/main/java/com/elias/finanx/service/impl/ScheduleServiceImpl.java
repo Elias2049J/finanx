@@ -146,8 +146,6 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .toList();
     }
 
-    // ─── Estado ──────────────────────────────────────────────────────────────────
-
     @Transactional
     @Override
     public void disable(Long id) {
@@ -178,8 +176,6 @@ public class ScheduleServiceImpl implements ScheduleService {
         st.setState(ScheduleState.CANCELLED);
         scheduleRepository.save(st);
     }
-
-    // ─── Jobs schedulados ────────────────────────────────────────────────────────
 
     @Override
     @Transactional
@@ -228,7 +224,6 @@ public class ScheduleServiceImpl implements ScheduleService {
         );
     }
 
-    // ─── Ejecución individual ─────────────────────────────────────────────────────
 
     private Transaction executeTransactionSchedule(TransactionSchedule st) {
         OffsetDateTime executedAt = st.getNextRunAt();
@@ -252,7 +247,6 @@ public class ScheduleServiceImpl implements ScheduleService {
         OffsetDateTime executedAt = st.getNextRunAt();
         st.setLastRunAt(executedAt);
 
-        // Se calcula el próximo antes de avanzar para usarlo como fin del período del budget
         OffsetDateTime budgetEnd = rcService.computeNextRunAt(st)
                 .orElse(st.getRecurrenceRule().getEnd());
 
@@ -278,8 +272,6 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .end(budgetEnd)
                 .build();
     }
-
-    // ─── Motor de jobs ────────────────────────────────────────────────────────────
 
     private record RunResult(int created, int completed, int errored) {}
 
@@ -321,8 +313,6 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         return new RunResult(created.size(), completed, errored);
     }
-
-    // ─── Helpers ─────────────────────────────────────────────────────────────────
 
     private boolean isDue(Schedule st) {
         OffsetDateTime nowForUser = OffsetDateTime.now(st.getUser().getTimeZone().toZoneId());

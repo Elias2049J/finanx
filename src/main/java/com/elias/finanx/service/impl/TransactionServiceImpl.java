@@ -7,16 +7,16 @@ import com.elias.finanx.entity.Reason;
 import com.elias.finanx.entity.Transaction;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.TimeZone;
+import com.elias.finanx.entity.enums.TransactionType;
 import com.elias.finanx.mapper.TransactionMapper;
 import com.elias.finanx.repository.*;
-import com.elias.finanx.service.BudgetService;
-import com.elias.finanx.service.ReasonResolver;
-import com.elias.finanx.service.SavingGoalService;
-import com.elias.finanx.service.TransactionService;
+import com.elias.finanx.service.*;
 import lombok.RequiredArgsConstructor;
+import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -34,13 +34,16 @@ public class TransactionServiceImpl implements TransactionService {
     private final BudgetService budgetService;
     private final SavingGoalService savingGoalService;
     private final SavingGoalRepository sgRepository;
+    private final UserDataContextService userDataContextService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TransactionResponse create(TransactionRequest request) {
+    public TransactionResponse create(TransactionRequest request) throws HttpException, IOException {
         Transaction transaction = transactionMapper.toEntity(request);
         User user = userRepository.findById(request.getUserId()).orElseThrow();
         Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow();
+        boolean isSpent = transaction.getType() == TransactionType.SPENT;
+        boolean isIncome = transaction.getType() == TransactionType.INCOME;
 
         if (transaction.getType() != category.getType()) {
             throw new IllegalArgumentException("The category transactionType must be the same as transaction");
@@ -49,7 +52,9 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setCategory(category);
 
         if (request.getSavingGoalId() != null) {
-            transaction.setSavingGoal(sgRepository.getReferenceById(request.getSavingGoalId()));
+            if (isIncome) {
+                transaction.setSavingGoal(sgRepository.getReferenceById(request.getSavingGoalId()));
+            } else throw new IllegalArgumentException("Cannot associate a spent to a saving goal");
         }
 
         Reason reason = reasonResolver
@@ -59,6 +64,8 @@ public class TransactionServiceImpl implements TransactionService {
         Transaction saved = transactionRepository.save(transaction);
         budgetService.checkAllBudgets(request.getUserId());
         savingGoalService.checkAllSavingGoals(request.getUserId());
+        userDataContextService.updateUserDataContext(request.getUserId());
+
         return transactionMapper.toResponse(saved);
     }
 

@@ -47,12 +47,11 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
     public CategoryAnalyticsServiceImpl(
             DateMapper dateMapper,
             UserRepository userRepository,
-            InsightService insightService,
             TransactionRepository transactionRepository,
             CategoryRepository categoryRepository,
             ReasonRepository reasonRepository, TransactionMapper tMapper, ReasonMapper reasonMapper, CategoryMapper categoryMapper
     ) {
-        super(dateMapper, userRepository, insightService);
+        super(dateMapper, userRepository);
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.reasonRepository = reasonRepository;
@@ -62,7 +61,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
     }
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request, String prompt) {
+    public DashboardResponse buildDashboard(PeriodRequest request) {
         TransactionsDashboard td = new TransactionsDashboard();
 
         int topN = 5;
@@ -245,7 +244,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
     }
 
     @Override
-    protected String buildContextSummary(DashboardResponse dataSource) {
+    public String buildContextSummary(DashboardResponse dataSource) {
         return "";
     }
 

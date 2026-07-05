@@ -7,8 +7,6 @@ import com.elias.finanx.service.analytics.BudgetAnalyticsService;
 import com.elias.finanx.service.analytics.TransactionAnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,10 +35,9 @@ public class AnalyticsController {
     )
     @PostMapping("/dashboard/balance")
     public ResponseEntity<DashboardResponse> balance(
-            @Parameter(description = "Periodo") @Valid @RequestBody PeriodRequest request,
-            @Parameter(description = "Prompt opcional") @RequestParam(required = false) String prompt)
+            @Parameter(description = "Periodo") @Valid @RequestBody PeriodRequest request)
             throws HttpException, IOException {
-        return ResponseEntity.ok(tas.buildDashboard(request, prompt));
+        return ResponseEntity.ok(tas.buildDashboard(request));
     }
 
     @Operation(
@@ -55,10 +52,9 @@ public class AnalyticsController {
     )
     @PostMapping("/dashboard/budgets")
     public ResponseEntity<DashboardResponse> budgets(
-            @Valid @RequestBody PeriodRequest request,
-            @RequestParam(required = false) String prompt)
+            @Valid @RequestBody PeriodRequest request)
             throws HttpException, IOException {
-        return ResponseEntity.ok(bas.buildDashboard(request, prompt));
+        return ResponseEntity.ok(bas.buildDashboard(request));
     }
 
     @Operation(

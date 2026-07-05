@@ -25,6 +25,7 @@ public interface CategoryMapper{
 
     @Mapping(source = "categoryName", target = "name")
     @Mapping(source = "categoryId", target = "id")
+    @Mapping(source = "type", target = "type")
     CategorySummary toSummary(TransactionResponse response);
 
     default CategoryResponse toResponse(Category entity) {

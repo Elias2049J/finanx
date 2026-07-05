@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 request.getMethod(),
                 request.getRequestURI(),
-                "Ocurrió un Error",
+                "Ocurrio un Error",
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 LocalDateTime.now().toString()
         );
@@ -60,7 +60,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 request.getMethod(),
                 request.getRequestURI(),
-                "Ocurrió un error",
+                "Ocurrio un error",
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 LocalDateTime.now().toString()
         );

@@ -13,7 +13,6 @@ import com.elias.finanx.mapper.DateMapper;
 import com.elias.finanx.repository.BudgetRepository;
 import com.elias.finanx.repository.TransactionRepository;
 import com.elias.finanx.repository.UserRepository;
-import com.elias.finanx.service.InsightService;
 import com.elias.finanx.service.analytics.BudgetAnalyticsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +29,11 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
 
     public BudgetAnalyticsServiceImpl(DateMapper dateMapper,
                                       UserRepository userRepository,
-                                      InsightService insightService,
+
                                       BudgetRepository bRepository,
                                       TransactionRepository tRepository, BudgetMapper budgetMapper
     ) {
-        super(dateMapper, userRepository, insightService);
+        super(dateMapper, userRepository);
         this.bRepository = bRepository;
         this.tRepository = tRepository;
         this.budgetMapper = budgetMapper;
@@ -53,7 +52,7 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
 
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request, String prompt) {
+    public DashboardResponse buildDashboard(PeriodRequest request) {
         List<Budget> budgets = findBudgets(request);
 
         BigDecimal totalBudgetLimitAmount = budgets
@@ -87,7 +86,7 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
     }
 
     @Override
-    protected String buildContextSummary(DashboardResponse t) {
+    public String buildContextSummary(DashboardResponse t) {
         return "";
     }
 
@@ -116,8 +115,8 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
         e.setRemainingAmount(r);
         e.setState(b.getState());
         e.setHealth(b.getHealth());
-        e.setStart(b.getStart().toLocalDateTime());
-        e.setEnd(b.getEnd().toLocalDateTime());
+        e.setStart(b.getStart().atZoneSameInstant(b.getUser().getTimeZone().toZoneId()).toLocalDateTime());
+        e.setEnd(b.getEnd().atZoneSameInstant(b.getUser().getTimeZone().toZoneId()).toLocalDateTime());
         e.setAlertable(b.getAlertable());
         e.setDescription(b.getDescription());
         e.setPercentAlert(b.getPercentAlert());

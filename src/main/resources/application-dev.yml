@@ -7,6 +7,8 @@ app:
     jwks: "https://www.googleapis.com/oauth2/v3/certs"
   front-url: "http://localhost:4200"
   front-url-https: "https://localhost:4200"
+  ai:
+    max-user-prompt-length: 500
 
 spring:
   application:

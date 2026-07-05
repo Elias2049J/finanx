@@ -1,5 +1,6 @@
 package com.elias.finanx.dto.category;
 
+import com.elias.finanx.entity.enums.TransactionType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -22,5 +23,11 @@ public class CategorySummary {
             example = "Transporte"
     )
     private String name;
+
+    @Schema(
+            description = "Tipo de la categoria",
+            example = "SPENT"
+    )
+    private TransactionType type;
 }
 

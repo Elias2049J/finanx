@@ -18,7 +18,6 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
     public Optional<OffsetDateTime> computeNextRunAt(Schedule st) {
         RecurrenceRule rule = st.getRecurrenceRule();
 
-        // Base de cálculo: nextRunAt tiene precedencia sobre lastRunAt
         OffsetDateTime baseOdt = st.getNextRunAt() != null
                 ? st.getNextRunAt()
                 : st.getLastRunAt();
@@ -40,8 +39,6 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
             case NONE    -> throw new IllegalStateException("Unexpected recurrence type NONE");
         };
 
-        // Un único chequeo contra el end de la regla en la zona del usuario,
-        // evitando la doble comparación redundante (Instant + LocalDate) que había antes
         LocalDate endDate = rule.getEnd().toInstant().atZone(zone).toLocalDate();
         if (candidate.toLocalDate().isAfter(endDate)) {
             return Optional.empty();
@@ -51,12 +48,12 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
     }
 
     /**
-     * Calcula el próximo disparo semanal.
-     *
+     * Calcula el proximo disparo semanal.
+     * <p>
      * - Sin dayOfWeek: avanza exactamente `interval` semanas desde base.
-     * - Con dayOfWeek: busca el próximo día de la semana indicado a partir de base,
+     * - Con dayOfWeek: busca el proximo dia de la semana indicado a partir de base,
      *   respetando el intervalo de semanas (salta a la semana base + interval si el
-     *   día target ya pasó o es hoy en la semana actual).
+     *   dia target ya paso o es hoy en la semana actual).
      */
     private ZonedDateTime nextWeekly(ZonedDateTime base, RecurrenceRule rule, int interval) {
         DayOfWeek target = rule.getDayOfWeek();
@@ -65,12 +62,10 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
             return base.plusWeeks(interval);
         }
 
-        int baseVal   = base.getDayOfWeek().getValue();  // 1=Mon … 7=Sun
+        int baseVal   = base.getDayOfWeek().getValue();
         int targetVal = target.getValue();
         int delta     = targetVal - baseVal;
 
-        // Si el día target ya ocurrió esta semana (o es hoy), avanzamos
-        // al comienzo de la próxima ventana de `interval` semanas
         if (delta <= 0) {
             delta += 7 * interval;
         }
@@ -81,7 +76,7 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
     private ZonedDateTime nextMonthly(ZonedDateTime base, int interval) {
         int desiredDay = base.getDayOfMonth();
         ZonedDateTime plus = base.plusMonths(interval);
-        // Clampea al último día del mes si el mes destino es más corto
+        // Clampea al último dia del mes si el mes destino es más corto
         int day = Math.min(desiredDay, plus.toLocalDate().lengthOfMonth());
         return plus.withDayOfMonth(day);
     }
@@ -90,7 +85,7 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
         int desiredDay   = base.getDayOfMonth();
         int desiredMonth = base.getMonthValue();
         ZonedDateTime plus = base.plusYears(interval);
-        // Clampea día (e.g. 29-feb en año no bisiesto → 28-feb)
+        // Clampea dia (e.g. 29-feb en año no bisiesto → 28-feb)
         int day = Math.min(desiredDay, LocalDate.of(plus.getYear(), desiredMonth, 1).lengthOfMonth());
         return plus.withMonth(desiredMonth).withDayOfMonth(day);
     }

@@ -13,12 +13,17 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "Dashboard de transacciones con rankings y lineas de tiempo de ingresos y gastos")
 public class TransactionsDashboard extends DashboardResponse {
+
+    @Schema(description = "Balance del periodo")
+    private BigDecimal balance;
 
     @Schema(
             description = "Ranking de categorias con metricas resumidas"

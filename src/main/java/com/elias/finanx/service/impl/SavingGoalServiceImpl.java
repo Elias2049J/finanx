@@ -130,7 +130,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
                                 .append(". El último movimiento fue de ")
                                 .append(last.getAmount())
                                 .append(" el ")
-                                .append(dateMapper.toStringES(last.getCreatedAt()))
+                                .append(dateMapper.toStringES(last.getCreatedAt(), u.getTimeZone().toZoneId()))
                                 .append(". ¡Excelente disciplina financiera!")
                                 .toString())
                 );

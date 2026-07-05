@@ -98,5 +98,6 @@ public interface ScheduleMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", source = "lastRunAt")
     @Mapping(target = "schedule", source = "st")
+    @Mapping(source = "transactionType", target = "type")
     Transaction toTransaction(TransactionSchedule st);
 }

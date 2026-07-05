@@ -2,13 +2,15 @@ package com.elias.finanx.service;
 
 import com.elias.finanx.dto.transaction.TransactionRequest;
 import com.elias.finanx.dto.transaction.TransactionResponse;
+import org.apache.http.HttpException;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 public interface TransactionService {
-    TransactionResponse create(TransactionRequest request);
+    TransactionResponse create(TransactionRequest request) throws HttpException, IOException;
     TransactionResponse update(Long id, TransactionRequest request);
     TransactionResponse findById(Long id);
     List<TransactionResponse> findAllByUser(Long userId);

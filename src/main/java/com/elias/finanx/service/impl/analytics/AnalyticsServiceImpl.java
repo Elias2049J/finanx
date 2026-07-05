@@ -9,7 +9,6 @@ import com.elias.finanx.dto.date.PeriodResponse;
 import com.elias.finanx.entity.User;
 import com.elias.finanx.mapper.DateMapper;
 import com.elias.finanx.repository.UserRepository;
-import com.elias.finanx.service.InsightService;
 import com.elias.finanx.service.analytics.AnalyticsService;
 import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
@@ -32,17 +31,15 @@ import static java.math.RoundingMode.HALF_UP;
 public abstract class AnalyticsServiceImpl implements AnalyticsService {
     protected final DateMapper dateMapper;
     protected final UserRepository userRepository;
-    protected final InsightService insightService;
 
-    public AnalyticsServiceImpl(DateMapper dateMapper, UserRepository userRepository, InsightService insightService) {
+    public AnalyticsServiceImpl(DateMapper dateMapper, UserRepository userRepository) {
         this.dateMapper = dateMapper;
         this.userRepository = userRepository;
-        this.insightService = insightService;
     }
 
     @Transactional(readOnly = true)
     @Override
-    public abstract DashboardResponse buildDashboard(PeriodRequest request, String prompt) throws HttpException, IOException;
+    public abstract DashboardResponse buildDashboard(PeriodRequest request) throws HttpException, IOException;
 
     protected Aggregate buildAggregate(
             String title,
@@ -241,13 +238,9 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
         return total;
     }
 
-    protected InsightSummary generateSmartInsightSummary(PromptRequest prompt, int count) throws HttpException, IOException {
-        return insightService.getInsights(prompt, count);
-    }
-
     protected abstract InsightSummary generateDefaultInsightSummary(DashboardResponse dataSource, int count);
 
-    protected abstract String buildContextSummary(DashboardResponse dataSource);
+    public abstract String buildContextSummary(DashboardResponse dataSource);
 
     protected <F> String formatRanking(Ranking<F> ranking, int limit) {
         if (ranking == null || ranking.getItems() == null || ranking.getItems().isEmpty())

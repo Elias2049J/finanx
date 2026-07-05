@@ -12,7 +12,6 @@ import org.mapstruct.Named;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 
 @Mapper(componentModel = "spring")
@@ -62,6 +61,19 @@ public interface DateMapper {
     default PeriodForQuery toSmartMonthlyPeriod(LocalDate start, LocalDate end, ZoneId zoneId, Long userId) {
         LocalDate adjustedStart = YearMonth.from(start).atDay(1);
 
+        LocalDate adjustedEnd = YearMonth.from(end).atEndOfMonth();
+
+        OffsetDateTime startOffset = adjustedStart.atStartOfDay(zoneId).toOffsetDateTime();
+        OffsetDateTime endOffset   = adjustedEnd.atTime(23,59,59).atZone(zoneId).toOffsetDateTime();
+
+        return new PeriodForQuery(startOffset, endOffset, userId);
+    }
+/*
+
+    @Named("ToPeriodQuery")
+    default PeriodForQuery toSmartMonthlyPeriod(LocalDate start, LocalDate end, ZoneId zoneId, Long userId) {
+        LocalDate adjustedStart = YearMonth.from(start).atDay(1);
+
         LocalDate lastDayPrevMonth = YearMonth.from(end.minusMonths(1)).atEndOfMonth();
         LocalDate lastDayCurrent   = YearMonth.from(end).atEndOfMonth();
         LocalDate lastDayNext      = YearMonth.from(end.plusMonths(1)).atEndOfMonth();
@@ -83,16 +95,16 @@ public interface DateMapper {
         OffsetDateTime endOffset   = adjustedEnd.atTime(23,59,59).atZone(zoneId).toOffsetDateTime();
 
         return new PeriodForQuery(startOffset, endOffset, userId);
-    }
+    }*/
 
     @Named("OffsetToStringES")
-    default String toStringES(OffsetDateTime dateTime) {
-        if (dateTime == null) return null;
+    default String toStringES(OffsetDateTime dateTime, ZoneId zoneId) {
+        if (dateTime == null || zoneId == null) return null;
 
         DateTimeFormatter formatter = DateTimeFormatter
                 .ofPattern("d 'de' MMMM 'de' yyyy 'a las' h:mma", Locale.of("es", "ES"));
 
-        return dateTime.format(formatter);
+        return dateTime.atZoneSameInstant(zoneId).format(formatter);
     }
 
 }
