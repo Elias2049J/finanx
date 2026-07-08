@@ -39,3 +39,4 @@ application.yml
 /claude/
 /out/
 opencode.json
+/doc/

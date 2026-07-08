@@ -4,6 +4,7 @@ import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.SubscriptionPlan;
 import com.elias.finanx.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -15,6 +16,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 
+@Slf4j
 @Aspect
 @Component
 @RequiredArgsConstructor
@@ -27,10 +29,17 @@ public class RequiresPlanAspect {
         Long userId = resolveSubjectUserId(pjp);
         SubscriptionPlan currentPlan = subscriptionService.getActivePlanFor(userId);
 
+        log.info("Verificando plan para usuario {}: actual={}, requerido={}",
+                userId, currentPlan, Arrays.toString(requiresPlan.value()));
+
         boolean allowed = Arrays.asList(requiresPlan.value()).contains(currentPlan);
         if (!allowed) {
+            log.warn("Acceso denegado para usuario {}: requiere={}, actual={}",
+                    userId, Arrays.toString(requiresPlan.value()), currentPlan);
             throw new PlanRequiredException(requiresPlan.value(), currentPlan);
         }
+
+        log.info("Acceso permitido para usuario {} con plan {}", userId, currentPlan);
         return pjp.proceed();
     }
 
@@ -39,6 +48,9 @@ public class RequiresPlanAspect {
         Method method = signature.getMethod();
         Parameter[] parameters = method.getParameters();
         Object[] args = pjp.getArgs();
+
+        log.debug("Resolviendo @PlanSubject en {}.{}",
+                method.getDeclaringClass().getSimpleName(), method.getName());
 
         for (int i = 0; i < parameters.length; i++) {
             if (hasPlanSubject(parameters[i])) {
