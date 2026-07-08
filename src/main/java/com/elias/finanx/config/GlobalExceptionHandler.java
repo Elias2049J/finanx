@@ -1,6 +1,8 @@
 package com.elias.finanx.config;
 
 import com.elias.finanx.dto.ErrorResponse;
+import com.elias.finanx.exception.SubscriptionNotFoundException;
+import com.elias.finanx.exception.UserPreferencesNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -40,6 +42,32 @@ public class GlobalExceptionHandler {
         );
         log.warn("[handleIllegalArgument] Exception at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error, ex);
         return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(UserPreferencesNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePreferencesNotFound(UserPreferencesNotFoundException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND.value(),
+                LocalDateTime.now().toString()
+        );
+        log.warn("[handlePreferencesNotFound] Preferences not found at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(SubscriptionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSubscriptionNotFound(SubscriptionNotFoundException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND.value(),
+                LocalDateTime.now().toString()
+        );
+        log.warn("[handleSubscriptionNotFound] Subscription not found at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
     @ExceptionHandler(NullPointerException.class)

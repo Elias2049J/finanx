@@ -3,6 +3,7 @@ package com.elias.finanx.adapter.auth;
 import com.elias.finanx.dto.auth.GoogleIdTokenPayload;
 import com.elias.finanx.dto.auth.GoogleLoginRequest;
 import com.elias.finanx.dto.auth.LoginResponse;
+import com.elias.finanx.dto.user.UserPreferencesRequest;
 import com.elias.finanx.dto.user.UserRequest;
 import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.User;
@@ -11,6 +12,7 @@ import com.elias.finanx.entity.enums.TimeZone;
 import com.elias.finanx.mapper.UserMapper;
 import com.elias.finanx.repository.UserRepository;
 import com.elias.finanx.service.JwtTokenService;
+import com.elias.finanx.service.UserPreferencesService;
 import com.elias.finanx.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     private final JwtTokenService jwtTokenService;
     private final UserMapper userMapper;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    private final UserPreferencesService preferencesService;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
@@ -61,15 +64,14 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
         if (user.getLastname() == null || user.getLastname().isBlank()) {
             user.setLastname(payload.familyName());
         }
-        if (user.getTimeZone() == null) {
-            user.setTimeZone(TimeZone.AMERICA_LIMA);
-        }
         if (user.getRole() == null) {
             user.setRole(Role.USER);
         }
         if (user.getMoneyBalance() == null) {
             user.setMoneyBalance(BigDecimal.ZERO);
         }
+
+        preferencesService.getOrCreateDefaults(user.getId());
 
         String token = jwtTokenService.generateToken(user);
         UserResponse userDto = userMapper.toResponse(user);
@@ -99,7 +101,12 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
         request.setName(payload.givenName());
         request.setLastname(payload.familyName());
         request.setPassword(randomSecret());
-        request.setTimeZone(TimeZone.AMERICA_LIMA);
+
+        UserPreferencesRequest prefsReq = new UserPreferencesRequest();
+        prefsReq.setTimeZone(TimeZone.AMERICA_LIMA);
+        prefsReq.setCurrencyCode("PEN");
+        prefsReq.setEmailNotifications(true);
+        request.setPreferences(prefsReq);
 
         return userService.register(request);
     }

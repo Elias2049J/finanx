@@ -12,8 +12,11 @@ import com.elias.finanx.entity.UserDataContext;
 import com.elias.finanx.entity.enums.ChatRole;
 import com.elias.finanx.entity.enums.ChatSessionState;
 import com.elias.finanx.entity.enums.ChatSkill;
+import com.elias.finanx.entity.enums.SubscriptionPlan;
 import com.elias.finanx.mapper.ChatMessageMapper;
 import com.elias.finanx.mapper.ChatSessionMapper;
+import com.elias.finanx.plan.gating.PlanSubject;
+import com.elias.finanx.plan.gating.RequiresPlan;
 import com.elias.finanx.port.ChatPort;
 import com.elias.finanx.repository.ChatMessageRepository;
 import com.elias.finanx.repository.ChatSessionRepository;
@@ -57,7 +60,8 @@ public class ChatBotServiceImpl implements ChatBotService {
 
     @Transactional
     @Override
-    public ChatSessionResponse startSession(Long userId) {
+    @RequiresPlan(SubscriptionPlan.PREMIUM)
+    public ChatSessionResponse startSession(@PlanSubject Long userId) {
         User user = userRepository.findById(userId).orElseThrow();
         UserDataContext dataContext = userDataContextService.getUserDataContext(userId);
 
@@ -118,7 +122,8 @@ public class ChatBotServiceImpl implements ChatBotService {
      */
     @Transactional
     @Override
-    public ChatMessageResponse sendMessage(Long sessionId, Long userId, String rawUserPrompt) {
+    @RequiresPlan(SubscriptionPlan.PREMIUM)
+    public ChatMessageResponse sendMessage(Long sessionId, @PlanSubject Long userId, String rawUserPrompt) {
         ChatSession session = getSessionEntity(sessionId, userId);
         ZoneId userZoneId = userRepository.findById(userId).orElseThrow().getTimeZone().toZoneId();
 

@@ -5,7 +5,7 @@ import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.User;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring", uses = DateMapper.class)
+@Mapper(componentModel = "spring", uses = {DateMapper.class, UserPreferencesMapper.class})
 public interface UserMapper{
 
     @Mapping(target = "id", ignore = true)
@@ -25,10 +25,10 @@ public interface UserMapper{
     @Mapping(target = "state", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "disabledAt", ignore = true)
+    @Mapping(target = "preferences", ignore = true)
     void updateFromDto(UserRequest dto, @MappingTarget User entity);
 
     default UserResponse toResponse(User entity) {
         return toResponseWithContext(entity, entity);
     }
 }
-

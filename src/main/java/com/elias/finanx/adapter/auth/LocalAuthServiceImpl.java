@@ -7,6 +7,7 @@ import com.elias.finanx.entity.User;
 import com.elias.finanx.mapper.UserMapper;
 import com.elias.finanx.service.AuthService;
 import com.elias.finanx.service.JwtTokenService;
+import com.elias.finanx.service.UserPreferencesService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,6 +24,7 @@ public class LocalAuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenService jwtTokenService;
+    private final UserPreferencesService preferencesService;
 
     @Override
     public LoginResponse login(LoginRequest request) {
@@ -35,6 +37,7 @@ public class LocalAuthServiceImpl implements AuthService {
 
         UserResponse userDto = null;
         if (userDetails instanceof User u) {
+            preferencesService.getOrCreateDefaults(u.getId());
             userDto = userMapper.toResponse(u);
         }
 

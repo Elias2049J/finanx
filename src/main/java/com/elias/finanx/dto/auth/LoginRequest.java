@@ -13,7 +13,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-@Schema(description = "Solicitud de login interno con email y contraseña")
+@Schema(description = "Solicitud de login interno con email y contrasena")
 public class LoginRequest {
 
     @NotBlank
@@ -25,8 +25,8 @@ public class LoginRequest {
 
     @NotBlank
     @Schema(
-            description = "Contraseña del usuario",
-            example = "MiContraseñaSegura123"
+            description = "Contrasena del usuario",
+            example = "MiContrasenaSegura123"
     )
     private String password;
 }

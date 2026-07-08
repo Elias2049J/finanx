@@ -30,10 +30,10 @@ public class SavingGoal {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "descripcion", nullable = false)
     private String description;
 
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Column(name = "monto_objetivo", nullable = false, precision = 12, scale = 2)
     private BigDecimal targetAmount;
 
     @Column(name = "fecha_limite")

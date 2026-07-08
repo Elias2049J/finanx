@@ -23,20 +23,20 @@ public class RecurrenceRule {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "recurrence_type", nullable = false, length = 20)
+    @Column(name = "tipo_recurrencia", nullable = false, length = 20)
     private RecurrenceType recurrenceType;
 
-    @Column(name = "interval_value", nullable = false)
+    @Column(name = "valor_intervalo", nullable = false)
     private int interval;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "dia_semana", length = 20)
     private DayOfWeek dayOfWeek;
 
-    @Column(name = "start_date", nullable = false)
+    @Column(name = "fecha_inicio", nullable = false)
     private OffsetDateTime start;
 
-    @Column(name = "end_date")
+    @Column(name = "fecha_fin")
     private OffsetDateTime end;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

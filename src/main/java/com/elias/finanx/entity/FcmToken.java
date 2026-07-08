@@ -32,13 +32,13 @@ public class FcmToken {
     @Column(name = "token", nullable = false, length = 500)
     private String token;
 
-    @Column(name = "device_name", length = 200)
+    @Column(name = "nombre_dispositivo", length = 200)
     private String deviceName;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "fecha_actualizacion", nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

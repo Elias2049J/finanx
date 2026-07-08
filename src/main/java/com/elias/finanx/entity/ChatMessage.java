@@ -28,6 +28,7 @@ public class ChatMessage {
     private Integer turnNumber;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "rol")
     private ChatRole role;
 
     @Column(columnDefinition = "TEXT", name = "mensaje")
@@ -50,7 +51,7 @@ public class ChatMessage {
     private Long latencyMs;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(name = "metadatos", columnDefinition = "jsonb")
     private Map<String, Object> metadata;
 
     @Column(name = "fecha_creacion")

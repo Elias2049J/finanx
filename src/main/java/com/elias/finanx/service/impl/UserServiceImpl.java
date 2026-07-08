@@ -11,6 +11,7 @@ import com.elias.finanx.entity.User;
 import com.elias.finanx.mapper.UserMapper;
 import com.elias.finanx.repository.*;
 import com.elias.finanx.service.UserService;
+import com.elias.finanx.service.UserPreferencesService;
 import com.elias.finanx.service.JwtTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final ReasonRepository reasonRepository;
     private final BudgetScheduleRepository budgetScheduleRepository;
     private final TransactionScheduleRepository transactionScheduleRepository;
+    private final UserPreferencesRepository preferencesRepository;
+    private final UserPreferencesService preferencesService;
 
     @Override
     @Transactional
@@ -56,6 +59,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         user.setEmail(request.getEmail().trim().toLowerCase());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        if (user.getPreferences() != null) {
+            user.getPreferences().setUser(user);
+        }
 
         User saved = userRepository.save(user);
 
@@ -113,6 +120,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         User existing = userRepository.findById(id).orElseThrow();
         userMapper.updateFromDto(request, existing);
         existing.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        if (request.getPreferences() != null) {
+            preferencesService.update(id, request.getPreferences());
+        }
+
         return userMapper.toResponse(userRepository.save(existing));
     }
 
@@ -170,7 +182,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         Category healthCare = new Category();
         healthCare.setType(TransactionType.SPENT);
         healthCare.setName("Salud");
-        healthCare.setDescription("Gastos médicos, seguros de salud, farmacia y atención hospitalaria.");
+        healthCare.setDescription("Gastos medicos, seguros de salud, farmacia y atencion hospitalaria.");
 
         Category entertainment = new Category();
         entertainment.setType(TransactionType.SPENT);
@@ -179,8 +191,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         Category utilities = new Category();
         utilities.setType(TransactionType.SPENT);
-        utilities.setName("Servicios Básicos");
-        utilities.setDescription("Pagos de servicios como agua, luz, gas, internet, telefonía, etc.");
+        utilities.setName("Servicios Basicos");
+        utilities.setDescription("Pagos de servicios como agua, luz, gas, internet, telefonia, etc.");
 
         Category housing = new Category();
         housing.setType(TransactionType.SPENT);
@@ -190,16 +202,16 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         Category transport = new Category();
         transport.setType(TransactionType.SPENT);
         transport.setName("Transporte");
-        transport.setDescription("Gastos en pasajes de transporte público y afines.");
+        transport.setDescription("Gastos en pasajes de transporte publico y afines.");
 
         Category education = new Category();
         education.setType(TransactionType.SPENT);
-        education.setName("Educación");
-        education.setDescription("Formación académica y profesional: matrículas, cursos, libros, etc.");
+        education.setName("Educacion");
+        education.setDescription("Formacion academica y profesional: matriculas, cursos, libros, etc.");
 
         Category food = new Category();
         food.setType(TransactionType.SPENT);
-        food.setName("Alimentación");
+        food.setName("Alimentacion");
         food.setDescription("Alimentos, restaurantes, mercado y productos de consumo diario.");
 
 
@@ -228,6 +240,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     private void deleteUserData(Long userId) {
+        preferencesRepository.deleteByUserId(userId);
+
         savingGoalRepository.deleteAllByUser_Id(userId);
         logDelete(userId, "savingGoals");
 

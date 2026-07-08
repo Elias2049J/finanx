@@ -14,7 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.List;
 
@@ -45,10 +45,6 @@ public class User implements UserDetails {
     @Column(name = "balance")
     private BigDecimal moneyBalance;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "zona_horaria")
-    private TimeZone timeZone;
-
     @Column(name = "email", unique = true, nullable = false)
     private String email;
 
@@ -62,8 +58,8 @@ public class User implements UserDetails {
     @Column(name = "rol")
     private Role role;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<FcmToken> fcmTokens = new ArrayList<>();
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private UserPreferences preferences;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
@@ -93,14 +89,23 @@ public class User implements UserDetails {
     @PrePersist
     protected void onCreate() {
         if (createdAt == null)
-            createdAt = OffsetDateTime.now(timeZone.toZoneId());
+            createdAt = OffsetDateTime.now(ZoneId.of("America/Lima"));
         if (state == null)
             state = UserState.ENABLED;
-        if (moneyBalance == null) {
+        if (moneyBalance == null)
             moneyBalance = BigDecimal.ZERO;
-        }
         if (role == null)
             role = Role.USER;
+    }
+
+    @Transient
+    public TimeZone getTimeZone() {
+        return preferences != null ? preferences.getTimeZone() : TimeZone.AMERICA_LIMA;
+    }
+
+    @Transient
+    public List<FcmToken> getFcmTokens() {
+        return preferences != null ? preferences.getFcmTokens() : List.of();
     }
 
     @Override

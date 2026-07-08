@@ -1,7 +1,6 @@
 package com.elias.finanx.dto.user;
 
 import com.elias.finanx.entity.enums.Role;
-import com.elias.finanx.entity.enums.TimeZone;
 import com.elias.finanx.entity.enums.UserState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -50,7 +49,7 @@ public class UserResponse {
     @Schema(description = "Nombre completo del usuario en formato concatenado", example = "JORGE JACKSON VALDIVIA TORREON")
     private String fullName;
 
-    @Schema(description = "Zona horaria preferida del usuario", implementation = TimeZone.class, example = "AMERICA_LIMA")
-    private TimeZone timeZone;
+    @Schema(description = "Preferencias del usuario")
+    private UserPreferencesResponse preferences;
 }
 
