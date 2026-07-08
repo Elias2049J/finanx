@@ -1,4 +1,4 @@
-package com.elias.finanx;
+package com.elias.mismonedas;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -8,10 +8,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @ConfigurationPropertiesScan
 @SpringBootApplication
-public class FinanxApplication {
+public class MisMonedasApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(FinanxApplication.class, args);
+        SpringApplication.run(MisMonedasApplication.class, args);
     }
 
 }

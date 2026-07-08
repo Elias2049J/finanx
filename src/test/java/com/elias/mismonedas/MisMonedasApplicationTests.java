@@ -1,10 +1,10 @@
-package com.elias.finanx;
+package com.elias.mismonedas;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class FinanxApplicationTests {
+class MisMonedasApplicationTests {
 
     @Test
     void contextLoads() {
