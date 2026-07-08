@@ -27,7 +27,7 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
     @Override
     @Transactional(readOnly = true)
     public UserPreferencesResponse findByUserId(Long userId) {
-        UserPreferences prefs = repository.findByUserId(userId)
+        UserPreferences prefs = repository.findByUser_Id(userId)
                 .orElseThrow(() -> new UserPreferencesNotFoundException(userId));
         return mapper.toResponse(prefs);
     }
@@ -38,7 +38,7 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-        return repository.findByUserId(userId)
+        return repository.findByUser_Id(userId)
                 .map(mapper::toResponse)
                 .orElseGet(() -> {
                     UserPreferencesRequest defaults = new UserPreferencesRequest();
@@ -55,7 +55,7 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-        if (repository.findByUserId(userId).isPresent()) {
+        if (repository.findByUser_Id(userId).isPresent()) {
             throw new RuntimeException("Preferences already exist for user " + userId);
         }
 
@@ -72,7 +72,7 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-        UserPreferences prefs = repository.findByUserId(userId)
+        UserPreferences prefs = repository.findByUser_Id(userId)
                 .orElseThrow(() -> new UserPreferencesNotFoundException(userId));
 
         mapper.updateFromDto(request, prefs);

@@ -240,7 +240,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     private void deleteUserData(Long userId) {
-        preferencesRepository.deleteByUserId(userId);
+        preferencesRepository.deleteByUser_Id(userId);
 
         savingGoalRepository.deleteAllByUser_Id(userId);
         logDelete(userId, "savingGoals");

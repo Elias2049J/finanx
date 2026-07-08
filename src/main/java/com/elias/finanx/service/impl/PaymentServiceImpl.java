@@ -70,7 +70,7 @@ public class PaymentServiceImpl implements PaymentService {
     public List<PaymentResponse> findAllByUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id " + userId));
-        return paymentRepository.findAllByUserId(userId).stream()
+        return paymentRepository.findAllByUser_Id(userId).stream()
                 .map(paymentMapper::toResponse)
                 .toList();
     }
@@ -78,7 +78,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(readOnly = true)
     public List<PaymentResponse> findAllBySubscription(Long subscriptionId) {
-        return paymentRepository.findAllBySubscriptionId(subscriptionId).stream()
+        return paymentRepository.findAllBySubscription_Id(subscriptionId).stream()
                 .map(paymentMapper::toResponse)
                 .toList();
     }
@@ -168,7 +168,7 @@ public class PaymentServiceImpl implements PaymentService {
     public List<Receipt> findAllReceiptsByUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id " + userId));
-        return paymentRepository.findAllByUserIdAndState(userId, PaymentState.COMPLETED).stream()
+        return paymentRepository.findAllByUser_IdAndState(userId, PaymentState.COMPLETED).stream()
                 .map(p -> paymentMapper.toReceipt(p, user))
                 .toList();
     }

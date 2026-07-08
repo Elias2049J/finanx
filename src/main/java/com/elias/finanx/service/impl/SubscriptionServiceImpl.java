@@ -21,7 +21,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     public SubscriptionPlan getActivePlanFor(Long userId) {
         Optional<Subscription> active = subscriptionRepository
-                .findFirstByUserIdAndStateOrderByCreatedAtDesc(userId, SubscriptionState.ACTIVE);
+                .findFirstByUser_IdAndStateOrderByCreatedAtDesc(userId, SubscriptionState.ACTIVE);
 
         if (active.isPresent()) {
             SubscriptionPlan plan = active.get().getPlan();

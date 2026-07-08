@@ -31,11 +31,11 @@ public class FcmTokenController {
     }
 
     @Operation(summary = "Eliminar token FCM", operationId = "removeFcmToken")
-    @DeleteMapping("/{token}")
+    @DeleteMapping("/{tokenId}")
     public ResponseEntity<Void> remove(
             @PathVariable Long userId,
-            @PathVariable String token) {
-        fcmTokenService.remove(userId, token);
+            @PathVariable Long tokenId) {
+        fcmTokenService.remove(userId, tokenId);
         return ResponseEntity.noContent().build();
     }
 

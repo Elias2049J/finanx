@@ -29,7 +29,7 @@ public class FcmTokenServiceImpl implements FcmTokenService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userId));
 
-        FcmToken existing = fcmTokenRepository.findByUserIdAndToken(userId, request.getToken())
+        FcmToken existing = fcmTokenRepository.findByUser_IdAndToken(userId, request.getToken())
                 .orElse(null);
 
         if (existing != null) {
@@ -54,15 +54,22 @@ public class FcmTokenServiceImpl implements FcmTokenService {
 
     @Override
     @Transactional
-    public void remove(Long userId, String token) {
-        fcmTokenRepository.deleteByUserIdAndToken(userId, token);
-        log.info("Token FCM eliminado para userId={}", userId);
+    public void remove(Long userId, Long tokenId) {
+        FcmToken token = fcmTokenRepository.findById(tokenId)
+                .orElseThrow(() -> new RuntimeException("Token FCM no encontrado: " + tokenId));
+        if (!token.getUser().getId().equals(userId)) {
+            log.warn("Intento de eliminar token ajeno: userId={}, tokenId={}, propietario={}",
+                    userId, tokenId, token.getUser().getId());
+            throw new RuntimeException("El token FCM no pertenece al usuario " + userId);
+        }
+        fcmTokenRepository.deleteById(tokenId);
+        log.info("Token FCM eliminado con id={}", tokenId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<FcmTokenResponse> findAllByUser(Long userId) {
-        return fcmTokenRepository.findAllByUserId(userId)
+        return fcmTokenRepository.findAllByUser_Id(userId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -71,7 +78,7 @@ public class FcmTokenServiceImpl implements FcmTokenService {
     @Override
     @Transactional(readOnly = true)
     public List<String> getActiveTokenValues(Long userId) {
-        return fcmTokenRepository.findAllByUserId(userId)
+        return fcmTokenRepository.findAllByUser_Id(userId)
                 .stream()
                 .map(FcmToken::getToken)
                 .toList();

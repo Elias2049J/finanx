@@ -10,9 +10,9 @@ import java.util.Optional;
 
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
 
-    List<Subscription> findAllByUserId(Long userId);
+    List<Subscription> findAllByUser_Id(Long userId);
 
-    Optional<Subscription> findFirstByUserIdAndStateOrderByCreatedAtDesc(Long userId, SubscriptionState state);
+    Optional<Subscription> findFirstByUser_IdAndStateOrderByCreatedAtDesc(Long userId, SubscriptionState state);
 
     List<Subscription> findAllByStateAndCurrentPeriodEndBefore(SubscriptionState state, OffsetDateTime moment);
 }

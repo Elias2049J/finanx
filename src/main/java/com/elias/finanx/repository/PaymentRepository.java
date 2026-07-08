@@ -9,9 +9,9 @@ import java.util.Optional;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
-    List<Payment> findAllByUserId(Long userId);
+    List<Payment> findAllByUser_Id(Long userId);
 
-    List<Payment> findAllBySubscriptionId(Long subscriptionId);
+    List<Payment> findAllBySubscription_Id(Long subscriptionId);
 
     Optional<Payment> findByExternalReference(String externalReference);
 
@@ -21,5 +21,5 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findAllByState(PaymentState state);
 
-    List<Payment> findAllByUserIdAndState(Long userId, PaymentState state);
+    List<Payment> findAllByUser_IdAndState(Long userId, PaymentState state);
 }

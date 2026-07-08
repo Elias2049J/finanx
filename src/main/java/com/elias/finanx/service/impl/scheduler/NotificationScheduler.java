@@ -7,6 +7,7 @@ import com.elias.finanx.outbox.NotificationOutbox;
 import com.elias.finanx.outbox.OutboxState;
 import com.elias.finanx.outbox.persistence.NotificationOutboxRepository;
 import com.elias.finanx.repository.NotificationRepository;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,13 @@ public class NotificationScheduler {
                 }
 
             } catch (Exception e) {
+                boolean isTransient = e instanceof RuntimeException
+                        && e.getCause() instanceof FirebaseMessagingException;
+                if (isTransient && entry.getCreatedAt().plusMinutes(30).isAfter(OffsetDateTime.now())) {
+                    log.warn("Error transitorio FCM, outbox id={} se mantiene PENDING para re-intento",
+                            entry.getId());
+                    continue;
+                }
                 entry.setState(OutboxState.FAILED);
                 log.error("Error enviando outbox id={} notificationId={}", entry.getId(), entry.getNotificationId(), e);
             }

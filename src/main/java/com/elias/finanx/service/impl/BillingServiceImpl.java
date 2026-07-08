@@ -56,7 +56,7 @@ public class BillingServiceImpl implements BillingService {
     public List<SubscriptionResponse> findAllByUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id " + userId));
-        return subscriptionRepository.findAllByUserId(userId).stream()
+        return subscriptionRepository.findAllByUser_Id(userId).stream()
                 .map(subscriptionMapper::toResponse)
                 .toList();
     }

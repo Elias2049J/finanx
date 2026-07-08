@@ -20,7 +20,7 @@ public class FcmTokenCleanupJob {
     @Transactional
     public void purgeStaleTokens() {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(60);
-        int deleted = fcmTokenRepository.deleteStaleTokens(cutoff);
+        int deleted = fcmTokenRepository.deleteByUpdatedAtBefore(cutoff);
         if (deleted > 0) {
             log.info("Eliminados {} tokens FCM stale (anteriores a {})", deleted, cutoff);
         }

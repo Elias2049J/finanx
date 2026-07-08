@@ -9,7 +9,7 @@ public interface FcmTokenService {
 
     FcmTokenResponse register(Long userId, RegisterFcmTokenRequest request);
 
-    void remove(Long userId, String token);
+    void remove(Long userId, Long tokenId);
 
     List<FcmTokenResponse> findAllByUser(Long userId);
 
