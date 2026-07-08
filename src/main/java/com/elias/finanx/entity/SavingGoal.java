@@ -58,8 +58,7 @@ public class SavingGoal {
     @ManyToOne
     @JoinColumn(name = "id_usuario")
     private User user;
-
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "savingGoal", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "savingGoal")
     private List<Transaction> transactions = new ArrayList<>();
 
     @PrePersist
@@ -99,9 +98,9 @@ public class SavingGoal {
     }
 
     public long getDaysRemaining() {
-        return Duration
+        return Math.max(0, Duration
                 .between(OffsetDateTime.now(user.getTimeZone().toZoneId()), deadline)
-                .toDays();
+                .toDays());
     }
 
     public BigDecimal getAverageContribution() {
@@ -111,7 +110,8 @@ public class SavingGoal {
     }
 
     public boolean isCompleted() {
-        return getAccumulated().compareTo(targetAmount) >= 0;
+        return state == SavingGoalState.RUNNING
+                && getAccumulated().compareTo(targetAmount) >= 0;
     }
 
     public LocalDateTime getEstimatedCompletionDate() {

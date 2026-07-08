@@ -44,6 +44,8 @@ public interface ScheduleMapper {
     @Mapping(source = "category.name", target = "categoryName")
     @Mapping(source = "reason.id", target = "reasonId")
     @Mapping(source = "reason.description", target = "reasonDesc")
+    @Mapping(target = "walletId", ignore = true)
+    @Mapping(target = "walletCurrency", ignore = true)
     @Mapping(source = "recurrenceRule", target = "recurrenceRule", qualifiedByName = "RecurrenceRuleToResponse")
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
@@ -96,6 +98,7 @@ public interface ScheduleMapper {
     void updateFromDto(BudgetScheduleRequest dto, @MappingTarget BudgetSchedule entity);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "wallet", ignore = true)
     @Mapping(target = "createdAt", source = "lastRunAt")
     @Mapping(target = "schedule", source = "st")
     @Mapping(source = "transactionType", target = "type")

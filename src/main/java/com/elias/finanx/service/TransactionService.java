@@ -16,7 +16,7 @@ public interface TransactionService {
     List<TransactionResponse> findAllByUser(Long userId);
     List<TransactionResponse> findAllActiveByUser(Long userId);
     List<TransactionResponse> findAllByUserAndIssueDateBetween(Long userId, LocalDate from, LocalDate to);
-    void disable(Long id);
+    void disable(Long id) throws HttpException, IOException;
     BigDecimal sumAmountByCategory(Long userId, Long categoryId, LocalDate from, LocalDate to);
     List<TransactionResponse> findAllActiveByCategoryAndDateBetween(Long userId, Long categoryId, LocalDate from, LocalDate to);
 }

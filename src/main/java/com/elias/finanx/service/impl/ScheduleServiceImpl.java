@@ -5,6 +5,7 @@ import com.elias.finanx.dto.recurrencerule.RecurrenceRuleRequest;
 import com.elias.finanx.entity.*;
 import com.elias.finanx.entity.enums.RecurrenceType;
 import com.elias.finanx.entity.enums.ScheduleState;
+import com.elias.finanx.entity.enums.TransactionType;
 import com.elias.finanx.mapper.ScheduleMapper;
 import com.elias.finanx.repository.*;
 import com.elias.finanx.service.*;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -41,6 +43,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final RecurrenceService recurrenceService;
     private final BudgetService budgetService;
     private final SavingGoalService savingGoalService;
+    private final WalletRepository walletRepository;
+    private final WalletService walletService;
 
     // ─── CRUD ────────────────────────────────────────────────────────────────────
 
@@ -230,14 +234,30 @@ public class ScheduleServiceImpl implements ScheduleService {
         st.setLastRunAt(executedAt);
 
         Transaction tx = tsMapper.toTransaction(st);
+        Wallet wallet = walletRepository.findByUserIdAndPrimaryTrue(st.getUser().getId())
+                .orElseGet(() -> walletRepository.save(Wallet.builder()
+                        .user(st.getUser())
+                        .currencyCode("PEN")
+                        .balance(BigDecimal.ZERO)
+                        .primary(true)
+                        .build()));
+        tx.setWallet(wallet);
+
+        if (tx.getType() == TransactionType.INCOME) {
+            wallet.setBalance(wallet.getBalance().add(tx.getAmount()));
+        } else {
+            wallet.setBalance(wallet.getBalance().subtract(tx.getAmount()));
+        }
+        walletRepository.save(wallet);
+
         boolean hasNext = advanceOrFinalize(st);
 
         if (hasNext) {
-            log.info("ScheduledTransaction executed: id={} userId={} executedAt={} nextRunAt={}",
-                    st.getId(), st.getUser().getId(), executedAt, st.getNextRunAt());
+            log.info("ScheduledTransaction executed: id={} userId={} walletId={} executedAt={} nextRunAt={}",
+                    st.getId(), st.getUser().getId(), wallet.getId(), executedAt, st.getNextRunAt());
         } else {
-            log.info("ScheduledTransaction completed: id={} userId={} executedAt={} (no further occurrences)",
-                    st.getId(), st.getUser().getId(), executedAt);
+            log.info("ScheduledTransaction completed: id={} userId={} walletId={} executedAt={} (no further occurrences)",
+                    st.getId(), st.getUser().getId(), wallet.getId(), executedAt);
         }
 
         return tx;

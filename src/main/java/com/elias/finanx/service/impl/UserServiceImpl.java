@@ -4,10 +4,11 @@ import com.elias.finanx.dto.auth.LoginResponse;
 import com.elias.finanx.dto.user.UserRequest;
 import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.Category;
+import com.elias.finanx.entity.User;
+import com.elias.finanx.entity.Wallet;
 import com.elias.finanx.entity.enums.TimeZone;
 import com.elias.finanx.entity.enums.TransactionType;
 import com.elias.finanx.entity.enums.UserState;
-import com.elias.finanx.entity.User;
 import com.elias.finanx.mapper.UserMapper;
 import com.elias.finanx.repository.*;
 import com.elias.finanx.service.UserService;
@@ -22,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -45,6 +47,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final TransactionScheduleRepository transactionScheduleRepository;
     private final UserPreferencesRepository preferencesRepository;
     private final UserPreferencesService preferencesService;
+    private final WalletRepository walletRepository;
 
     @Override
     @Transactional
@@ -64,9 +67,20 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             user.getPreferences().setUser(user);
         }
 
+        Wallet wallet = Wallet.builder()
+                .user(user)
+                .currencyCode(user.getPreferences().getCurrencyCode())
+                .balance(BigDecimal.ZERO)
+                .primary(true)
+                .build();
+
+        user.getWallets().add(walletRepository.save(wallet));
+
         User saved = userRepository.save(user);
 
         this.registerCategories(saved);
+
+        log.info("Default wallet created for user {}: currency={}, primary=true", saved.getId(), wallet.getCurrencyCode());
 
         String token = jwtTokenService.generateToken(saved);
         return new LoginResponse(userMapper.toResponse(saved), token);
@@ -248,7 +262,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         notificationRepository.deleteAllByUser_Id(userId);
         logDelete(userId, "notifications");
 
-        transactionRepository.deleteAllByUser_Id(userId);
+        transactionRepository.deleteAllByWallet_User_Id(userId);
         logDelete(userId, "transactions");
 
         reasonRepository.deleteAllByUser_Id(userId);

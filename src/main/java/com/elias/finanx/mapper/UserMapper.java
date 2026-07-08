@@ -3,7 +3,10 @@ package com.elias.finanx.mapper;
 import com.elias.finanx.dto.user.UserRequest;
 import com.elias.finanx.dto.user.UserResponse;
 import com.elias.finanx.entity.User;
+import com.elias.finanx.entity.Wallet;
 import org.mapstruct.*;
+
+import java.math.BigDecimal;
 
 @Mapper(componentModel = "spring", uses = {DateMapper.class, UserPreferencesMapper.class})
 public interface UserMapper{
@@ -17,7 +20,17 @@ public interface UserMapper{
     @Mapping(target = "fullName", expression = "java(entity.getFullName())")
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(target = "moneyBalance", ignore = true)
     UserResponse toResponseWithContext(User entity, @Context User user);
+
+    @AfterMapping
+    default void sumWalletBalances(User entity, @MappingTarget UserResponse response) {
+        if (entity.getWallets() != null) {
+            response.setMoneyBalance(entity.getWallets().stream()
+                    .map(Wallet::getBalance)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+        }
+    }
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)

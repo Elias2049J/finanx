@@ -9,7 +9,9 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring", uses = {DateMapper.class})
 public interface TransactionMapper {
 
-    @Mapping(source = "user.id", target = "userId")
+    @Mapping(source = "wallet.id", target = "walletId")
+    @Mapping(source = "wallet.currencyCode", target = "walletCurrency")
+    @Mapping(source = "wallet.primary", target = "walletPrimary")
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.name", target = "categoryName")
     @Mapping(source = "reason.id", target = "reasonId")
@@ -21,19 +23,19 @@ public interface TransactionMapper {
     TransactionResponse toResponseWithContext(Transaction entity, @Context User user);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "wallet", ignore = true)
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "reason", ignore = true)
     Transaction toEntity(TransactionRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "wallet", ignore = true)
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "reason", ignore = true)
     void updateFromDto(TransactionRequest dto, @MappingTarget Transaction entity);
 
     default TransactionResponse toResponse(Transaction entity) {
-        return toResponseWithContext(entity, entity.getUser());
+        return toResponseWithContext(entity, entity.getWallet().getUser());
     }
 }

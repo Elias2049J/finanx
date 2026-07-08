@@ -30,7 +30,15 @@ public class Wallet {
     @Column(name = "es_principal", nullable = false)
     private boolean primary;
 
+    @Version
+    private Long version;
+
     public Currency getCurrency() {
         return Currency.getInstance(this.currencyCode);
+    }
+
+    @PrePersist
+    private void onCreate() {
+        if (this.balance == null) balance = BigDecimal.ZERO;
     }
 }

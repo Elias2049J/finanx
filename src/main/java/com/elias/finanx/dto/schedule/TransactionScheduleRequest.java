@@ -16,6 +16,12 @@ import java.math.BigDecimal;
 public class TransactionScheduleRequest extends ScheduleRequest {
 
     @Schema(
+            description = "Identificador de la billetera (null = usar la principal)",
+            example = "1"
+    )
+    private Long walletId;
+
+    @Schema(
             description = "Identificador del motivo asociado a la transaccion",
             example = "501"
     )

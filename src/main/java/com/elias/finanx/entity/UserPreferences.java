@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "user_preferences")
+@Table(name = "preferencias_usuario")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,7 +26,7 @@ public class UserPreferences {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "id_usuario", nullable = false, unique = true)
     private User user;
 
     @Enumerated(EnumType.STRING)

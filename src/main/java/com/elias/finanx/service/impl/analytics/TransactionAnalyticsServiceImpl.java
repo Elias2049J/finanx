@@ -10,6 +10,7 @@ import com.elias.finanx.dto.date.PeriodResponse;
 import com.elias.finanx.dto.reason.ReasonSummary;
 import com.elias.finanx.dto.transaction.TransactionResponse;
 import com.elias.finanx.entity.User;
+import com.elias.finanx.entity.Wallet;
 import com.elias.finanx.entity.enums.PaymentMethod;
 import com.elias.finanx.entity.enums.TransactionType;
 import com.elias.finanx.mapper.CategoryMapper;
@@ -41,6 +42,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
     protected final TransactionMapper tMapper;
     protected final ReasonMapper reasonMapper;
     protected final CategoryMapper categoryMapper;
+    protected final WalletRepository walletRepository;
 
     public TransactionAnalyticsServiceImpl(
             DateMapper dateMapper,
@@ -50,7 +52,8 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
             ReasonRepository reasonRepository,
             TransactionMapper tMapper,
             ReasonMapper reasonMapper,
-            CategoryMapper categoryMapper) {
+            CategoryMapper categoryMapper,
+            WalletRepository walletRepository) {
         super(dateMapper, userRepository);
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
@@ -58,6 +61,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         this.tMapper = tMapper;
         this.reasonMapper = reasonMapper;
         this.categoryMapper = categoryMapper;
+        this.walletRepository = walletRepository;
     }
 
     @Override
@@ -77,7 +81,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
 
         List<TransactionResponse> all = transactionRepository
-                .findAllByUser_IdAndCreatedAtBetweenAndActive(
+                .findAllByWallet_User_IdAndCreatedAtBetweenAndActive(
                         request.getUserId(),
                         pq.getStart(),
                         pq.getEnd(),

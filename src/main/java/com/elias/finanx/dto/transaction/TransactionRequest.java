@@ -18,10 +18,10 @@ public class TransactionRequest {
 
     @NotNull
     @Schema(
-            description = "Identificador unico del usuario asociado a la transaccion",
-            example = "42"
+            description = "Identificador unico de la billetera asociada a la transaccion",
+            example = "1"
     )
-    private Long userId;
+    private Long walletId;
 
     @NotNull
     @Schema(

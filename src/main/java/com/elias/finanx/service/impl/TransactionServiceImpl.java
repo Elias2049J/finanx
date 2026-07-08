@@ -2,16 +2,14 @@ package com.elias.finanx.service.impl;
 
 import com.elias.finanx.dto.transaction.TransactionRequest;
 import com.elias.finanx.dto.transaction.TransactionResponse;
-import com.elias.finanx.entity.Category;
-import com.elias.finanx.entity.Reason;
-import com.elias.finanx.entity.Transaction;
-import com.elias.finanx.entity.User;
-import com.elias.finanx.entity.enums.TimeZone;
+import com.elias.finanx.entity.*;
+import com.elias.finanx.entity.enums.SavingGoalState;
 import com.elias.finanx.entity.enums.TransactionType;
 import com.elias.finanx.mapper.TransactionMapper;
 import com.elias.finanx.repository.*;
 import com.elias.finanx.service.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +19,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.List;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
+    private final WalletRepository walletRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final TransactionMapper transactionMapper;
@@ -40,31 +40,45 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(rollbackFor = Exception.class)
     public TransactionResponse create(TransactionRequest request) throws HttpException, IOException {
         Transaction transaction = transactionMapper.toEntity(request);
-        User user = userRepository.findById(request.getUserId()).orElseThrow();
+        Wallet wallet = walletRepository.findById(request.getWalletId()).orElseThrow();
         Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow();
-        boolean isSpent = transaction.getType() == TransactionType.SPENT;
-        boolean isIncome = transaction.getType() == TransactionType.INCOME;
+        Long userId = wallet.getUser().getId();
 
         if (transaction.getType() != category.getType()) {
             throw new IllegalArgumentException("The category transactionType must be the same as transaction");
         }
-        transaction.setUser(user);
+        if (!category.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Category does not belong to the user's wallet");
+        }
+        transaction.setWallet(wallet);
         transaction.setCategory(category);
 
         if (request.getSavingGoalId() != null) {
-            if (isIncome) {
-                transaction.setSavingGoal(sgRepository.getReferenceById(request.getSavingGoalId()));
-            } else throw new IllegalArgumentException("Cannot associate a spent to a saving goal");
+            if (transaction.getType() != TransactionType.INCOME) {
+                throw new IllegalArgumentException("Cannot associate a spent to a saving goal");
+            }
+            SavingGoal sg = sgRepository.findById(request.getSavingGoalId()).orElseThrow();
+            if (!sg.getUser().getId().equals(userId)) {
+                throw new IllegalArgumentException("Saving goal does not belong to the user");
+            }
+            if (sg.getState() != SavingGoalState.RUNNING) {
+                throw new IllegalArgumentException("Cannot associate a transaction to a completed or cancelled saving goal");
+            }
+            transaction.setSavingGoal(sg);
         }
 
         Reason reason = reasonResolver
-                .resolveOrCreate(request.getUserId(), request.getReasonId(), request.getDescription())
+                .resolveOrCreate(userId, request.getReasonId(), request.getDescription())
                 .orElseThrow();
         transaction.setReason(reason);
         Transaction saved = transactionRepository.save(transaction);
-        budgetService.checkAllBudgets(request.getUserId());
-        savingGoalService.checkAllSavingGoals(request.getUserId());
-        userDataContextService.updateUserDataContext(request.getUserId());
+
+        adjustBalance(wallet, saved.getType(), saved.getAmount());
+        walletRepository.save(wallet);
+
+        budgetService.checkAllBudgets(userId);
+        savingGoalService.checkAllSavingGoals(userId);
+        userDataContextService.updateUserDataContext(userId);
 
         return transactionMapper.toResponse(saved);
     }
@@ -73,22 +87,69 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public TransactionResponse update(Long id, TransactionRequest request) {
         Transaction existing = transactionRepository.findById(id).orElseThrow();
+        Wallet oldWallet = existing.getWallet();
+        BigDecimal oldAmount = existing.getAmount();
+        TransactionType oldType = existing.getType();
+
         transactionMapper.updateFromDto(request, existing);
 
-        existing.setUser(userRepository.getReferenceById(request.getUserId()));
-        existing.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
+        Wallet newWallet = walletRepository.findById(request.getWalletId()).orElseThrow();
+        Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow();
+        Long userId = newWallet.getUser().getId();
+
+        if (request.getType() != category.getType()) {
+            throw new IllegalArgumentException("The category transactionType must be the same as transaction");
+        }
+        if (!category.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Category does not belong to the user's wallet");
+        }
+
+        existing.setWallet(newWallet);
+        existing.setCategory(category);
+
+        if (request.getSavingGoalId() != null) {
+            if (request.getType() != TransactionType.INCOME) {
+                throw new IllegalArgumentException("Cannot associate a spent to a saving goal");
+            }
+            SavingGoal sg = sgRepository.findById(request.getSavingGoalId()).orElseThrow();
+            if (!sg.getUser().getId().equals(userId)) {
+                throw new IllegalArgumentException("Saving goal does not belong to the user");
+            }
+            if (sg.getState() != SavingGoalState.RUNNING) {
+                throw new IllegalArgumentException("Cannot associate a transaction to a completed or cancelled saving goal");
+            }
+            existing.setSavingGoal(sg);
+        } else {
+            existing.setSavingGoal(null);
+        }
 
         if (reasonResolver.hasInput(request.getReasonId(), request.getDescription())) {
             existing.setReason(
                     reasonResolver
-                            .resolveOrCreate(request.getUserId(), request.getReasonId(), request.getDescription())
+                            .resolveOrCreate(userId, request.getReasonId(), request.getDescription())
                             .orElse(null)
             );
         }
 
-        Transaction saved =  transactionRepository.save(existing);
-        budgetService.checkAllBudgets(request.getUserId());
-        savingGoalService.checkAllSavingGoals(request.getUserId());
+        Transaction saved = transactionRepository.save(existing);
+
+        boolean walletChanged = !oldWallet.getId().equals(newWallet.getId());
+        boolean amountChanged = oldAmount.compareTo(request.getAmount()) != 0;
+
+        if (walletChanged || amountChanged) {
+            if (walletChanged) {
+                adjustBalance(oldWallet, oldType, oldAmount.negate());
+                adjustBalance(newWallet, saved.getType(), saved.getAmount());
+                walletRepository.saveAll(List.of(oldWallet, newWallet));
+            } else {
+                adjustBalance(oldWallet, oldType, oldAmount.negate());
+                adjustBalance(oldWallet, saved.getType(), saved.getAmount());
+                walletRepository.save(oldWallet);
+            }
+        }
+
+        budgetService.checkAllBudgets(userId);
+        savingGoalService.checkAllSavingGoals(userId);
         return transactionMapper.toResponse(saved);
     }
 
@@ -101,7 +162,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(readOnly = true)
     @Override
     public List<TransactionResponse> findAllByUser(Long userId) {
-        return transactionRepository.findAllByUser_Id(userId)
+        return transactionRepository.findAllByWallet_User_Id(userId)
                 .stream()
                 .map(transactionMapper::toResponse)
                 .toList();
@@ -110,7 +171,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(readOnly = true)
     @Override
     public List<TransactionResponse> findAllActiveByUser(Long userId) {
-        return transactionRepository.findAllByUser_IdAndActive(userId, true)
+        return transactionRepository.findAllByWallet_User_IdAndActive(userId, true)
                 .stream()
                 .map(transactionMapper::toResponse)
                 .toList();
@@ -120,7 +181,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public List<TransactionResponse> findAllByUserAndIssueDateBetween(Long userId, LocalDate from, LocalDate to) {
         User user = userRepository.findById(userId).orElseThrow();
-        return transactionRepository.findAllByUser_IdAndCreatedAtBetweenAndActive(
+        return transactionRepository.findAllByWallet_User_IdAndCreatedAtBetweenAndActive(
                 userId,
                 from.atStartOfDay(user.getTimeZone().toZoneId()).toOffsetDateTime(),
                 to.atStartOfDay(user.getTimeZone().toZoneId()).toOffsetDateTime(),
@@ -132,12 +193,21 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
-    public void disable(Long id) {
+    public void disable(Long id) throws HttpException, IOException {
         Transaction transaction = transactionRepository.findById(id).orElseThrow();
-        ZoneId zoneId = transaction.getUser().getTimeZone().toZoneId();
+        Wallet wallet = transaction.getWallet();
+        Long userId = wallet.getUser().getId();
+        ZoneId zoneId = wallet.getUser().getTimeZone().toZoneId();
         transaction.setActive(false);
         transaction.setDisabledAt(OffsetDateTime.now(zoneId));
         transactionRepository.save(transaction);
+
+        adjustBalance(wallet, transaction.getType(), transaction.getAmount().negate());
+        walletRepository.save(wallet);
+
+        budgetService.checkAllBudgets(userId);
+        savingGoalService.checkAllSavingGoals(userId);
+        userDataContextService.updateUserDataContext(userId);
     }
 
     @Transactional(readOnly = true)
@@ -151,16 +221,23 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public List<TransactionResponse> findAllActiveByCategoryAndDateBetween(Long userId, Long categoryId, LocalDate from, LocalDate to) {
-        TimeZone timeZone = userRepository.findById(userId).orElseThrow().getTimeZone();
+        User user = userRepository.findById(userId).orElseThrow();
         return transactionRepository.findAllByCategory_IdAndCreatedAtBetweenAndActive(
                 categoryId,
-                        from.atStartOfDay(timeZone.toZoneId()).toOffsetDateTime(),
-                        to.atStartOfDay(timeZone.toZoneId()).toOffsetDateTime(),
+                        from.atStartOfDay(user.getTimeZone().toZoneId()).toOffsetDateTime(),
+                        to.atStartOfDay(user.getTimeZone().toZoneId()).toOffsetDateTime(),
                         true
                 )
                 .stream()
                 .map(transactionMapper::toResponse)
                 .toList();
+    }
 
+    private void adjustBalance(Wallet wallet, TransactionType type, BigDecimal amount) {
+        if (type == TransactionType.INCOME) {
+            wallet.setBalance(wallet.getBalance().add(amount));
+        } else {
+            wallet.setBalance(wallet.getBalance().subtract(amount));
+        }
     }
 }

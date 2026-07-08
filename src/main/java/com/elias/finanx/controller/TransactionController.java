@@ -104,7 +104,7 @@ public class TransactionController {
             tags = {"Transactions"}
     )
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> disable(@PathVariable Long id) {
+    public ResponseEntity<Void> disable(@PathVariable Long id) throws HttpException, IOException {
         transactionService.disable(id);
         return ResponseEntity.noContent().build();
     }

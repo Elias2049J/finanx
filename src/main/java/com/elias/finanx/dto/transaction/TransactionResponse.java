@@ -19,8 +19,14 @@ public class TransactionResponse {
     @Schema(description = "Identificador unico de la transaccion", example = "10001")
     private Long id;
 
-    @Schema(description = "Identificador unico del usuario asociado a la transaccion", example = "42")
-    private Long userId;
+    @Schema(description = "Identificador unico de la billetera asociada a la transaccion", example = "1")
+    private Long walletId;
+
+    @Schema(description = "Moneda de la billetera", example = "PEN")
+    private String walletCurrency;
+
+    @Schema(description = "Indica si la billetera es principal", example = "true")
+    private boolean walletPrimary;
 
     @Schema(description = "Identificador unico de la categoria asociada a la transaccion", example = "101")
     private Long categoryId;

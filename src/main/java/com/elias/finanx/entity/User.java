@@ -61,6 +61,9 @@ public class User implements UserDetails {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private UserPreferences preferences;
 
+    @OneToMany(mappedBy = "user")
+    private List<Wallet> wallets;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
     private UserState state;

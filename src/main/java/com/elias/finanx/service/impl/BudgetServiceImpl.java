@@ -217,10 +217,20 @@ public class BudgetServiceImpl implements BudgetService {
                                                 ",\n Método: " + finalLastTx.getPaymentMethod().getDisplayName()
                                 ));
                     }
+                } else {
+                    if (b.getHealth() != BudgetHealth.OK) {
+                        log.info("Budget {} volvió a estado OK (spent={}, limit={})",
+                                b.getId(), spent, b.getLimitAmount());
+                        b.setHealth(BudgetHealth.OK);
+                        b.setNearLimitNotified(false);
+                        b.setExceededNotified(false);
+                    }
                 }
             } else {
                 if (spent.compareTo(b.getLimitAmount()) >= 0) {
                     b.setHealth(BudgetHealth.EXCEEDED);
+                } else if (b.getHealth() != BudgetHealth.OK) {
+                    b.setHealth(BudgetHealth.OK);
                 }
             }
         }

@@ -76,7 +76,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
 
         List<TransactionResponse> all = transactionRepository
-                .findAllByUser_IdAndCreatedAtBetweenAndActive(
+                .findAllByWallet_User_IdAndCreatedAtBetweenAndActive(
                         request.getUserId(),
                         pq.getStart(),
                         pq.getEnd(),

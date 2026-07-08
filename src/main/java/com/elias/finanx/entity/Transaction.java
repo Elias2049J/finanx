@@ -44,8 +44,8 @@ public class Transaction {
     private BigDecimal amount = BigDecimal.ZERO.setScale(2, HALF_UP);
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_usuario", nullable = false)
-    private User user;
+    @JoinColumn(name = "id_billetera", nullable = false)
+    private Wallet wallet;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_categoria")
@@ -68,7 +68,7 @@ public class Transaction {
     @PrePersist
     private void onCreate() {
         if (createdAt == null) {
-            createdAt = OffsetDateTime.now(user.getTimeZone().toZoneId());
+            createdAt = OffsetDateTime.now(wallet.getUser().getTimeZone().toZoneId());
         }
         if (paymentMethod == null) {
             paymentMethod = PaymentMethod.CASH;

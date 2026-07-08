@@ -38,4 +38,6 @@ public class UserRequest {
     @Valid
     @Schema(description = "Preferencias del usuario")
     private UserPreferencesRequest preferences;
+
+
 }
