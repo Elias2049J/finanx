@@ -40,3 +40,4 @@ application.yml
 /out/
 opencode.json
 /doc/
+/snippets/
