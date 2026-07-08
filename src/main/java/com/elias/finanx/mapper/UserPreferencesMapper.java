@@ -13,7 +13,6 @@ public interface UserPreferencesMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
-    @Mapping(target = "fcmTokens", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     UserPreferences toEntity(UserPreferencesRequest request);
@@ -24,14 +23,14 @@ public interface UserPreferencesMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
-    @Mapping(target = "fcmTokens", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateFromDto(UserPreferencesRequest dto, @MappingTarget UserPreferences entity);
 
     default List<String> toTokenList(UserPreferences entity) {
-        if (entity == null || entity.getFcmTokens() == null) return List.of();
-        return entity.getFcmTokens().stream()
+        var user = entity == null ? null : entity.getUser();
+        if (user == null || user.getFcmTokens() == null) return List.of();
+        return user.getFcmTokens().stream()
                 .map(FcmToken::getToken)
                 .toList();
     }

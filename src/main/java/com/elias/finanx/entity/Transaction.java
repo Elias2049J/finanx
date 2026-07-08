@@ -44,6 +44,10 @@ public class Transaction {
     private BigDecimal amount = BigDecimal.ZERO.setScale(2, HALF_UP);
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario", nullable = false)
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_billetera", nullable = false)
     private Wallet wallet;
 

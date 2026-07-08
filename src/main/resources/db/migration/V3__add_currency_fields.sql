@@ -19,14 +19,23 @@ ALTER TABLE programacion_movimientos
 UPDATE programacion_movimientos pm
 SET id_billetera = (
     SELECT w.id FROM billeteras w
-    JOIN usuarios u ON u.id = w.id_usuario
-    WHERE pm.id_usuario = u.id AND w.es_principal = true
+    JOIN programacion s ON s.id = pm.id
+    WHERE s.id_usuario = w.id_usuario AND w.es_principal = true
 )
 WHERE pm.id_billetera IS NULL;
 
 ALTER TABLE programacion_movimientos
     ALTER COLUMN id_billetera SET NOT NULL;
 
-ALTER TABLE programacion_movimientos
-    ADD CONSTRAINT fk_programacion_billetera
-    FOREIGN KEY (id_billetera) REFERENCES billeteras(id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'fk_programacion_billetera'
+          AND conrelid = 'programacion_movimientos'::regclass
+    ) THEN
+        ALTER TABLE programacion_movimientos
+            ADD CONSTRAINT fk_programacion_billetera
+            FOREIGN KEY (id_billetera) REFERENCES billeteras(id);
+    END IF;
+END $$;

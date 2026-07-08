@@ -107,6 +107,7 @@ public interface ScheduleMapper {
     }
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "user", source = "user")
     @Mapping(target = "wallet", source = "wallet")
     @Mapping(target = "createdAt", source = "lastRunAt")
     @Mapping(target = "schedule", source = "st")

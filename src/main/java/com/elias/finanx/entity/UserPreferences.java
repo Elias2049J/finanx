@@ -9,8 +9,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "preferencias_usuario")
@@ -44,10 +42,6 @@ public class UserPreferences {
 
     @Column(name = "mes_ultimo_cambio_moneda")
     private Integer currencyChangeMonth;
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<FcmToken> fcmTokens = new ArrayList<>();
 
     @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime createdAt;

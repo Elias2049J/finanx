@@ -15,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -64,6 +65,9 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user")
     private List<Wallet> wallets;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FcmToken> fcmTokens = new ArrayList<>();
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
     private UserState state;
@@ -104,11 +108,6 @@ public class User implements UserDetails {
     @Transient
     public TimeZone getTimeZone() {
         return preferences != null ? preferences.getTimeZone() : TimeZone.AMERICA_LIMA;
-    }
-
-    @Transient
-    public List<FcmToken> getFcmTokens() {
-        return preferences != null ? preferences.getFcmTokens() : List.of();
     }
 
     @Override
