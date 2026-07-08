@@ -44,8 +44,8 @@ public interface ScheduleMapper {
     @Mapping(source = "category.name", target = "categoryName")
     @Mapping(source = "reason.id", target = "reasonId")
     @Mapping(source = "reason.description", target = "reasonDesc")
-    @Mapping(target = "walletId", ignore = true)
-    @Mapping(target = "walletCurrency", ignore = true)
+    @Mapping(source = "wallet.id", target = "walletId")
+    @Mapping(source = "wallet.currencyCode", target = "walletCurrency")
     @Mapping(source = "recurrenceRule", target = "recurrenceRule", qualifiedByName = "RecurrenceRuleToResponse")
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
@@ -71,6 +71,7 @@ public interface ScheduleMapper {
         return toResponseWithContext(entity, entity.getUser());
     }
 
+    @Mapping(target = "wallet", source = "walletId")
     @Mapping(target = "reason", ignore = true)
     TransactionSchedule toEntity(TransactionScheduleRequest dto);
 
@@ -84,6 +85,7 @@ public interface ScheduleMapper {
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "reason", ignore = true)
+    @Mapping(target = "wallet", source = "walletId")
     @Mapping(target = "recurrenceRule", ignore = true)
     void updateFromDto(TransactionScheduleRequest dto, @MappingTarget TransactionSchedule entity);
 
@@ -97,8 +99,15 @@ public interface ScheduleMapper {
     @Mapping(target = "recurrenceRule", ignore = true)
     void updateFromDto(BudgetScheduleRequest dto, @MappingTarget BudgetSchedule entity);
 
+    default Wallet mapWalletId(Long id) {
+        if (id == null) return null;
+        Wallet w = new Wallet();
+        w.setId(id);
+        return w;
+    }
+
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "wallet", ignore = true)
+    @Mapping(target = "wallet", source = "wallet")
     @Mapping(target = "createdAt", source = "lastRunAt")
     @Mapping(target = "schedule", source = "st")
     @Mapping(source = "transactionType", target = "type")

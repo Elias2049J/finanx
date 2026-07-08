@@ -11,6 +11,7 @@ import com.elias.finanx.entity.enums.NotificationType;
 import com.elias.finanx.entity.enums.TransactionType;
 import com.elias.finanx.mapper.BudgetMapper;
 import com.elias.finanx.mapper.DateMapper;
+import com.elias.finanx.port.ExchangePort;
 import com.elias.finanx.repository.BudgetRepository;
 import com.elias.finanx.repository.CategoryRepository;
 import com.elias.finanx.repository.TransactionRepository;
@@ -28,6 +29,7 @@ import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static java.math.RoundingMode.HALF_UP;
@@ -45,6 +47,7 @@ public class BudgetServiceImpl implements BudgetService {
     private final RecurrenceCalculatorService rcService;
     private final NotificationService notificationService;
     private final DateMapper dateMapper;
+    private final ExchangePort exchangePort;
 
     @Override
     @Transactional
@@ -52,6 +55,8 @@ public class BudgetServiceImpl implements BudgetService {
         Budget b = budgetMapper.toEntity(request);
         b.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
         b.setUser(userRepository.getReferenceById(request.getUserId()));
+        User user = b.getUser();
+        b.setCurrencyCode(user.getPreferences().getCurrencyCode());
         applyRequestDateTimes(request, b);
 
         return budgetMapper.toResponse(budgetRepository.save(b));
@@ -140,7 +145,19 @@ public class BudgetServiceImpl implements BudgetService {
             } else {
                 periodStart = Optional.ofNullable(b.getStart()).orElse(b.getCreatedAt());
                 if (b.getEnd() != null && now.isAfter(b.getEnd())) {
+                    String budgetCurrency = b.getCurrencyCode();
+                    List<Transaction> allTxs = transactionRepository
+                            .findAllByCategory_IdAndCreatedAtBetweenAndActiveAndType(
+                                    c.getId(),
+                                    periodStart,
+                                    b.getEnd(),
+                                    true,
+                                    TransactionType.SPENT
+                            );
+                    BigDecimal finalSpent = computeConvertedSpent(allTxs, budgetCurrency);
+                    b.setFrozenSpent(finalSpent);
                     b.setState(BudgetState.FINALIZED);
+                    log.info("FINALIZED Budget id={} desc={} frozenSpent={}", b.getId(), b.getDescription(), finalSpent);
                     continue;
                 }
             }
@@ -154,10 +171,25 @@ public class BudgetServiceImpl implements BudgetService {
                             TransactionType.SPENT
                     );
 
+            String budgetCurrency = b.getCurrencyCode();
             BigDecimal spent = BigDecimal.ZERO;
             Transaction lastTx = null;
             for (Transaction t : txs) {
-                spent = spent.add(t.getAmount());
+                String txCurrency = t.getWallet() != null
+                        ? t.getWallet().getCurrencyCode()
+                        : budgetCurrency;
+                BigDecimal convertedAmount;
+                if (txCurrency.equalsIgnoreCase(budgetCurrency)) {
+                    convertedAmount = t.getAmount();
+                } else {
+                    try {
+                        convertedAmount = exchangePort.convert(t.getAmount(), txCurrency, budgetCurrency);
+                    } catch (Exception e) {
+                        log.warn("Exchange conversion failed for tx {} in budget check, using raw amount", t.getId(), e);
+                        convertedAmount = t.getAmount();
+                    }
+                }
+                spent = spent.add(convertedAmount);
                 if (lastTx == null || t.getCreatedAt().isAfter(lastTx.getCreatedAt())) {
                     lastTx = t;
                 }
@@ -257,6 +289,27 @@ public class BudgetServiceImpl implements BudgetService {
         tb.setItems(budgets);
         tb.setPeriodResponse(dateMapper.toResponse(request));
         return tb;
+    }
+
+    private BigDecimal computeConvertedSpent(List<Transaction> txs, String budgetCurrency) {
+        return txs.stream()
+                .filter(t -> Boolean.TRUE.equals(t.getActive()))
+                .map(t -> {
+                    String txCurrency = t.getWallet() != null
+                            ? t.getWallet().getCurrencyCode()
+                            : budgetCurrency;
+                    if (txCurrency.equalsIgnoreCase(budgetCurrency)) {
+                        return t.getAmount();
+                    }
+                    try {
+                        return exchangePort.convert(t.getAmount(), txCurrency, budgetCurrency);
+                    } catch (Exception e) {
+                        log.warn("Exchange conversion failed for tx {} during freeze, using raw amount", t.getId(), e);
+                        return t.getAmount();
+                    }
+                })
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private void applyRequestDateTimes(BudgetRequest request, Budget b) {

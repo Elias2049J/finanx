@@ -13,6 +13,10 @@ app:
     fcm:
       credentials-path: ${FCM_CREDENTIALS_PATH:firebase-service-account.json}
       project-id: ${FCM_PROJECT_ID:finanx-dev}
+  exchange:
+    currencybeacon:
+      api-url: ${CURRENCYBEACON_API_URL:https://api.currencybeacon.com/v1}
+      api-key: ${CURRENCYBEACON_API_KEY:}}
 
 spring:
   application:

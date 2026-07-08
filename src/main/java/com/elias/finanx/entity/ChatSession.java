@@ -70,6 +70,7 @@ public class ChatSession {
     private User user;
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<ChatMessage> messages = new ArrayList<>();
 
     @PrePersist

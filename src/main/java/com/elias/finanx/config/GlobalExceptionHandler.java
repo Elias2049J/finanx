@@ -1,6 +1,7 @@
 package com.elias.finanx.config;
 
 import com.elias.finanx.dto.ErrorResponse;
+import com.elias.finanx.exception.CurrencyChangeRateLimitException;
 import com.elias.finanx.exception.SubscriptionNotFoundException;
 import com.elias.finanx.exception.UserPreferencesNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -68,6 +69,19 @@ public class GlobalExceptionHandler {
         );
         log.warn("[handleSubscriptionNotFound] Subscription not found at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(CurrencyChangeRateLimitException.class)
+    public ResponseEntity<ErrorResponse> handleCurrencyChangeRateLimit(CurrencyChangeRateLimitException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getMessage(),
+                HttpStatus.TOO_MANY_REQUESTS.value(),
+                LocalDateTime.now().toString()
+        );
+        log.warn("[handleCurrencyChangeRateLimit] at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
     }
 
     @ExceptionHandler(NullPointerException.class)

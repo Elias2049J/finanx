@@ -65,6 +65,12 @@ public class BudgetResponse {
     private BigDecimal limitAmount;
 
     @Schema(
+            description = "Codigo de moneda del presupuesto",
+            example = "PEN"
+    )
+    private String currencyCode;
+
+    @Schema(
             description = "Descripcion del presupuesto",
             example = "Presupuesto mensual para alimentos"
     )

@@ -7,36 +7,45 @@ import com.elias.finanx.dto.budget.BudgetExecutionResponse;
 import com.elias.finanx.dto.date.PeriodRequest;
 import com.elias.finanx.entity.Budget;
 import com.elias.finanx.entity.Transaction;
+import com.elias.finanx.entity.User;
 import com.elias.finanx.entity.enums.BudgetState;
 import com.elias.finanx.mapper.BudgetMapper;
 import com.elias.finanx.mapper.DateMapper;
+import com.elias.finanx.port.ExchangePort;
 import com.elias.finanx.repository.BudgetRepository;
 import com.elias.finanx.repository.TransactionRepository;
 import com.elias.finanx.repository.UserRepository;
 import com.elias.finanx.service.analytics.BudgetAnalyticsService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
+
+@Slf4j
 
 @Service
 public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements BudgetAnalyticsService {
     protected final BudgetRepository bRepository;
     protected final TransactionRepository tRepository;
     protected final BudgetMapper budgetMapper;
+    protected final ExchangePort exchangePort;
 
     public BudgetAnalyticsServiceImpl(DateMapper dateMapper,
                                       UserRepository userRepository,
-
                                       BudgetRepository bRepository,
-                                      TransactionRepository tRepository, BudgetMapper budgetMapper
+                                      TransactionRepository tRepository,
+                                      BudgetMapper budgetMapper,
+                                      ExchangePort exchangePort
     ) {
         super(dateMapper, userRepository);
         this.bRepository = bRepository;
         this.tRepository = tRepository;
         this.budgetMapper = budgetMapper;
+        this.exchangePort = exchangePort;
     }
 
     private List<Budget> findBudgets(PeriodRequest request) {
@@ -54,15 +63,21 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
     @Override
     public DashboardResponse buildDashboard(PeriodRequest request) {
         List<Budget> budgets = findBudgets(request);
+        User user = getUser(request.getUserId());
+        String baseCurrency = user.getPreferences().getCurrencyCode();
 
         BigDecimal totalBudgetLimitAmount = budgets
                 .stream()
-                .map(Budget::getLimitAmount)
+                .map(b -> convertToBase(b.getLimitAmount(), b.getCurrencyCode(), baseCurrency))
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalBudgetSpentAmount = budgets
-                .stream()
-                .map(this::getSpent)
+        BigDecimal totalBudgetSpentAmount = budgets.stream()
+                .map(b -> {
+                    BigDecimal raw = getSpent(b);
+                    return convertToBase(raw, b.getCurrencyCode(), baseCurrency);
+                })
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalBudgetRemainingAmount = totalBudgetLimitAmount
@@ -97,10 +112,37 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
                 b.getEnd(),
                 true
         );
+        String budgetCurrency = b.getCurrencyCode();
         return tL
                 .stream()
-                .map(Transaction::getAmount)
+                .map(t -> {
+                    String txCurrency = t.getWallet() != null
+                            ? t.getWallet().getCurrencyCode()
+                            : budgetCurrency;
+                    if (txCurrency.equalsIgnoreCase(budgetCurrency)) {
+                        return t.getAmount();
+                    }
+                    try {
+                        return exchangePort.convert(t.getAmount(), txCurrency, budgetCurrency);
+                    } catch (Exception e) {
+                        log.warn("Exchange conversion failed for tx {} in budget analytics, using raw amount", t.getId(), e);
+                        return t.getAmount();
+                    }
+                })
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal convertToBase(BigDecimal amount, String fromCurrency, String toCurrency) {
+        if (fromCurrency == null || toCurrency == null || fromCurrency.equalsIgnoreCase(toCurrency)) {
+            return amount;
+        }
+        try {
+            return exchangePort.convert(amount, fromCurrency, toCurrency);
+        } catch (Exception e) {
+            log.warn("Exchange conversion failed for {} from {} to {}, using raw amount", amount, fromCurrency, toCurrency, e);
+            return amount;
+        }
     }
 
     protected BudgetExecutionResponse mapToExecution(Budget b) {

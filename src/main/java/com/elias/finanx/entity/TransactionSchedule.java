@@ -16,6 +16,11 @@ import java.math.BigDecimal;
 @Builder
 @ToString
 public class TransactionSchedule extends Schedule {
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "id_billetera", nullable = false)
+    private Wallet wallet;
+
     @ManyToOne
     @JoinColumn(name = "id_motivo")
     private Reason reason;

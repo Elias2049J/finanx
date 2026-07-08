@@ -234,14 +234,18 @@ public class ScheduleServiceImpl implements ScheduleService {
         st.setLastRunAt(executedAt);
 
         Transaction tx = tsMapper.toTransaction(st);
-        Wallet wallet = walletRepository.findByUserIdAndPrimaryTrue(st.getUser().getId())
-                .orElseGet(() -> walletRepository.save(Wallet.builder()
-                        .user(st.getUser())
-                        .currencyCode("PEN")
-                        .balance(BigDecimal.ZERO)
-                        .primary(true)
-                        .build()));
-        tx.setWallet(wallet);
+        Wallet wallet = st.getWallet();
+
+        if (wallet == null) {
+            wallet = walletRepository.findByUserIdAndPrimaryTrue(st.getUser().getId())
+                    .orElseGet(() -> walletRepository.save(Wallet.builder()
+                            .user(st.getUser())
+                            .currencyCode(st.getUser().getPreferences().getCurrencyCode())
+                            .balance(BigDecimal.ZERO)
+                            .primary(true)
+                            .build()));
+            tx.setWallet(wallet);
+        }
 
         if (tx.getType() == TransactionType.INCOME) {
             wallet.setBalance(wallet.getBalance().add(tx.getAmount()));

@@ -80,17 +80,26 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         PeriodForQuery pq = dateMapper.toSmartMonthlyPeriod(request.getStart(), request.getEnd(), zoneId, request.getUserId());
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
 
-        List<TransactionResponse> all = transactionRepository
-                .findAllByWallet_User_IdAndCreatedAtBetweenAndActive(
-                        request.getUserId(),
-                        pq.getStart(),
-                        pq.getEnd(),
-                        true
-                )
-                .stream()
-                .map(tMapper::toResponse)
-                .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())
-                .toList();
+        Wallet primaryWallet = walletRepository.findByUserIdAndPrimaryTrue(request.getUserId())
+                .orElse(null);
+
+        List<TransactionResponse> all;
+        if (primaryWallet != null) {
+            Long walletId = primaryWallet.getId();
+            all = transactionRepository
+                    .findAllByWallet_IdAndCreatedAtBetweenAndActive(
+                            walletId,
+                            pq.getStart(),
+                            pq.getEnd(),
+                            true
+                    )
+                    .stream()
+                    .map(tMapper::toResponse)
+                    .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())
+                    .toList();
+        } else {
+            all = List.of();
+        }
 
         log.info("Period for query: {}", pq);
 

@@ -24,6 +24,9 @@ public class SavingGoalResponse {
     @Schema(description = "Monto objetivo de la meta de ahorro", example = "2500.00")
     private BigDecimal targetAmount;
 
+    @Schema(description = "Codigo de moneda de la meta", example = "PEN")
+    private String currencyCode;
+
     @Schema(description = "Monto acumulado hasta el momento", example = "1200.00")
     private BigDecimal accumulated;
 

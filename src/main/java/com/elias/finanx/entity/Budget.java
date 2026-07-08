@@ -30,6 +30,12 @@ public class Budget {
     @Column(nullable = false, name = "limite", precision = 19, scale = 2)
     private BigDecimal limitAmount;
 
+    @Column(name = "codigo_moneda", nullable = false, length = 3)
+    private String currencyCode;
+
+    @Column(name = "monto_gastado_congelado", precision = 19, scale = 2)
+    private BigDecimal frozenSpent;
+
     @Column(name = "descripcion")
     private String description;
 

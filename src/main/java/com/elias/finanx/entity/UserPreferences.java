@@ -39,6 +39,12 @@ public class UserPreferences {
     @Column(name = "notificaciones_email", nullable = false)
     private boolean emailNotifications;
 
+    @Column(name = "contador_cambios_moneda")
+    private Integer currencyChangeCount;
+
+    @Column(name = "mes_ultimo_cambio_moneda")
+    private Integer currencyChangeMonth;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<FcmToken> fcmTokens = new ArrayList<>();

@@ -2,11 +2,14 @@ package com.elias.finanx.service.impl;
 
 import com.elias.finanx.dto.wallet.WalletRequest;
 import com.elias.finanx.dto.wallet.WalletResponse;
-import com.elias.finanx.entity.Wallet;
 import com.elias.finanx.entity.User;
+import com.elias.finanx.entity.Wallet;
+import com.elias.finanx.entity.enums.SubscriptionPlan;
 import com.elias.finanx.mapper.WalletMapper;
+import com.elias.finanx.plan.gating.PlanRequiredException;
 import com.elias.finanx.repository.WalletRepository;
 import com.elias.finanx.repository.UserRepository;
+import com.elias.finanx.service.SubscriptionService;
 import com.elias.finanx.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,13 +25,27 @@ public class WalletServiceImpl implements WalletService {
     private final WalletRepository walletRepository;
     private final UserRepository userRepository;
     private final WalletMapper walletMapper;
+    private final SubscriptionService subscriptionService;
 
     @Override
     @Transactional
     public WalletResponse create(Long userId, WalletRequest request) {
         User user = userRepository.findById(userId).orElseThrow();
+        long walletCount = walletRepository.countByUser_Id(userId);
+        SubscriptionPlan plan = subscriptionService.getActivePlanFor(userId);
+        if (walletCount > 0 && plan != SubscriptionPlan.PREMIUM) {
+            throw new PlanRequiredException(
+                    new SubscriptionPlan[]{SubscriptionPlan.PREMIUM}, plan);
+        }
         Wallet wallet = walletMapper.toEntity(request);
         wallet.setUser(user);
+        if (request.isPrimary()) {
+            walletRepository.findByUserIdAndPrimaryTrue(userId)
+                    .ifPresent(w -> {
+                        w.setPrimary(false);
+                        walletRepository.save(w);
+                    });
+        }
         return walletMapper.toResponse(walletRepository.save(wallet));
     }
 

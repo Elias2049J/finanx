@@ -36,8 +36,14 @@ public class SavingGoal {
     @Column(name = "monto_objetivo", nullable = false, precision = 12, scale = 2)
     private BigDecimal targetAmount;
 
+    @Column(name = "codigo_moneda", nullable = false, length = 3)
+    private String currencyCode;
+
     @Column(name = "fecha_limite")
     private OffsetDateTime deadline;
+
+    @Column(name = "monto_acumulado_congelado", precision = 19, scale = 2)
+    private BigDecimal frozenAccumulated;
 
     @Column(name = "fecha_creacion")
     private OffsetDateTime createdAt;
@@ -61,6 +67,22 @@ public class SavingGoal {
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "savingGoal")
     private List<Transaction> transactions = new ArrayList<>();
 
+    @jakarta.persistence.Transient
+    private BigDecimal displayAccumulated;
+
+    public BigDecimal getAccumulated() {
+        if (displayAccumulated != null) return displayAccumulated;
+        return transactions
+                .stream()
+                .filter(t -> Boolean.TRUE.equals(t.getActive()))
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public void setDisplayAccumulated(BigDecimal displayAccumulated) {
+        this.displayAccumulated = displayAccumulated;
+    }
+
     @PrePersist
     private void onCreate() {
         active = true;
@@ -75,15 +97,6 @@ public class SavingGoal {
         return getAccumulated().divide(targetAmount, 2, HALF_UP)
                 .multiply(BigDecimal.valueOf(100))
                 .doubleValue();
-    }
-
-    public BigDecimal getAccumulated() {
-        return transactions
-                .stream()
-                .filter(t -> Boolean.TRUE.equals(t.getActive()))
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
     }
 
     public BigDecimal getOutstanding() {

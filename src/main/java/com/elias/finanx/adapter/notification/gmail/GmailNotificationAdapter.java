@@ -20,6 +20,10 @@ public class GmailNotificationAdapter implements NotificationPort {
 
     @Override
     public void send(NotificationDTO notification) {
+        if (!notification.isEmailNotifications()) {
+            log.debug("Email skip: user {} tiene notificaciones email deshabilitadas", notification.getUserId());
+            return;
+        }
         String subject = "Finanx - " + (notification.getType() != null ? notification.getType().name() : "NOTIFICATION");
         String body = notification.getMessage() != null ? notification.getMessage() : "";
 

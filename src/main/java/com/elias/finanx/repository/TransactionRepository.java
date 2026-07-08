@@ -33,5 +33,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     List<Transaction> findAllByWallet_User_IdAndCreatedAtBetweenAndActiveAndType(Long userId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active, TransactionType type);
 
+    List<Transaction> findAllByWallet_IdAndCreatedAtBetweenAndActive(Long walletId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active);
+
     void deleteAllByWallet_User_Id(Long userId);
 }

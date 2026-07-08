@@ -28,6 +28,9 @@ public class NotificationDTO {
     @Schema(description = "Correo electronico del usuario", example = "usuario@ejemplo.com")
     private String userEmail;
 
+    @Schema(description = "Indica si el usuario tiene habilitadas las notificaciones por email", example = "true")
+    private boolean emailNotifications;
+
     @Schema(description = "Tokens FCM del usuario para notificaciones push", example = "[\"fM8x...abc123\"]")
     private List<String> fcmTokens;
 

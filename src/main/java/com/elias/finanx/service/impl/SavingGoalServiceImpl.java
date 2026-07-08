@@ -9,6 +9,7 @@ import com.elias.finanx.entity.enums.NotificationType;
 import com.elias.finanx.entity.enums.SavingGoalState;
 import com.elias.finanx.mapper.DateMapper;
 import com.elias.finanx.mapper.SavingGoalMapper;
+import com.elias.finanx.port.ExchangePort;
 import com.elias.finanx.repository.SavingGoalRepository;
 import com.elias.finanx.repository.UserRepository;
 import com.elias.finanx.service.NotificationService;
@@ -18,10 +19,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @RequiredArgsConstructor
 @Service
@@ -32,6 +35,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final DateMapper dateMapper;
+    private final ExchangePort exchangePort;
 
     @Override
     @Transactional
@@ -40,6 +44,8 @@ public class SavingGoalServiceImpl implements SavingGoalService {
 
         User user = userRepository.getReferenceById(request.getUserId());
         sg.setUser(user);
+
+        sg.setCurrencyCode(user.getPreferences().getCurrencyCode());
 
         ZoneId userZone = user.getTimeZone().toZoneId();
         sg.setDeadline(request.getDeadline().atStartOfDay().atZone(userZone).toOffsetDateTime());
@@ -68,8 +74,32 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Override
     public void cancel(Long id) {
         SavingGoal existing = sgRepository.findById(id).orElseThrow();
+        BigDecimal converted = computeConvertedAccumulated(existing);
+        existing.setFrozenAccumulated(converted);
         existing.setState(SavingGoalState.CANCELLED);
         sgRepository.save(existing);
+    }
+
+    private BigDecimal computeConvertedAccumulated(SavingGoal sa) {
+        String goalCurrency = sa.getCurrencyCode();
+        return sa.getTransactions().stream()
+                .filter(t -> Boolean.TRUE.equals(t.getActive()))
+                .map(t -> {
+                    String txCurrency = t.getWallet() != null
+                            ? t.getWallet().getCurrencyCode()
+                            : goalCurrency;
+                    if (txCurrency.equalsIgnoreCase(goalCurrency)) {
+                        return t.getAmount();
+                    }
+                    try {
+                        return exchangePort.convert(t.getAmount(), txCurrency, goalCurrency);
+                    } catch (Exception e) {
+                        log.warn("Exchange conversion failed for tx {}, using raw amount", t.getId(), e);
+                        return t.getAmount();
+                    }
+                })
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     @Override
@@ -87,6 +117,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     public List<SavingGoalResponse> findAllActiveByUser(Long userId) {
         return sgRepository.findAllByUser_IdAndActive(userId, true)
                 .stream()
+                .peek(sg -> sg.setDisplayAccumulated(computeConvertedAccumulated(sg)))
                 .map(sgMapper::toResponse)
                 .toList();
     }
@@ -94,7 +125,9 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Override
     @Transactional(readOnly = true)
     public SavingGoalResponse findById(Long id) {
-        return sgMapper.toResponse(sgRepository.findById(id).orElseThrow());
+        SavingGoal entity = sgRepository.findById(id).orElseThrow();
+        entity.setDisplayAccumulated(computeConvertedAccumulated(entity));
+        return sgMapper.toResponse(entity);
     }
 
     @Transactional
@@ -104,7 +137,13 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         for (SavingGoal sa: all) {
             StringBuilder sb = new StringBuilder();
             User u = sa.getUser();
-            if (sa.isCompleted()) {
+            String goalCurrency = sa.getCurrencyCode();
+
+            BigDecimal convertedAccumulated = computeConvertedAccumulated(sa);
+
+            boolean completed = convertedAccumulated.compareTo(sa.getTargetAmount()) >= 0;
+
+            if (completed) {
                 Transaction last = sa.getTransactions().stream()
                         .filter(t -> Boolean.TRUE.equals(t.getActive()))
                         .max(Comparator.comparing(Transaction::getCreatedAt))
@@ -114,7 +153,8 @@ public class SavingGoalServiceImpl implements SavingGoalService {
                                 });
                 sa.setState(SavingGoalState.COMPLETED);
                 sa.setCompletedAt(OffsetDateTime.now(u.getTimeZone().toZoneId()));
-                log.info("COMPLETING SavingGoal id={} desc={}", sa.getId(), sa.getDescription());
+                sa.setFrozenAccumulated(convertedAccumulated);
+                log.info("COMPLETING SavingGoal id={} desc={} convertedAccumulated={}", sa.getId(), sa.getDescription(), convertedAccumulated);
 
                 notificationService.generate(b -> b
                         .savingGoal(sa)
@@ -124,7 +164,9 @@ public class SavingGoalServiceImpl implements SavingGoalService {
                                 .append("🎉 ¡Felicitaciones! Has alcanzado tu meta de ahorro '")
                                 .append(sa.getDescription())
                                 .append("' con un total acumulado de ")
-                                .append(sa.getAccumulated())
+                                .append(convertedAccumulated)
+                                .append(" ")
+                                .append(goalCurrency)
                                 .append(" de ")
                                 .append(sa.getTargetAmount())
                                 .append(". El último movimiento fue de ")

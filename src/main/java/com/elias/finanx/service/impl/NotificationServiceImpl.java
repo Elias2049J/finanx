@@ -44,6 +44,9 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification saved = notificationRepository.save(builder.build());
         NotificationDTO dto = notificationMapper.toResponse(saved);
+        if (saved.getUser() != null && saved.getUser().getPreferences() != null) {
+            dto.setEmailNotifications(saved.getUser().getPreferences().isEmailNotifications());
+        }
 
         outboxRepository.save(NotificationOutbox.builder()
                 .notificationId(saved.getId())
