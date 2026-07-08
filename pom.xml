@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.elias</groupId>
-    <artifactId>finanx</artifactId>
+    <artifactId>mis-monedas</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>finanx</name>
-    <description>finanx</description>
+    <name>mis-monedas</name>
+    <description>Mis Monedas: An app for personal finance control</description>
     <url/>
     <licenses>
         <license/>

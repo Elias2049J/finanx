@@ -20,7 +20,7 @@ app:
 
 spring:
   application:
-    name: "finanx"
+    name: "mis-monedas"
 
   datasource:
     url: "jdbc:postgresql://localhost:5432/db_finanx"
@@ -39,12 +39,12 @@ spring:
   security:
     jwt:
       secret: X9f!aPz7QwLmN2rT4vYbC6dE8hJkR0sU
-      issuer: finanx-api
+      issuer: mismonedas-api
       expiration-seconds: 84600
     oauth2:
       resourceserver:
         jwt:
-          audiences: "finanx-api"
+          audiences: "mis-monedas-api"
       client:
         registration:
           google:

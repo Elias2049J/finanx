@@ -1,0 +1,25 @@
+package com.elias.mismonedas.repository;
+
+import com.elias.mismonedas.entity.Notification;
+import com.elias.mismonedas.entity.enums.NotificationState;
+import com.elias.mismonedas.entity.enums.NotificationType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+
+@Repository
+public interface NotificationRepository extends JpaRepository<Notification, Long> {
+    List<Notification> findAllByUser_IdAndStateAndScheduledAtBefore(Long userId, NotificationState state, OffsetDateTime scheduledAtBefore);
+    List<Notification> findAllByUser_IdAndState(Long userId, NotificationState state);
+    List<Notification> findAllByUser_Id(Long userId);
+    List<Notification> findAllByUser_IdAndStateAndSentAtBefore(Long userId, NotificationState stateSent, OffsetDateTime sentAtBefore);
+
+    List<Notification> findAllByUser_IdAndStateIsNotOrderByCreatedAtDesc(Long userId, NotificationState state);
+    boolean existsByBudget_IdAndStateInAndType(
+            Long budgetId, List<NotificationState> states, NotificationType type);
+
+    void deleteAllByUser_Id(Long userId);
+}
+
