@@ -9,6 +9,10 @@ app:
   front-url-https: "https://localhost:4200"
   ai:
     max-user-prompt-length: 500
+  notifications:
+    fcm:
+      credentials-path: ${FCM_CREDENTIALS_PATH:firebase-service-account.json}
+      project-id: ${FCM_PROJECT_ID:finanx-dev}
 
 spring:
   application:

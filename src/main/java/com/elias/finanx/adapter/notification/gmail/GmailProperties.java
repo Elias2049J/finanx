@@ -1,11 +1,11 @@
-package com.elias.finanx.adapter.email;
+package com.elias.finanx.adapter.notification.gmail;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties(prefix = "gmail")
+@ConfigurationProperties(prefix = "app.notifications.gmail")
 @Data
 public class GmailProperties {
     private String host;

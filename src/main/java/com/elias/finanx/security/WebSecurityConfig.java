@@ -68,6 +68,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/budgets/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/reports/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/notifications/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/users/{userId}/fcm-tokens/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/users/{userId}/chat/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/analytics/**").hasAnyRole("USER", "SYSTEM")
 

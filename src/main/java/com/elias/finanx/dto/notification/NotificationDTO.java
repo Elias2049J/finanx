@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.elias.finanx.entity.enums.NotificationType;
 import com.elias.finanx.entity.enums.NotificationState;
@@ -26,6 +27,9 @@ public class NotificationDTO {
 
     @Schema(description = "Correo electronico del usuario", example = "usuario@ejemplo.com")
     private String userEmail;
+
+    @Schema(description = "Tokens FCM del usuario para notificaciones push", example = "[\"fM8x...abc123\"]")
+    private List<String> fcmTokens;
 
     @Schema(description = "Tipo de notificacion", implementation = NotificationType.class, example = "ALERTA_PRESUPUESTO")
     private NotificationType type;

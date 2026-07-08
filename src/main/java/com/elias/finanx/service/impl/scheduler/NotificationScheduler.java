@@ -24,7 +24,7 @@ public class NotificationScheduler {
 
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationRepository notificationRepository;
-    private final NotificationPort notificationPort;
+    private final List<NotificationPort> notificationPorts;
     private final ObjectMapper objectMapper;
 
     @Scheduled(fixedDelay = 60_000)
@@ -35,7 +35,7 @@ public class NotificationScheduler {
         for (NotificationOutbox entry : pending) {
             try {
                 NotificationDTO dto = objectMapper.readValue(entry.getPayload(), NotificationDTO.class);
-                notificationPort.send(dto);
+                notificationPorts.forEach(port -> port.send(dto));
 
                 entry.setState(OutboxState.SENT);
                 entry.setSentAt(OffsetDateTime.now());

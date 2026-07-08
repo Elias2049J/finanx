@@ -1,4 +1,4 @@
-package com.elias.finanx.adapter.email;
+package com.elias.finanx.adapter.notification.gmail;
 
 import com.elias.finanx.port.NotificationPort;
 import com.elias.finanx.dto.notification.NotificationDTO;

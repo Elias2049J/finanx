@@ -53,7 +53,7 @@ public class ChatSession {
      * Formato: "v1_Chd..." — retornado en cada {@code InteractionResponse.id()}.
      * Null hasta que se completa el primer turno.
      */
-    @Column(name = "interaction_id")
+    @Column(name = "id_interaccion")
     private String interactionId;
 
     /**
