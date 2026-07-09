@@ -2,7 +2,6 @@ package com.elias.mismonedas.service;
 
 import com.elias.mismonedas.dto.payment.PaymentRequest;
 import com.elias.mismonedas.dto.payment.PaymentResponse;
-import com.elias.mismonedas.dto.payment.Receipt;
 import com.elias.mismonedas.entity.enums.PaymentProvider;
 
 import java.util.List;
@@ -28,8 +27,4 @@ public interface PaymentService {
 
     /** Verifies, deduplicates and applies an inbound webhook notification. */
     void processWebhookEvent(PaymentProvider provider, String rawPayload, String signatureHeader);
-
-    Receipt getReceiptById(Long paymentId);
-
-    List<Receipt> findAllReceiptsByUser(Long userId);
 }

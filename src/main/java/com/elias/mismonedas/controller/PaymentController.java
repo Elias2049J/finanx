@@ -2,7 +2,6 @@ package com.elias.mismonedas.controller;
 
 import com.elias.mismonedas.dto.payment.PaymentRequest;
 import com.elias.mismonedas.dto.payment.PaymentResponse;
-import com.elias.mismonedas.dto.payment.Receipt;
 import com.elias.mismonedas.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -103,35 +102,4 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.refund(id));
     }
 
-    @Operation(
-            summary = "Get receipt",
-            description = "Gets the receipt for a completed payment.",
-            operationId = "getReceipt",
-            tags = {"Payments"},
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Receipt found"),
-                    @ApiResponse(responseCode = "404", description = "Payment not found or not completed")
-            }
-    )
-    @GetMapping("/{id}/receipt")
-    public ResponseEntity<Receipt> getReceipt(
-            @Parameter(description = "Payment id") @PathVariable Long id) {
-        return ResponseEntity.ok(paymentService.getReceiptById(id));
-    }
-
-    @Operation(
-            summary = "List receipts by user",
-            description = "Gets all receipts for completed payments of a user.",
-            operationId = "findAllReceiptsByUser",
-            tags = {"Payments"},
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "List retrieved"),
-                    @ApiResponse(responseCode = "404", description = "User not found")
-            }
-    )
-    @GetMapping("/user/{userId}/receipts")
-    public ResponseEntity<List<Receipt>> findAllReceiptsByUser(
-            @Parameter(description = "User id") @PathVariable Long userId) {
-        return ResponseEntity.ok(paymentService.findAllReceiptsByUser(userId));
-    }
 }

@@ -48,6 +48,12 @@ public class TransactionRequest {
     )
     private Long savingGoalId;
 
+    @Schema(
+            description = "Identificador del recibo escaneado vía OCR, si aplica",
+            example = "1"
+    )
+    private Long receiptId;
+
     @NotNull
     @DecimalMin(value = "0.00", inclusive = false)
     @Schema(

@@ -96,7 +96,7 @@ public class User implements UserDetails {
     @PrePersist
     protected void onCreate() {
         if (createdAt == null)
-            createdAt = OffsetDateTime.now(ZoneId.of("America/Lima"));
+            createdAt = OffsetDateTime.now(getTimeZone().toZoneId());
         if (state == null)
             state = UserState.ENABLED;
         if (moneyBalance == null)

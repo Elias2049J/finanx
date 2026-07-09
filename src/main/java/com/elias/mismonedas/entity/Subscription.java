@@ -50,24 +50,31 @@ public class Subscription {
     @Column(name = "renovacion_automatica", nullable = false)
     private Boolean autoRenew;
 
+    /** Trial start (UTC). */
     @Column(name = "inicio_prueba")
     private OffsetDateTime trialStart;
 
+    /** Trial end (UTC). */
     @Column(name = "fin_prueba")
     private OffsetDateTime trialEnd;
 
+    /** Current billing period start (UTC). */
     @Column(name = "inicio_periodo_actual")
     private OffsetDateTime currentPeriodStart;
 
+    /** Current billing period end (UTC). */
     @Column(name = "fin_periodo_actual")
     private OffsetDateTime currentPeriodEnd;
 
+    /** Cancellation timestamp (UTC). */
     @Column(name = "fecha_cancelacion")
     private OffsetDateTime canceledAt;
 
+    /** Record creation timestamp (UTC). */
     @Column(name = "fecha_creacion")
     private OffsetDateTime createdAt;
 
+    /** Record last-update timestamp (UTC). */
     @Column(name = "fecha_actualizacion")
     private OffsetDateTime updatedAt;
 

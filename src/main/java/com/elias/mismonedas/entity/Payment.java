@@ -58,12 +58,15 @@ public class Payment {
     @Column(name = "razon_fallo")
     private String failureReason;
 
+    /** Payment completion timestamp (UTC). */
     @Column(name = "fecha_pago")
     private OffsetDateTime paidAt;
 
+    /** Record creation timestamp (UTC). */
     @Column(name = "fecha_creacion")
     private OffsetDateTime createdAt;
 
+    /** Record last-update timestamp (UTC). */
     @Column(name = "fecha_actualizacion")
     private OffsetDateTime updatedAt;
 

@@ -72,6 +72,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/users/{userId}/fcm-tokens/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/users/{userId}/chat/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/analytics/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/receipts/**").hasAnyRole("USER", "SYSTEM")
 
                         .anyRequest().authenticated()
                 )

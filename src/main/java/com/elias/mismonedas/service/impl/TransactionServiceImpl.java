@@ -29,6 +29,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final WalletRepository walletRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final ReceiptRepository receiptRepository;
     private final TransactionMapper transactionMapper;
     private final ReasonResolver reasonResolver;
     private final BudgetService budgetService;
@@ -72,6 +73,16 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow();
         transaction.setReason(reason);
         Transaction saved = transactionRepository.save(transaction);
+
+        if (request.getReceiptId() != null) {
+            Receipt receipt = receiptRepository.findByIdAndUser_Id(request.getReceiptId(), userId)
+                    .orElseThrow(() -> new IllegalArgumentException("Receipt not found or does not belong to user"));
+            if (receipt.getTransaction() != null) {
+                throw new IllegalArgumentException("Receipt is already linked to another transaction");
+            }
+            receipt.setTransaction(saved);
+            receiptRepository.save(receipt);
+        }
 
         adjustBalance(wallet, saved.getType(), saved.getAmount());
         walletRepository.save(wallet);

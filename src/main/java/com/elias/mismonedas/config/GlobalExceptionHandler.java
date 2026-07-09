@@ -2,6 +2,8 @@ package com.elias.mismonedas.config;
 
 import com.elias.mismonedas.dto.ErrorResponse;
 import com.elias.mismonedas.exception.CurrencyChangeRateLimitException;
+import com.elias.mismonedas.exception.OcrBusyException;
+import com.elias.mismonedas.exception.OcrProcessingException;
 import com.elias.mismonedas.exception.SubscriptionNotFoundException;
 import com.elias.mismonedas.exception.UserPreferencesNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -95,6 +97,34 @@ public class GlobalExceptionHandler {
         );
         log.error("[handleNullPointer] Exception at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error, ex);
         return ResponseEntity.internalServerError().body(error);
+    }
+
+    @ExceptionHandler(OcrProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleOcrProcessing(OcrProcessingException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getMessage(),
+                HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                LocalDateTime.now().toString()
+        );
+        log.warn("[handleOcrProcessing] at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
+    }
+
+    @ExceptionHandler(OcrBusyException.class)
+    public ResponseEntity<ErrorResponse> handleOcrBusy(OcrBusyException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getMessage(),
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                LocalDateTime.now().toString()
+        );
+        log.warn("[handleOcrBusy] at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header("Retry-After", "10")
+                .body(error);
     }
 
     @ExceptionHandler(Exception.class)

@@ -32,6 +32,7 @@ Aplicación de finanzas personales con soporte multi-moneda, programación recur
 | **Múltiples Billeteras** | Crear más de una billetera en distintas monedas | Sin límite de cantidad. Cada billetera puede tener una moneda ISO 4217 distinta. Solo una puede ser principal. |
 | **ChatBot Financiero** | Asistente de IA con contexto financiero del usuario | Sesiones con historial. Skills: ADVISOR (consejos contextuales) y CHITCHAT. Usa Google Gemini. |
 | **Insights Financieros** | Generación automática de análisis y recomendaciones basadas en IA sobre los datos del usuario | — |
+| **Escaneo de Recibos (OCR)** | Escaneo de recibos con Tesseract OCR + extracción estructurada vía regex con fallback Gemini. Los datos detectados se precargan en el formulario de transacción para verificación del usuario. | Sin almacenamiento de imagen. Límite de 30 escaneos/día. |
 
 ### Suscripción y Plans
 

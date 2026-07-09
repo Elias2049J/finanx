@@ -2,7 +2,6 @@ package com.elias.mismonedas.mapper;
 
 import com.elias.mismonedas.dto.payment.PaymentRequest;
 import com.elias.mismonedas.dto.payment.PaymentResponse;
-import com.elias.mismonedas.dto.payment.Receipt;
 import com.elias.mismonedas.entity.Payment;
 import com.elias.mismonedas.entity.User;
 import org.mapstruct.Context;
@@ -22,11 +21,6 @@ public interface PaymentMapper {
     default PaymentResponse toResponse(Payment entity) {
         return toResponseWithContext(entity, entity.getUser());
     }
-
-    @Mapping(target = "paymentId", source = "id")
-    @Mapping(target = "number", expression = "java(java.lang.String.format(\"RCP-%d-%06d\", entity.getCreatedAt().getYear(), entity.getId()))")
-    @Mapping(target = "issuedAt", source = "paidAt", qualifiedByName = "OffsetToLocal")
-    Receipt toReceipt(Payment entity, @Context User user);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)

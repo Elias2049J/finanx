@@ -2,7 +2,6 @@ package com.elias.mismonedas.service.impl;
 
 import com.elias.mismonedas.dto.payment.PaymentRequest;
 import com.elias.mismonedas.dto.payment.PaymentResponse;
-import com.elias.mismonedas.dto.payment.Receipt;
 import com.elias.mismonedas.dto.webhook.PaymentWebhookNotification;
 import com.elias.mismonedas.entity.Payment;
 import com.elias.mismonedas.entity.User;
@@ -151,26 +150,6 @@ public class PaymentServiceImpl implements PaymentService {
         } finally {
             webhookEventRepository.save(event);
         }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Receipt getReceiptById(Long paymentId) {
-        Payment payment = getPaymentOrThrow(paymentId);
-        if (payment.getState() != PaymentState.COMPLETED) {
-            throw new PaymentNotFoundException(paymentId);
-        }
-        return paymentMapper.toReceipt(payment, payment.getUser());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Receipt> findAllReceiptsByUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id " + userId));
-        return paymentRepository.findAllByUser_IdAndState(userId, PaymentState.COMPLETED).stream()
-                .map(p -> paymentMapper.toReceipt(p, user))
-                .toList();
     }
 
     private void applyNotification(Payment payment, PaymentWebhookNotification notification) {

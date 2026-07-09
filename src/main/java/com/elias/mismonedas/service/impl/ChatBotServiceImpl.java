@@ -125,7 +125,8 @@ public class ChatBotServiceImpl implements ChatBotService {
     @RequiresPlan(SubscriptionPlan.PREMIUM)
     public ChatMessageResponse sendMessage(Long sessionId, @PlanSubject Long userId, String rawUserPrompt) {
         ChatSession session = getSessionEntity(sessionId, userId);
-        ZoneId userZoneId = userRepository.findById(userId).orElseThrow().getTimeZone().toZoneId();
+        User user = userRepository.findById(userId).orElseThrow();
+        ZoneId userZoneId = user.getTimeZone().toZoneId();
 
         if (session.getState() != ChatSessionState.ACTIVE) {
             throw new IllegalStateException("La sesion " + sessionId + " no está activa.");
@@ -143,7 +144,7 @@ public class ChatBotServiceImpl implements ChatBotService {
         chatMessageRepository.save(userMessage);
 
         List<ChatMessageResponse> historyDtos = history.stream()
-                .map(chatMessageMapper::toResponse)
+                .map(msg -> chatMessageMapper.toResponse(msg, user))
                 .toList();
 
         ChatMessageRequest adapterRequest = ChatMessageRequest.builder()
@@ -167,7 +168,7 @@ public class ChatBotServiceImpl implements ChatBotService {
         log.info("[CHAT] Respuesta persistida. Modelo: {}, Latencia: {} ms, InteractionId: {}, Tokens Usados: {}",
                 assistantMessage.getModel(), assistantMessage.getLatencyMs(), session.getInteractionId(), assistantMessage.getTokensUsed());
 
-        return chatMessageMapper.toResponse(assistantMessage);
+        return chatMessageMapper.toResponse(assistantMessage, user);
     }
 
     /**
