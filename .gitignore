@@ -41,3 +41,5 @@ application.yml
 opencode.json
 /doc/
 /snippets/
+/skills/
+AGENTS.md
