@@ -10,10 +10,16 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "fcm_tokens", indexes = {
-    @Index(name = "idx_fcm_token_user_id", columnList = "user_id"),
-    @Index(name = "idx_fcm_token_token", columnList = "token")
-})
+@Table(
+    name = "fcm_tokens",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uq_fcm_token_user_token", columnNames = {"user_id", "token"})
+    },
+    indexes = {
+        @Index(name = "idx_fcm_token_user_id", columnList = "user_id"),
+        @Index(name = "idx_fcm_token_token", columnList = "token")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor

@@ -77,5 +77,12 @@ public class TransactionRequest {
             example = "SPENT"
     )
     private TransactionType type;
+
+    @Schema(
+            description = "Si true y receiptId presente, convierte el monto del recibo (currencyGuess) a la moneda del wallet usando el exchange service",
+            example = "false",
+            defaultValue = "false"
+    )
+    private Boolean convertCurrency;
 }
 

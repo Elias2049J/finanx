@@ -17,6 +17,7 @@ public interface SubscriptionMapper {
     @Mapping(target = "canceledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(target = "updatedAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "currencyCode", target = "currency")
     SubscriptionResponse toResponseWithContext(Subscription entity, @Context User user);
 
     default SubscriptionResponse toResponse(Subscription entity) {
@@ -32,5 +33,6 @@ public interface SubscriptionMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "payments", ignore = true)
+    @Mapping(source = "currency", target = "currencyCode")
     Subscription toEntity(SubscriptionRequest request);
 }

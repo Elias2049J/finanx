@@ -1,5 +1,7 @@
 package com.elias.mismonedas.adapter.ocr;
 
+import com.elias.mismonedas.entity.enums.PaymentMethod;
+import com.elias.mismonedas.entity.enums.TransactionType;
 import com.elias.mismonedas.port.ReceiptData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,9 +56,69 @@ class RegexReceiptParserAdapterTest {
     }
 
     @Test
-    void shouldReturnNullDateAndMerchant() {
+    void shouldReturnNullDateAndDescription() {
         ReceiptData result = adapter.parse("TOTAL S/. 99.99");
-        assertThat(result.detectedDate()).isNull();
-        assertThat(result.merchantName()).isNull();
+        assertThat(result.date()).isNull();
+        assertThat(result.description()).isNull();
+    }
+
+    @Test
+    void shouldDetectCashPaymentMethod() {
+        ReceiptData result = adapter.parse("EFECTIVO\nTOTAL S/. 50.00");
+        assertThat(result.paymentMethod()).isEqualTo(PaymentMethod.CASH);
+    }
+
+    @Test
+    void shouldDetectCreditCardPaymentMethod() {
+        ReceiptData result = adapter.parse("TARJETA CREDITO VISA\nTOTAL S/. 100.00");
+        assertThat(result.paymentMethod()).isEqualTo(PaymentMethod.CREDIT_CARD);
+    }
+
+    @Test
+    void shouldDetectYapePaymentMethod() {
+        ReceiptData result = adapter.parse("YAPE\nTOTAL S/. 25.00");
+        assertThat(result.paymentMethod()).isEqualTo(PaymentMethod.YAPE);
+    }
+
+    @Test
+    void shouldDetectPlinPaymentMethod() {
+        ReceiptData result = adapter.parse("PLIN\nTOTAL S/. 30.00");
+        assertThat(result.paymentMethod()).isEqualTo(PaymentMethod.PLIN);
+    }
+
+    @Test
+    void shouldDetectSpentTransactionType() {
+        ReceiptData result = adapter.parse("BOLETA DE VENTA\nTOTAL S/. 60.00");
+        assertThat(result.transactionType()).isEqualTo(TransactionType.SPENT);
+    }
+
+    @Test
+    void shouldDetectIncomeTransactionType() {
+        ReceiptData result = adapter.parse("COBRO\nTOTAL S/. 200.00");
+        assertThat(result.transactionType()).isEqualTo(TransactionType.INCOME);
+    }
+
+    @Test
+    void shouldReturnNullPaymentMethodWhenNotDetected() {
+        ReceiptData result = adapter.parse("TOTAL S/. 45.00");
+        assertThat(result.paymentMethod()).isNull();
+    }
+
+    @Test
+    void shouldReturnNullTransactionTypeWhenNotDetected() {
+        ReceiptData result = adapter.parse("TOTAL S/. 45.00");
+        assertThat(result.transactionType()).isNull();
+    }
+
+    @Test
+    void shouldExtractDateFromReceipt() {
+        ReceiptData result = adapter.parse("FECHA DE EMISION: 01-07-2026\nTOTAL S/. 45.00");
+        assertThat(result.date()).isEqualTo(java.time.LocalDate.of(2026, 7, 1));
+    }
+
+    @Test
+    void shouldReturnNullDateWhenNotPresent() {
+        ReceiptData result = adapter.parse("TOTAL S/. 45.00");
+        assertThat(result.date()).isNull();
     }
 }

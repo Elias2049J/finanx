@@ -27,7 +27,9 @@ public class WalletController {
 
     @Operation(summary = "Obtener billetera por ID", tags = {"Wallets"})
     @GetMapping("/{id}")
-    public ResponseEntity<WalletResponse> findById(@PathVariable Long id) {
+    public ResponseEntity<WalletResponse> findById(
+            @PathVariable Long userId,
+            @PathVariable Long id) {
         return ResponseEntity.ok(walletService.findById(id));
     }
 
@@ -44,6 +46,7 @@ public class WalletController {
     @Operation(summary = "Actualizar billetera", tags = {"Wallets"})
     @PutMapping("/{id}")
     public ResponseEntity<WalletResponse> update(
+            @PathVariable Long userId,
             @PathVariable Long id,
             @Valid @RequestBody WalletRequest request) {
         return ResponseEntity.ok(walletService.update(id, request));
@@ -51,7 +54,9 @@ public class WalletController {
 
     @Operation(summary = "Deshabilitar billetera", tags = {"Wallets"})
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> disable(@PathVariable Long id) {
+    public ResponseEntity<Void> disable(
+            @PathVariable Long userId,
+            @PathVariable Long id) {
         walletService.disable(id);
         return ResponseEntity.noContent().build();
     }

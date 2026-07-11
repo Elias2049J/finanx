@@ -29,7 +29,9 @@ public class FcmTokenServiceImpl implements FcmTokenService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userId));
 
-        FcmToken existing = fcmTokenRepository.findByUser_IdAndToken(userId, request.getToken())
+        // findFirstByUser_IdAndToken evita IncorrectResultSizeDataAccessException
+        // cuando existen duplicados legacy (antes del UNIQUE constraint)
+        FcmToken existing = fcmTokenRepository.findFirstByUser_IdAndToken(userId, request.getToken())
                 .orElse(null);
 
         if (existing != null) {
@@ -38,6 +40,10 @@ public class FcmTokenServiceImpl implements FcmTokenService {
                 existing.setDeviceName(request.getDeviceName());
             }
             fcmTokenRepository.save(existing);
+
+            // Limpiar duplicados legacy si existen
+            cleanDuplicates(userId, request.getToken(), existing.getId());
+
             return toResponse(existing);
         }
 
@@ -50,6 +56,16 @@ public class FcmTokenServiceImpl implements FcmTokenService {
         fcmToken = fcmTokenRepository.save(fcmToken);
         log.info("Token FCM registrado para userId={}, deviceName={}", userId, request.getDeviceName());
         return toResponse(fcmToken);
+    }
+
+    private void cleanDuplicates(Long userId, String token, Long keepId) {
+        List<FcmToken> duplicates = fcmTokenRepository.findAllByUser_IdAndToken(userId, token);
+        for (FcmToken dup : duplicates) {
+            if (!dup.getId().equals(keepId)) {
+                fcmTokenRepository.deleteById(dup.getId());
+                log.warn("Token FCM duplicado eliminado: id={}, userId={}", dup.getId(), userId);
+            }
+        }
     }
 
     @Override

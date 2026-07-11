@@ -8,6 +8,7 @@ import com.elias.mismonedas.entity.enums.SavingGoalState;
 import com.elias.mismonedas.entity.enums.TimeZone;
 import com.elias.mismonedas.entity.enums.TransactionType;
 import com.elias.mismonedas.mapper.TransactionMapper;
+import com.elias.mismonedas.port.ExchangePort;
 import com.elias.mismonedas.repository.*;
 import com.elias.mismonedas.service.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,7 @@ class TransactionServiceImplTest {
     @Mock private SavingGoalService savingGoalService;
     @Mock private SavingGoalRepository sgRepository;
     @Mock private UserDataContextService userDataContextService;
+    @Mock private ExchangePort exchangePort;
 
     @Captor private ArgumentCaptor<Receipt> receiptCaptor;
 
@@ -61,7 +63,7 @@ class TransactionServiceImplTest {
         service = new TransactionServiceImpl(
                 transactionRepository, walletRepository, categoryRepository, userRepository,
                 receiptRepository, transactionMapper, reasonResolver, budgetService,
-                savingGoalService, sgRepository, userDataContextService);
+                savingGoalService, sgRepository, userDataContextService, exchangePort);
 
         user = new User();
         user.setId(1L);

@@ -2,6 +2,7 @@ package com.elias.mismonedas.controller;
 
 import com.elias.mismonedas.dto.fcm.FcmTokenResponse;
 import com.elias.mismonedas.dto.fcm.RegisterFcmTokenRequest;
+import com.elias.mismonedas.security.RequireOwnership;
 import com.elias.mismonedas.service.FcmTokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +25,7 @@ public class FcmTokenController {
     @Operation(summary = "Registrar token FCM", operationId = "registerFcmToken")
     @PostMapping
     public ResponseEntity<FcmTokenResponse> register(
-            @PathVariable Long userId,
+            @RequireOwnership @PathVariable Long userId,
             @Valid @RequestBody RegisterFcmTokenRequest request) {
         FcmTokenResponse saved = fcmTokenService.register(userId, request);
         return ResponseEntity.created(URI.create("/users/" + userId + "/fcm-tokens/" + saved.getId())).body(saved);
@@ -33,7 +34,7 @@ public class FcmTokenController {
     @Operation(summary = "Eliminar token FCM", operationId = "removeFcmToken")
     @DeleteMapping("/{tokenId}")
     public ResponseEntity<Void> remove(
-            @PathVariable Long userId,
+            @RequireOwnership @PathVariable Long userId,
             @PathVariable Long tokenId) {
         fcmTokenService.remove(userId, tokenId);
         return ResponseEntity.noContent().build();
@@ -41,7 +42,7 @@ public class FcmTokenController {
 
     @Operation(summary = "Listar tokens FCM del usuario", operationId = "listFcmTokens")
     @GetMapping
-    public ResponseEntity<List<FcmTokenResponse>> list(@PathVariable Long userId) {
+    public ResponseEntity<List<FcmTokenResponse>> list(@RequireOwnership @PathVariable Long userId) {
         return ResponseEntity.ok(fcmTokenService.findAllByUser(userId));
     }
 }

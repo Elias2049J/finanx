@@ -28,6 +28,10 @@ public class Receipt {
     @JoinColumn(name = "id_transaccion")
     private Transaction transaction;
 
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_imagen")
+    private Image image;
+
     @Lob
     @Column(name = "texto_extraido", columnDefinition = "TEXT")
     private String rawOcrText;
@@ -39,7 +43,21 @@ public class Receipt {
     private LocalDate detectedDate;
 
     @Column(name = "comercio_detectado")
-    private String detectedMerchant;
+    private String description;
+
+    @Column(name = "moneda_detectada", length = 3)
+    private String currencyGuess;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metodo_pago", length = 20)
+    private com.elias.mismonedas.entity.enums.PaymentMethod paymentMethod;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_transaccion", length = 20)
+    private com.elias.mismonedas.entity.enums.TransactionType transactionType;
+
+    @Column(name = "id_categoria_detectada")
+    private Long detectedCategoryId;
 
     @Column(name = "confianza")
     private Double confidenceScore;

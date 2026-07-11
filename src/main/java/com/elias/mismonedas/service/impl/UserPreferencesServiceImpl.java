@@ -58,15 +58,18 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-        if (repository.findByUser_Id(userId).isPresent()) {
-            throw new RuntimeException("Preferences already exist for user " + userId);
-        }
-
-        UserPreferences prefs = mapper.toEntity(request);
-        prefs.setUser(user);
-        repository.save(prefs);
-        log.info("Preferencias creadas para userId={}", userId);
-        return mapper.toResponse(prefs);
+        return repository.findByUser_Id(userId)
+                .map(existing -> {
+                    log.info("Preferencias ya existen para userId={}, devolviendo existentes", userId);
+                    return mapper.toResponse(existing);
+                })
+                .orElseGet(() -> {
+                    UserPreferences prefs = mapper.toEntity(request);
+                    prefs.setUser(user);
+                    repository.save(prefs);
+                    log.info("Preferencias creadas para userId={}", userId);
+                    return mapper.toResponse(prefs);
+                });
     }
 
     @Override

@@ -2,6 +2,8 @@ package com.elias.mismonedas.repository;
 
 import com.elias.mismonedas.entity.FcmToken;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -15,7 +17,10 @@ public interface FcmTokenRepository extends JpaRepository<FcmToken, Long> {
 
     Optional<FcmToken> findByToken(String token);
 
-    Optional<FcmToken> findByUser_IdAndToken(Long userId, String token);
+    Optional<FcmToken> findFirstByUser_IdAndToken(Long userId, String token);
 
     int deleteByUpdatedAtBefore(LocalDateTime cutoff);
+
+    @Query("SELECT f FROM FcmToken f WHERE f.user.id = :userId AND f.token = :token ORDER BY f.id ASC")
+    List<FcmToken> findAllByUser_IdAndToken(@Param("userId") Long userId, @Param("token") String token);
 }

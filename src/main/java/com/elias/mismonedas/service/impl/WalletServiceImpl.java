@@ -7,6 +7,7 @@ import com.elias.mismonedas.entity.Wallet;
 import com.elias.mismonedas.entity.enums.SubscriptionPlan;
 import com.elias.mismonedas.mapper.WalletMapper;
 import com.elias.mismonedas.plan.gating.PlanRequiredException;
+import com.elias.mismonedas.repository.UserPreferencesRepository;
 import com.elias.mismonedas.repository.WalletRepository;
 import com.elias.mismonedas.repository.UserRepository;
 import com.elias.mismonedas.service.SubscriptionService;
@@ -26,17 +27,28 @@ public class WalletServiceImpl implements WalletService {
     private final UserRepository userRepository;
     private final WalletMapper walletMapper;
     private final SubscriptionService subscriptionService;
+    private final UserPreferencesRepository preferencesRepository;
 
     @Override
     @Transactional
     public WalletResponse create(Long userId, WalletRequest request) {
-        User user = userRepository.findById(userId).orElseThrow();
         long walletCount = walletRepository.countByUser_Id(userId);
+
+        if (walletCount == 0) {
+            if (preferencesRepository.findByUser_Id(userId).isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Debe crear sus preferencias antes de crear la primera wallet");
+            }
+            return getOrCreatePrimary(userId, request.getCurrencyCode());
+        }
+
         SubscriptionPlan plan = subscriptionService.getActivePlanFor(userId);
-        if (walletCount > 0 && plan != SubscriptionPlan.PREMIUM) {
+        if (plan != SubscriptionPlan.PREMIUM) {
             throw new PlanRequiredException(
                     new SubscriptionPlan[]{SubscriptionPlan.PREMIUM}, plan);
         }
+
+        User user = userRepository.findById(userId).orElseThrow();
         Wallet wallet = walletMapper.toEntity(request);
         wallet.setUser(user);
         if (request.isPrimary()) {

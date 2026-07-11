@@ -8,6 +8,7 @@ import com.elias.mismonedas.exception.SubscriptionNotFoundException;
 import com.elias.mismonedas.exception.UserPreferencesNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -121,10 +122,40 @@ public class GlobalExceptionHandler {
                 HttpStatus.SERVICE_UNAVAILABLE.value(),
                 LocalDateTime.now().toString()
         );
-        log.warn("[handleOcrBusy] at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
+        log.warn("[handleOcrBusy] Exception at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .header("Retry-After", "10")
                 .body(error);
+    }
+
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ErrorResponse> handleSecurityException(SecurityException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN.value(),
+                LocalDateTime.now().toString()
+        );
+        log.warn("[handleSecurityException] Forbidden at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+        String message = "Violación de integridad de datos";
+        if (ex.getMessage() != null && ex.getMessage().contains("uq_fcm_token_user_token")) {
+            message = "El token FCM ya está registrado para este usuario";
+        }
+        ErrorResponse error = new ErrorResponse(
+                request.getMethod(),
+                request.getRequestURI(),
+                message,
+                HttpStatus.CONFLICT.value(),
+                LocalDateTime.now().toString()
+        );
+        log.warn("[handleDataIntegrity] Conflict at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(Exception.class)

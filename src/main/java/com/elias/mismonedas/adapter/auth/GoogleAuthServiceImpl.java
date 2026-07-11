@@ -3,16 +3,13 @@ package com.elias.mismonedas.adapter.auth;
 import com.elias.mismonedas.dto.auth.GoogleIdTokenPayload;
 import com.elias.mismonedas.dto.auth.GoogleLoginRequest;
 import com.elias.mismonedas.dto.auth.LoginResponse;
-import com.elias.mismonedas.dto.user.UserPreferencesRequest;
 import com.elias.mismonedas.dto.user.UserRequest;
 import com.elias.mismonedas.dto.user.UserResponse;
 import com.elias.mismonedas.entity.User;
 import com.elias.mismonedas.entity.enums.Role;
-import com.elias.mismonedas.entity.enums.TimeZone;
 import com.elias.mismonedas.mapper.UserMapper;
 import com.elias.mismonedas.repository.UserRepository;
 import com.elias.mismonedas.service.JwtTokenService;
-import com.elias.mismonedas.service.UserPreferencesService;
 import com.elias.mismonedas.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +31,6 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     private final JwtTokenService jwtTokenService;
     private final UserMapper userMapper;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
-    private final UserPreferencesService preferencesService;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
@@ -71,8 +67,6 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
             user.setMoneyBalance(BigDecimal.ZERO);
         }
 
-        preferencesService.getOrCreateDefaults(user.getId());
-
         String token = jwtTokenService.generateToken(user);
         UserResponse userDto = userMapper.toResponse(user);
         return new LoginResponse(userDto, token);
@@ -101,12 +95,6 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
         request.setName(payload.givenName());
         request.setLastname(payload.familyName());
         request.setPassword(randomSecret());
-
-        UserPreferencesRequest prefsReq = new UserPreferencesRequest();
-        prefsReq.setTimeZone(TimeZone.AMERICA_LIMA);
-        prefsReq.setCurrencyCode("PEN");
-        prefsReq.setEmailNotifications(true);
-        request.setPreferences(prefsReq);
 
         return userService.register(request);
     }

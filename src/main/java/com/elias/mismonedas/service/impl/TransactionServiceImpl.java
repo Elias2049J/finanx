@@ -7,6 +7,7 @@ import com.elias.mismonedas.entity.enums.SavingGoalState;
 import com.elias.mismonedas.entity.enums.TransactionType;
 import com.elias.mismonedas.mapper.TransactionMapper;
 import com.elias.mismonedas.repository.*;
+import com.elias.mismonedas.port.ExchangePort;
 import com.elias.mismonedas.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final SavingGoalService savingGoalService;
     private final SavingGoalRepository sgRepository;
     private final UserDataContextService userDataContextService;
+    private final ExchangePort exchangePort;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -80,6 +82,21 @@ public class TransactionServiceImpl implements TransactionService {
             if (receipt.getTransaction() != null) {
                 throw new IllegalArgumentException("Receipt is already linked to another transaction");
             }
+
+            if (Boolean.TRUE.equals(request.getConvertCurrency())) {
+                String fromCurrency = receipt.getCurrencyGuess();
+                String toCurrency = wallet.getCurrencyCode();
+                if (fromCurrency != null && !fromCurrency.equals(toCurrency)) {
+                    BigDecimal converted = exchangePort.convert(
+                            receipt.getDetectedAmount(), fromCurrency, toCurrency);
+                    transaction.setAmount(converted);
+                    log.info("currency_conversion receipt_id={} from={} to={} original={} converted={}",
+                            request.getReceiptId(), fromCurrency, toCurrency,
+                            receipt.getDetectedAmount(), converted);
+                }
+                saved = transactionRepository.save(transaction);
+            }
+
             receipt.setTransaction(saved);
             receiptRepository.save(receipt);
         }

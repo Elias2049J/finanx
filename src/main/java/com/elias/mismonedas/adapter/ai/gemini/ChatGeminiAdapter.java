@@ -123,8 +123,8 @@ public class ChatGeminiAdapter implements ChatPort {
 
     private InteractionRequest.GenerationConfig buildGenerationConfig(ChatSkill skill) {
         float temperature = switch (skill) {
-            case ADVISOR  -> 0.3f;
-            case CHITCHAT -> 0.7f;
+            case ADVISOR  -> aiProperties.advisorTemperature();
+            case CHITCHAT -> aiProperties.chitchatTemperature();
         };
         return new InteractionRequest.GenerationConfig(temperature, aiProperties.maxOutputTokens());
     }

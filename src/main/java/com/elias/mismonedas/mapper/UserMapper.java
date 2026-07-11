@@ -8,7 +8,7 @@ import org.mapstruct.*;
 
 import java.math.BigDecimal;
 
-@Mapper(componentModel = "spring", uses = {DateMapper.class, UserPreferencesMapper.class})
+@Mapper(componentModel = "spring", uses = {DateMapper.class})
 public interface UserMapper{
 
     @Mapping(target = "id", ignore = true)

@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record AiProperties(
         int maxUserPromptLength,
         int maxOutputTokens,
-        int advisorTemperature,
-        int chitchatTemperature,
+        float advisorTemperature,
+        float chitchatTemperature,
         int timeoutMs
 ) { }

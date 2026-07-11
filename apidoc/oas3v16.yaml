@@ -6,9 +6,165 @@ servers:
   - url: http://localhost:8080
     description: Generated server url
 tags:
+  - name: FCM Tokens
+    description: Gestion de tokens FCM para notificaciones push
   - name: ChatBot
-    description: Chatbot financiero conversacional de Finanx
+    description: Chatbot financiero conversacional de Mis Monedas
+  - name: Images
+    description: Almacenamiento generico de imagenes
+  - name: Receipts
+    description: Escaneo OCR de recibos
+  - name: User Preferences
+    description: Gestion de preferencias de usuario
 paths:
+  /users/{userId}/wallets/{id}:
+    get:
+      tags:
+        - Wallets
+      summary: Obtener billetera por ID
+      operationId: findById
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WalletResponse"
+    put:
+      tags:
+        - Wallets
+      summary: Actualizar billetera
+      operationId: update
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WalletResponse"
+    delete:
+      tags:
+        - Wallets
+      summary: Deshabilitar billetera
+      operationId: disable
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+  /users/{userId}/preferences:
+    get:
+      tags:
+        - User Preferences
+      summary: Obtener preferencias del usuario
+      operationId: getUserPreferences
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserPreferencesResponse"
+    put:
+      tags:
+        - User Preferences
+      summary: Actualizar preferencias del usuario
+      operationId: updateUserPreferences
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPreferencesRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserPreferencesResponse"
+    post:
+      tags:
+        - User Preferences
+      summary: Crear preferencias del usuario
+      operationId: createUserPreferences
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPreferencesRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserPreferencesResponse"
   /users/{id}:
     get:
       tags:
@@ -410,6 +566,138 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/BudgetResponse"
+  /webhooks/{provider}:
+    post:
+      tags:
+        - Webhooks
+      summary: Receive provider webhook
+      description: Receives an inbound webhook notification from a payment provider.
+      operationId: receiveWebhook
+      parameters:
+        - name: provider
+          in: path
+          description: Payment provider
+          required: true
+          schema:
+            type: string
+            enum:
+              - MERCADO_PAGO
+              - CULQI
+              - STRIPE
+              - MANUAL_TRANSFER
+        - name: X-Signature
+          in: header
+          description: Signature header sent by the provider
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: Accepted
+        "401":
+          description: Invalid signature
+        "409":
+          description: Duplicate event
+  /users/{userId}/wallets:
+    get:
+      tags:
+        - Wallets
+      summary: Listar billeteras de un usuario
+      operationId: findAllByUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WalletResponse"
+    post:
+      tags:
+        - Wallets
+      summary: Crear billetera
+      operationId: create
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WalletResponse"
+  /users/{userId}/fcm-tokens:
+    get:
+      tags:
+        - FCM Tokens
+      summary: Listar tokens FCM del usuario
+      operationId: listFcmTokens
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FcmTokenResponse"
+    post:
+      tags:
+        - FCM Tokens
+      summary: Registrar token FCM
+      operationId: registerFcmToken
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterFcmTokenRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/FcmTokenResponse"
   /users/{userId}/chat/sessions:
     get:
       tags:
@@ -646,6 +934,124 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TransactionResponse"
+  /subscriptions:
+    post:
+      tags:
+        - Subscriptions
+      summary: Create subscription
+      description: "Creates a new subscription in PENDING state, awaiting payment\
+        \ confirmation."
+      operationId: createSubscription
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+        "400":
+          description: Invalid data
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+  /subscriptions/{id}/renew:
+    post:
+      tags:
+        - Subscriptions
+      summary: Renew subscription
+      description: Opens the next billing period for an active subscription.
+      operationId: renewSubscription
+      parameters:
+        - name: id
+          in: path
+          description: Subscription id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Renewed
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+        "404":
+          description: Not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+  /subscriptions/{id}/cancel:
+    post:
+      tags:
+        - Subscriptions
+      summary: Cancel subscription
+      description: Cancels a subscription and disables auto renew.
+      operationId: cancelSubscription
+      parameters:
+        - name: id
+          in: path
+          description: Subscription id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Canceled
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+        "404":
+          description: Not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+  /subscriptions/{id}/activate:
+    post:
+      tags:
+        - Subscriptions
+      summary: Activate subscription
+      description: Activates a PENDING or PAST_DUE subscription and opens a new billing
+        period.
+      operationId: activateSubscription
+      parameters:
+        - name: id
+          in: path
+          description: Subscription id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Activated
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+        "404":
+          description: Not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+        "409":
+          description: Invalid state transition
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
   /schedule:
     post:
       tags:
@@ -802,6 +1208,89 @@ paths:
       responses:
         "200":
           description: OK
+  /receipts/{receiptId}/improve:
+    post:
+      tags:
+        - Receipts
+      summary: Mejorar parseo con IA
+      description: Re-ejecuta GeminiParser sobre el texto OCR guardado. Actualiza
+        el recibo solo si la confianza mejora.
+      operationId: improveScan
+      parameters:
+        - name: receiptId
+          in: path
+          description: ID del recibo
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: userId
+          in: query
+          description: ID del usuario
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReceiptResponse"
+  /receipts/scan:
+    post:
+      tags:
+        - Receipts
+      summary: Escanear recibo con OCR
+      description: "Procesa una imagen de recibo, extrae texto via Tesseract y parsea\
+        \ los datos (monto, fecha, comercio). Requiere plan PREMIUM."
+      operationId: scanReceipt
+      parameters:
+        - name: userId
+          in: query
+          description: ID del usuario
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Imagen del recibo (max 5MB)
+              required:
+                - image
+      responses:
+        "200":
+          description: Escaneo completado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReceiptResponse"
+        "400":
+          description: Imagen invalida o muy grande
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReceiptResponse"
+        "403":
+          description: Plan no suficiente (PLAN_REQUIRED)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReceiptResponse"
+        "503":
+          description: Servicio ocupado (OcrBusyException)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReceiptResponse"
   /reasons:
     post:
       tags:
@@ -848,6 +1337,66 @@ paths:
           description: Deshabilitada
         "404":
           description: No encontrada
+  /payments:
+    post:
+      tags:
+        - Payments
+      summary: Create payment
+      description: Starts a new payment attempt against the configured provider.
+      operationId: createPayment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          description: Invalid data
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+  /payments/{id}/refund:
+    post:
+      tags:
+        - Payments
+      summary: Refund payment
+      description: Requests a refund on the provider and marks the payment as REFUNDED.
+      operationId: refundPayment
+      parameters:
+        - name: id
+          in: path
+          description: Payment id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Refunded
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "404":
+          description: Not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "409":
+          description: Invalid state transition
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
   /notifications/user/{userId}/purge-older-than:
     post:
       tags:
@@ -1399,9 +1948,26 @@ paths:
                   enum:
                     - AMERICA_LIMA
                     - AMERICA_BOGOTA
-                    - AMERICA_MEXICO_CITY
+                    - AMERICA_QUITO
+                    - AMERICA_CARACAS
+                    - AMERICA_LA_PAZ
+                    - AMERICA_ASUNCION
+                    - AMERICA_MONTEVIDEO
                     - AMERICA_SANTIAGO
                     - AMERICA_BUENOS_AIRES
+                    - AMERICA_GUATEMALA
+                    - AMERICA_COSTA_RICA
+                    - AMERICA_TEGUCIGALPA
+                    - AMERICA_EL_SALVADOR
+                    - AMERICA_MANAGUA
+                    - AMERICA_PANAMA
+                    - AMERICA_HAVANA
+                    - AMERICA_SANTO_DOMINGO
+                    - AMERICA_PUERTO_RICO
+                    - AMERICA_MEXICO_CITY
+                    - EUROPE_MADRID
+                    - AFRICA_CEUTA
+                    - ATLANTIC_CANARY
                     - AMERICA_NEW_YORK
                     - AMERICA_LOS_ANGELES
   /users/search:
@@ -1548,6 +2114,66 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/TransactionResponse"
+  /subscriptions/{id}:
+    get:
+      tags:
+        - Subscriptions
+      summary: Find subscription
+      description: Gets a subscription by id.
+      operationId: findSubscriptionById
+      parameters:
+        - name: id
+          in: path
+          description: Subscription id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+        "404":
+          description: Not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+  /subscriptions/user/{userId}:
+    get:
+      tags:
+        - Subscriptions
+      summary: List subscriptions by user
+      description: Gets all subscriptions belonging to a user.
+      operationId: findAllSubscriptionsByUser
+      parameters:
+        - name: userId
+          in: path
+          description: User id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: List retrieved
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubscriptionResponse"
+        "404":
+          description: User not found
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubscriptionResponse"
   /schedule/user/{idUser}/{state}:
     get:
       tags:
@@ -1686,6 +2312,71 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SavingGoalResponse"
+  /receipts/{receiptId}:
+    get:
+      tags:
+        - Receipts
+      summary: Obtener resultado de escaneo
+      description: Recupera el resultado de un escaneo previo por ID.
+      operationId: getScanResult
+      parameters:
+        - name: userId
+          in: query
+          description: ID del usuario
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: receiptId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReceiptResponse"
+  /receipts/{receiptId}/image:
+    get:
+      tags:
+        - Receipts
+      summary: Obtener imagen del recibo
+      description: Retorna los bytes de la imagen asociada a un recibo.
+      operationId: getReceiptImage
+      parameters:
+        - name: userId
+          in: query
+          description: ID del usuario
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: receiptId
+          in: path
+          description: ID del recibo
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Imagen encontrada
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
+        "404":
+          description: Recibo o imagen no encontrada
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
   /reasons/user/{idUser}:
     get:
       tags:
@@ -1718,6 +2409,90 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ReasonResponse"
+  /payments/{id}:
+    get:
+      tags:
+        - Payments
+      summary: Find payment
+      description: Gets a payment by id.
+      operationId: findPaymentById
+      parameters:
+        - name: id
+          in: path
+          description: Payment id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "404":
+          description: Not found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+  /payments/user/{userId}:
+    get:
+      tags:
+        - Payments
+      summary: List payments by user
+      description: Gets all payments made by a user.
+      operationId: findAllPaymentsByUser
+      parameters:
+        - name: userId
+          in: path
+          description: User id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: List retrieved
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentResponse"
+        "404":
+          description: User not found
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentResponse"
+  /payments/subscription/{subscriptionId}:
+    get:
+      tags:
+        - Payments
+      summary: List payments by subscription
+      description: Gets all payments linked to a subscription.
+      operationId: findAllPaymentsBySubscription
+      parameters:
+        - name: subscriptionId
+          in: path
+          description: Subscription id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: List retrieved
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentResponse"
   /notifications/{id}:
     get:
       tags:
@@ -1813,6 +2588,36 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/NotificationDTO"
+  /images/{imageId}:
+    get:
+      tags:
+        - Images
+      summary: Descargar imagen
+      description: Retorna los bytes de una imagen por su ID.
+      operationId: downloadImage
+      parameters:
+        - name: imageId
+          in: path
+          description: ID de la imagen
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Imagen encontrada
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
+        "404":
+          description: Imagen no encontrada
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
   /categories/user/{idUser}:
     get:
       tags:
@@ -1940,6 +2745,28 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BudgetResponse"
+  /users/{userId}/fcm-tokens/{tokenId}:
+    delete:
+      tags:
+        - FCM Tokens
+      summary: Eliminar token FCM
+      operationId: removeFcmToken
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
   /users/{id}/delete:
     delete:
       tags:
@@ -1978,6 +2805,157 @@ paths:
           description: No encontrada
 components:
   schemas:
+    WalletRequest:
+      type: object
+      description: Solicitud para crear o actualizar una billetera
+      properties:
+        currencyCode:
+          type: string
+          description: Codigo de moneda (ISO 4217)
+          example: PEN
+          maxLength: 3
+          minLength: 3
+        primary:
+          type: boolean
+          description: Indica si es la billetera principal
+          example: true
+      required:
+        - currencyCode
+    WalletResponse:
+      type: object
+      description: Respuesta que representa una billetera
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador unico de la billetera
+          example: 1
+        userId:
+          type: integer
+          format: int64
+          description: Identificador del usuario propietario
+          example: 42
+        currencyCode:
+          type: string
+          description: Codigo de moneda (ISO 4217)
+          example: PEN
+        balance:
+          type: number
+          description: Balance actual
+          example: "1500.00"
+        primary:
+          type: boolean
+          description: Indica si es la billetera principal
+          example: true
+    UserPreferencesRequest:
+      type: object
+      description: Solicitud para actualizar preferencias del usuario
+      properties:
+        timeZone:
+          type: string
+          description: Zona horaria preferida
+          enum:
+            - AMERICA_LIMA
+            - AMERICA_BOGOTA
+            - AMERICA_QUITO
+            - AMERICA_CARACAS
+            - AMERICA_LA_PAZ
+            - AMERICA_ASUNCION
+            - AMERICA_MONTEVIDEO
+            - AMERICA_SANTIAGO
+            - AMERICA_BUENOS_AIRES
+            - AMERICA_GUATEMALA
+            - AMERICA_COSTA_RICA
+            - AMERICA_TEGUCIGALPA
+            - AMERICA_EL_SALVADOR
+            - AMERICA_MANAGUA
+            - AMERICA_PANAMA
+            - AMERICA_HAVANA
+            - AMERICA_SANTO_DOMINGO
+            - AMERICA_PUERTO_RICO
+            - AMERICA_MEXICO_CITY
+            - EUROPE_MADRID
+            - AFRICA_CEUTA
+            - ATLANTIC_CANARY
+            - AMERICA_NEW_YORK
+            - AMERICA_LOS_ANGELES
+          example: AMERICA_LIMA
+        currencyCode:
+          type: string
+          description: Codigo de moneda por defecto
+          example: PEN
+          maxLength: 3
+          minLength: 3
+        emailNotifications:
+          type: boolean
+          description: Notificaciones por email habilitadas
+          example: true
+      required:
+        - currencyCode
+        - timeZone
+    UserPreferencesResponse:
+      type: object
+      description: Preferencias del usuario
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador unico
+          example: 1
+        timeZone:
+          type: string
+          description: Zona horaria preferida
+          enum:
+            - AMERICA_LIMA
+            - AMERICA_BOGOTA
+            - AMERICA_QUITO
+            - AMERICA_CARACAS
+            - AMERICA_LA_PAZ
+            - AMERICA_ASUNCION
+            - AMERICA_MONTEVIDEO
+            - AMERICA_SANTIAGO
+            - AMERICA_BUENOS_AIRES
+            - AMERICA_GUATEMALA
+            - AMERICA_COSTA_RICA
+            - AMERICA_TEGUCIGALPA
+            - AMERICA_EL_SALVADOR
+            - AMERICA_MANAGUA
+            - AMERICA_PANAMA
+            - AMERICA_HAVANA
+            - AMERICA_SANTO_DOMINGO
+            - AMERICA_PUERTO_RICO
+            - AMERICA_MEXICO_CITY
+            - EUROPE_MADRID
+            - AFRICA_CEUTA
+            - ATLANTIC_CANARY
+            - AMERICA_NEW_YORK
+            - AMERICA_LOS_ANGELES
+          example: AMERICA_LIMA
+        currencyCode:
+          type: string
+          description: Codigo de moneda por defecto
+          example: PEN
+        emailNotifications:
+          type: boolean
+          description: Notificaciones por email habilitadas
+          example: true
+        fcmTokens:
+          type: array
+          description: Tokens FCM registrados
+          example:
+            - fM8x...abc123
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+          description: Fecha de creacion
+          example: 2026-06-25T23:59:59
+        updatedAt:
+          type: string
+          format: date-time
+          description: Ultima actualizacion
+          example: 2026-07-01T12:00:00
     UserRequest:
       type: object
       description: Solicitud para registrar un nuevo usuario en el sistema
@@ -2005,27 +2983,14 @@ components:
           minLength: 1
         password:
           type: string
-          description: ContraseÃ±a del usuario
+          description: Contrasena del usuario
           example: StrongPassword123!
           minLength: 1
-        timeZone:
-          type: string
-          description: Zona horaria preferida del usuario
-          enum:
-            - AMERICA_LIMA
-            - AMERICA_BOGOTA
-            - AMERICA_MEXICO_CITY
-            - AMERICA_SANTIAGO
-            - AMERICA_BUENOS_AIRES
-            - AMERICA_NEW_YORK
-            - AMERICA_LOS_ANGELES
-          example: AMERICA_LIMA
       required:
         - email
         - lastname
         - name
         - password
-        - timeZone
         - username
     UserResponse:
       type: object
@@ -2085,28 +3050,19 @@ components:
           type: string
           description: Nombre completo del usuario en formato concatenado
           example: JORGE JACKSON VALDIVIA TORREON
-        timeZone:
-          type: string
-          description: Zona horaria preferida del usuario
-          enum:
-            - AMERICA_LIMA
-            - AMERICA_BOGOTA
-            - AMERICA_MEXICO_CITY
-            - AMERICA_SANTIAGO
-            - AMERICA_BUENOS_AIRES
-            - AMERICA_NEW_YORK
-            - AMERICA_LOS_ANGELES
-          example: AMERICA_LIMA
+        preferences:
+          $ref: "#/components/schemas/UserPreferencesResponse"
+          description: Preferencias del usuario
     TransactionRequest:
       type: object
       description: "Solicitud para registrar una transaccion asociada a un usuario,\
         \ categoria y opcionalmente a un motivo o meta de ahorro"
       properties:
-        userId:
+        walletId:
           type: integer
           format: int64
-          description: Identificador unico del usuario asociado a la transaccion
-          example: 42
+          description: Identificador unico de la billetera asociada a la transaccion
+          example: 1
         categoryId:
           type: integer
           format: int64
@@ -2126,6 +3082,11 @@ components:
           format: int64
           description: "Identificador de la meta de ahorro asociada, si aplica"
           example: 3001
+        receiptId:
+          type: integer
+          format: int64
+          description: "Identificador del recibo escaneado vÃ­a OCR, si aplica"
+          example: 1
         amount:
           type: number
           description: Monto de la transaccion (debe ser mayor a 0)
@@ -2150,12 +3111,18 @@ components:
             - SPENT
             - INCOME
           example: SPENT
+        convertCurrency:
+          type: boolean
+          default: false
+          description: "Si true y receiptId presente, convierte el monto del recibo\
+            \ (currencyGuess) a la moneda del wallet usando el exchange service"
+          example: false
       required:
         - amount
         - categoryId
         - paymentMethod
         - type
-        - userId
+        - walletId
     TransactionResponse:
       type: object
       description: Respuesta que representa una transaccion registrada en el sistema
@@ -2165,11 +3132,19 @@ components:
           format: int64
           description: Identificador unico de la transaccion
           example: 10001
-        userId:
+        walletId:
           type: integer
           format: int64
-          description: Identificador unico del usuario asociado a la transaccion
-          example: 42
+          description: Identificador unico de la billetera asociada a la transaccion
+          example: 1
+        walletCurrency:
+          type: string
+          description: Moneda de la billetera
+          example: PEN
+        walletPrimary:
+          type: boolean
+          description: Indica si la billetera es principal
+          example: true
         categoryId:
           type: integer
           format: int64
@@ -2346,6 +3321,11 @@ components:
         - $ref: "#/components/schemas/ScheduleRequest"
         - type: object
           properties:
+            walletId:
+              type: integer
+              format: int64
+              description: Identificador de la billetera (null = usar la principal)
+              example: 1
             reasonId:
               type: integer
               format: int64
@@ -2538,6 +3518,15 @@ components:
         - $ref: "#/components/schemas/ScheduleResponse"
         - type: object
           properties:
+            walletId:
+              type: integer
+              format: int64
+              description: Identificador de la billetera
+              example: 1
+            walletCurrency:
+              type: string
+              description: Moneda de la billetera
+              example: PEN
             reasonId:
               type: integer
               format: int64
@@ -2618,6 +3607,10 @@ components:
           type: number
           description: Monto objetivo de la meta de ahorro
           example: "2500.00"
+        currencyCode:
+          type: string
+          description: Codigo de moneda de la meta
+          example: PEN
         accumulated:
           type: number
           description: Monto acumulado hasta el momento
@@ -2907,6 +3900,10 @@ components:
           type: number
           description: Monto limite del presupuesto
           example: "5000.00"
+        currencyCode:
+          type: string
+          description: Codigo de moneda del presupuesto
+          example: PEN
         description:
           type: string
           description: Descripcion del presupuesto
@@ -2949,6 +3946,48 @@ components:
           format: date-time
           description: Fecha y hora de desactivacion del presupuesto
           example: 2026-06-30T18:00:00
+    RegisterFcmTokenRequest:
+      type: object
+      description: Solicitud para registrar un token FCM
+      properties:
+        token:
+          type: string
+          description: Token FCM del dispositivo
+          example: fM8x...abc123
+          minLength: 1
+        deviceName:
+          type: string
+          description: Nombre descriptivo del dispositivo
+          example: Samsung Galaxy S24
+      required:
+        - token
+    FcmTokenResponse:
+      type: object
+      description: Respuesta con informacion de un token FCM registrado
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador unico del token
+          example: 1
+        token:
+          type: string
+          description: Token FCM
+          example: fM8x...abc123
+        deviceName:
+          type: string
+          description: Nombre del dispositivo
+          example: Samsung Galaxy S24
+        createdAt:
+          type: string
+          format: date-time
+          description: Fecha de creacion
+          example: 2026-06-25T23:59:59
+        updatedAt:
+          type: string
+          format: date-time
+          description: Ultima actualizacion
+          example: 2026-07-01T12:00:00
     ChatHistoryResponse:
       type: object
       description: Representa un turno dentro de la sesion de chat
@@ -3076,6 +4115,331 @@ components:
           type: string
           description: Token JWT generado tras la autenticacion
           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    SubscriptionRequest:
+      type: object
+      description: Subscription data
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: Id of the subscribing user
+          example: 42
+        plan:
+          type: string
+          description: Subscription plan
+          enum:
+            - FREE
+            - PREMIUM_TRIAL
+            - PREMIUM
+          example: PREMIUM
+        billingCycle:
+          type: string
+          description: Billing cycle
+          enum:
+            - MONTHLY
+            - ANNUAL
+          example: MONTHLY
+        amount:
+          type: number
+          description: Amount charged per billing cycle
+          example: "29.90"
+        currency:
+          type: string
+          description: ISO currency code
+          example: PEN
+        autoRenew:
+          type: boolean
+          description: Whether the subscription renews automatically
+          example: true
+      required:
+        - amount
+        - billingCycle
+        - currency
+        - plan
+        - userId
+    SubscriptionResponse:
+      type: object
+      description: Subscription data returned by the API
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique subscription id
+          example: 500
+        userId:
+          type: integer
+          format: int64
+          description: Id of the subscribing user
+          example: 42
+        plan:
+          type: string
+          description: Subscription plan
+          enum:
+            - FREE
+            - PREMIUM_TRIAL
+            - PREMIUM
+          example: PREMIUM
+        billingCycle:
+          type: string
+          description: Billing cycle
+          enum:
+            - MONTHLY
+            - ANNUAL
+          example: MONTHLY
+        state:
+          type: string
+          description: Current subscription state
+          enum:
+            - PENDING
+            - ACTIVE
+            - PAST_DUE
+            - CANCELED
+            - EXPIRED
+          example: ACTIVE
+        amount:
+          type: number
+          description: Amount charged per billing cycle
+          example: "29.90"
+        currency:
+          type: string
+          description: ISO currency code
+          example: PEN
+        autoRenew:
+          type: boolean
+          description: Whether the subscription renews automatically
+          example: true
+        currentPeriodStart:
+          type: string
+          format: date-time
+          description: Start of the current billing period
+          example: 2026-06-07T00:00:00
+        currentPeriodEnd:
+          type: string
+          format: date-time
+          description: End of the current billing period
+          example: 2026-07-07T00:00:00
+        canceledAt:
+          type: string
+          format: date-time
+          description: "Date and time the subscription was canceled, if applicable"
+          example: 2026-07-01T12:00:00
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation date and time
+          example: 2026-06-07T00:00:00
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update date and time
+          example: 2026-07-01T12:00:00
+    ReceiptResponse:
+      type: object
+      description: Resultado del escaneo OCR de un recibo
+      properties:
+        receiptId:
+          type: integer
+          format: int64
+          description: Identificador del recibo escaneado
+          example: 1
+        imageId:
+          type: integer
+          format: int64
+          description: ID de la imagen asociada (nullable si no tiene imagen)
+          example: 1
+        detectedAmount:
+          type: number
+          description: Monto total detectado
+          example: "45.00"
+        detectedDate:
+          type: string
+          format: date
+          description: Fecha detectada en el recibo (nullable)
+          example: 2026-07-01
+        description:
+          type: string
+          description: DescripciÃ³n/nombre del comercio detectado
+          example: Supermercado ABC
+        paymentMethod:
+          type: string
+          description: MÃ©todo de pago detectado
+          enum:
+            - CASH
+            - CREDIT_CARD
+            - DEBIT_CARD
+            - BANK_TRANSFER
+            - YAPE
+            - PLIN
+            - OTHER
+          example: CASH
+        transactionType:
+          type: string
+          description: Tipo de transacciÃ³n detectado
+          enum:
+            - SPENT
+            - INCOME
+          example: SPENT
+        detectedCategoryId:
+          type: integer
+          format: int64
+          description: ID de la categorÃ­a detectada (nullable)
+          example: 3
+        rawOcrText:
+          type: string
+          description: Texto OCR crudo extraÃ­do de la imagen
+          example: |-
+            BOLETA DE VENTA
+            TOTAL S/. 45.00
+        currencyGuess:
+          type: string
+          description: Moneda detectada (no resuelta contra Wallet)
+          example: PEN
+        confidenceScore:
+          type: number
+          format: double
+          description: Nivel de confianza del parseo
+          example: "0.85"
+        parserEngineUsed:
+          type: string
+          description: Motor usado para el parseo (REGEX o GEMINI)
+          example: REGEX
+    PaymentRequest:
+      type: object
+      description: Payment data
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: Id of the paying user
+          example: 42
+        subscriptionId:
+          type: integer
+          format: int64
+          description: "Id of the subscription this payment belongs to, if any"
+          example: 500
+        amount:
+          type: number
+          description: Amount to charge
+          example: "29.90"
+        currency:
+          type: string
+          description: ISO currency code
+          example: PEN
+        provider:
+          type: string
+          description: Payment provider used for this attempt
+          enum:
+            - MERCADO_PAGO
+            - CULQI
+            - STRIPE
+            - MANUAL_TRANSFER
+          example: MERCADO_PAGO
+        method:
+          type: string
+          description: Payment method used
+          enum:
+            - CASH
+            - CREDIT_CARD
+            - DEBIT_CARD
+            - BANK_TRANSFER
+            - YAPE
+            - PLIN
+            - OTHER
+        idempotencyKey:
+          type: string
+          description: "Client-supplied idempotency key, generated automatically when\
+            \ absent"
+          example: 3f2f1e2a-9c3b-4b7a-9e0b-6f6f2a1b9c00
+        metadata:
+          type: object
+          additionalProperties: { }
+          description: Free-form metadata for this payment
+      required:
+        - amount
+        - currency
+        - provider
+        - userId
+    PaymentResponse:
+      type: object
+      description: Payment data returned by the API
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique payment id
+          example: 9001
+        userId:
+          type: integer
+          format: int64
+          description: Id of the paying user
+          example: 42
+        subscriptionId:
+          type: integer
+          format: int64
+          description: "Id of the linked subscription, if any"
+          example: 500
+        amount:
+          type: number
+          description: Charged amount
+          example: "29.90"
+        currency:
+          type: string
+          description: ISO currency code
+          example: PEN
+        provider:
+          type: string
+          description: Payment provider used
+          enum:
+            - MERCADO_PAGO
+            - CULQI
+            - STRIPE
+            - MANUAL_TRANSFER
+          example: MERCADO_PAGO
+        method:
+          type: string
+          description: Payment method used
+          enum:
+            - CASH
+            - CREDIT_CARD
+            - DEBIT_CARD
+            - BANK_TRANSFER
+            - YAPE
+            - PLIN
+            - OTHER
+        state:
+          type: string
+          description: Current payment state
+          enum:
+            - PENDING
+            - PROCESSING
+            - COMPLETED
+            - FAILED
+            - REFUNDED
+            - DISPUTED
+          example: COMPLETED
+        externalReference:
+          type: string
+          description: Reference assigned by the provider
+          example: MP-8823991
+        failureReason:
+          type: string
+          description: "Reason the payment failed, if applicable"
+          example: Insufficient funds
+        paidAt:
+          type: string
+          format: date-time
+          description: Date and time the payment was confirmed
+          example: 2026-07-01T12:00:00
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation date and time
+          example: 2026-07-01T11:58:00
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update date and time
+          example: 2026-07-01T12:00:00
     PeriodRequest:
       type: object
       description: Periodo
@@ -3137,7 +4501,7 @@ components:
           format: int64
     LoginRequest:
       type: object
-      description: Solicitud de login interno con email y contraseÃ±a
+      description: Solicitud de login interno con email y contrasena
       properties:
         email:
           type: string
@@ -3146,8 +4510,8 @@ components:
           minLength: 1
         password:
           type: string
-          description: ContraseÃ±a del usuario
-          example: MiContraseÃ±aSegura123
+          description: Contrasena del usuario
+          example: MiContrasenaSegura123
           minLength: 1
       required:
         - email
@@ -3354,6 +4718,10 @@ components:
           type: number
           description: Monto limite del presupuesto
           example: "5000.00"
+        currencyCode:
+          type: string
+          description: Codigo de moneda del presupuesto
+          example: PEN
         description:
           type: string
           description: Descripcion del presupuesto
@@ -3460,6 +4828,13 @@ components:
           type: string
           description: Nombre de la categoria
           example: Transporte
+        type:
+          type: string
+          description: Tipo de la categoria
+          enum:
+            - SPENT
+            - INCOME
+          example: SPENT
     DashboardResponse:
       type: object
       description: "Respuesta base de un dashboard con periodo, titulo, fecha de creacion,\
@@ -3937,6 +5312,18 @@ components:
           type: string
           description: Correo electronico del usuario
           example: usuario@ejemplo.com
+        emailNotifications:
+          type: boolean
+          description: Indica si el usuario tiene habilitadas las notificaciones por
+            email
+          example: true
+        fcmTokens:
+          type: array
+          description: Tokens FCM del usuario para notificaciones push
+          example:
+            - fM8x...abc123
+          items:
+            type: string
         type:
           type: string
           description: Tipo de notificacion

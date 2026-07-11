@@ -1,7 +1,6 @@
 package com.elias.mismonedas.dto.user;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -34,10 +33,5 @@ public class UserRequest {
     @NotBlank
     @Schema(description = "Contrasena del usuario", example = "StrongPassword123!")
     private String password;
-
-    @Valid
-    @Schema(description = "Preferencias del usuario")
-    private UserPreferencesRequest preferences;
-
 
 }
