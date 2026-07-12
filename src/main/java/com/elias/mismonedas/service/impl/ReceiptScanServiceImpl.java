@@ -14,9 +14,9 @@ import com.elias.mismonedas.port.OcrResult;
 import com.elias.mismonedas.port.ReceiptData;
 import com.elias.mismonedas.port.ReceiptParserPort;
 import com.elias.mismonedas.repository.CategoryRepository;
-import com.elias.mismonedas.repository.ImageRepository;
 import com.elias.mismonedas.repository.ReceiptRepository;
 import com.elias.mismonedas.repository.UserRepository;
+import com.elias.mismonedas.service.ImageService;
 import com.elias.mismonedas.service.ReceiptScanService;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -42,7 +42,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
     private final ReceiptParserPort regexParser;
     private final ReceiptParserPort geminiParser;
     private final ReceiptRepository receiptRepository;
-    private final ImageRepository imageRepository;
+    private final ImageService imageService;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final Cache<String, CachedScanResult> scanCache;
@@ -53,7 +53,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
                                   @Qualifier("regex") ReceiptParserPort regexParser,
                                   @Qualifier("gemini") ReceiptParserPort geminiParser,
                                   ReceiptRepository receiptRepository,
-                                  ImageRepository imageRepository,
+                                  ImageService imageService,
                                   UserRepository userRepository,
                                   CategoryRepository categoryRepository,
                                   @Value("${app.ocr.cache-max-size:50}") int cacheMaxSize,
@@ -62,7 +62,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
         this.regexParser = regexParser;
         this.geminiParser = geminiParser;
         this.receiptRepository = receiptRepository;
-        this.imageRepository = imageRepository;
+        this.imageService = imageService;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.scanCache = Caffeine.newBuilder()
@@ -124,7 +124,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
             );
         }
 
-        Long detectedCategoryId = matchCategory(userId, data);
+        Long detectedCategoryId = matchCategory(userId, data, ocrResult.rawText());
 
         Receipt receipt = Receipt.builder()
                 .user(user)
@@ -144,16 +144,11 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
         receipt = receiptRepository.save(receipt);
 
         if (filename != null && mediaType != null && imageBytes != null) {
-            Image image = Image.builder()
-                    .filename(filename)
-                    .mediaType(mediaType)
-                    .data(imageBytes)
-                    .build();
-            image = imageRepository.save(image);
+            Image image = imageService.save(user, filename, mediaType, imageBytes);
             receipt.setImage(image);
             receiptRepository.save(receipt);
             log.info("receipt_image_saved receipt_id={} image_id={} filename={} size={}bytes",
-                    receipt.getId(), image.getId(), filename, imageBytes.length);
+                    receipt.getId(), image.getId(), image.getFilename(), imageBytes.length);
         }
 
         log.info("scan_complete receipt_id={} userId={} engine={} amount={} currency={} duration_ms={}",
@@ -214,7 +209,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
         double oldConfidence = receipt.getConfidenceScore();
         ReceiptData improved = geminiParser.parse(rawText);
         if (improved.parseConfidence() > oldConfidence) {
-            Long detectedCategoryId = matchCategory(userId, improved);
+            Long detectedCategoryId = matchCategory(userId, improved, rawText);
             receipt.setDetectedAmount(improved.amount());
             receipt.setDetectedDate(improved.date());
             receipt.setDescription(improved.description());
@@ -249,32 +244,30 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
         );
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public Image getReceiptImage(Long userId, Long receiptId) {
-        Receipt receipt = receiptRepository.findByIdAndUser_Id(receiptId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
-
-        if (receipt.getImage() == null) {
-            throw new IllegalArgumentException("El recibo no tiene imagen asociada: " + receiptId);
+    private Long matchCategory(Long userId, ReceiptData data, String rawOcrText) {
+        if (data.category() != null && !data.category().isBlank()) {
+            List<Category> matches = categoryRepository.findByUserIdAndKeyword(userId, data.category().trim());
+            if (!matches.isEmpty()) {
+                Long categoryId = matches.getFirst().getId();
+                log.info("category_matched_from_ai userId={} category={} categoryId={}", userId, data.category(), categoryId);
+                return categoryId;
+            }
+            log.debug("category_from_ai_not_found_in_db userId={} category={}", userId, data.category());
         }
 
-        return receipt.getImage();
-    }
-
-    private Long matchCategory(Long userId, ReceiptData data) {
-        if (data.description() == null || data.description().isBlank()) {
-            return null;
+        String searchText = rawOcrText != null ? rawOcrText : "";
+        if (data.description() != null && !data.description().isBlank()) {
+            searchText = data.description() + " " + searchText;
         }
 
-        String[] keywords = data.description().trim().split("\\s+");
+        String[] keywords = searchText.trim().split("\\s+");
         for (String keyword : keywords) {
             if (keyword.length() < 3) continue;
 
             List<Category> matches = categoryRepository.findByUserIdAndKeyword(userId, keyword);
             if (!matches.isEmpty()) {
                 Long categoryId = matches.getFirst().getId();
-                log.info("category_matched userId={} keyword={} categoryId={}", userId, keyword, categoryId);
+                log.info("category_matched_from_text userId={} keyword={} categoryId={}", userId, keyword, categoryId);
                 return categoryId;
             }
         }

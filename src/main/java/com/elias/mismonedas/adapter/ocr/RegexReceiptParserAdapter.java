@@ -122,7 +122,7 @@ public class RegexReceiptParserAdapter implements ReceiptParserPort {
             if (date != null) confidence = flexible ? 0.5 : 0.7;
         }
 
-        return new ReceiptData(amount, date, description, currency, paymentMethod, transactionType, confidence);
+        return new ReceiptData(amount, date, description, currency, paymentMethod, transactionType, confidence, null);
     }
 
     private String normalize(String text) {

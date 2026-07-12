@@ -1,6 +1,6 @@
 package com.elias.mismonedas.controller;
 
-import com.elias.mismonedas.entity.Image;
+import com.elias.mismonedas.dto.payment.ImageResponse;
 import com.elias.mismonedas.service.ImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,12 +34,13 @@ public class ImageController {
     public ResponseEntity<byte[]> download(
             @Parameter(description = "ID de la imagen") @PathVariable Long imageId) {
 
-        Image image = imageService.get(imageId);
+        ImageResponse meta = imageService.getMetadata(imageId);
+        byte[] data = imageService.getData(imageId);
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(image.getMediaType()))
+                .contentType(MediaType.parseMediaType(meta.getMediaType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"" + image.getFilename() + "\"")
-                .contentLength(image.getData().length)
-                .body(image.getData());
+                        "inline; filename=\"" + meta.getFilename() + "\"")
+                .contentLength(data.length)
+                .body(data);
     }
 }

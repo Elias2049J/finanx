@@ -9,6 +9,8 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring", uses = {DateMapper.class})
 public interface TransactionMapper {
 
+    @Mapping(source = "receipt.id", target = "receiptId")
+    @Mapping(source = "receipt.image.id", target = "receiptImageId")
     @Mapping(source = "wallet.id", target = "walletId")
     @Mapping(source = "wallet.currencyCode", target = "walletCurrency")
     @Mapping(source = "wallet.primary", target = "walletPrimary")

@@ -2,12 +2,11 @@ package com.elias.mismonedas.service;
 
 import com.elias.mismonedas.dto.payment.ImageResponse;
 import com.elias.mismonedas.entity.Image;
+import com.elias.mismonedas.entity.User;
 
 public interface ImageService {
 
-    ImageResponse save(String filename, String mediaType, byte[] data);
-
-    Image get(Long imageId);
+    Image save(User user, String filename, String mediaType, byte[] data);
 
     ImageResponse getMetadata(Long imageId);
 

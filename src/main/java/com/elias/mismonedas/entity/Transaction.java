@@ -65,6 +65,9 @@ public class Transaction {
     @Column(name = "fecha_desactivacion")
     private OffsetDateTime disabledAt;
 
+    @OneToOne(mappedBy = "transaction", fetch = FetchType.LAZY)
+    private Receipt receipt;
+
     @PrePersist
     private void onCreate() {
         if (createdAt == null) {

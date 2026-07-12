@@ -12,12 +12,12 @@ public class ImageResponse {
     @Schema(description = "ID de la imagen", example = "1")
     private Long imageId;
 
+    @Schema(description = "ID del usuario propietario de la imagen", example = "1")
+    private Long userId;
+
     @Schema(description = "Nombre original del archivo", example = "recibo.jpg")
     private String filename;
 
     @Schema(description = "Tipo MIME del contenido", example = "image/jpeg")
     private String mediaType;
-
-    @Schema(description = "Tamaño en bytes", example = "204800")
-    private Long sizeBytes;
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "imagenes")
@@ -17,6 +18,10 @@ public class Image {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario")
+    private User user;
 
     @Column(nullable = false)
     private String filename;
@@ -33,6 +38,9 @@ public class Image {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = OffsetDateTime.now();
+        if (createdAt == null) {
+            ZoneId zone = user != null ? user.getTimeZone().toZoneId() : ZoneId.systemDefault();
+            createdAt = OffsetDateTime.now(zone);
+        }
     }
 }

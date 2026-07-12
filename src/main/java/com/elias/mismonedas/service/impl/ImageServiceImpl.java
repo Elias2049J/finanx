@@ -2,12 +2,15 @@ package com.elias.mismonedas.service.impl;
 
 import com.elias.mismonedas.dto.payment.ImageResponse;
 import com.elias.mismonedas.entity.Image;
+import com.elias.mismonedas.entity.User;
 import com.elias.mismonedas.repository.ImageRepository;
 import com.elias.mismonedas.service.ImageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
 
 @Slf4j
 @Service
@@ -18,29 +21,22 @@ public class ImageServiceImpl implements ImageService {
 
     @Override
     @Transactional
-    public ImageResponse save(String filename, String mediaType, byte[] data) {
+    public Image save(User user, String filename, String mediaType, byte[] data) {
+        String resolvedFilename = filename != null
+                ? filename
+                : OffsetDateTime.now(user.getTimeZone().toZoneId()).toString();
+
         Image image = Image.builder()
-                .filename(filename)
+                .user(user)
+                .filename(resolvedFilename)
                 .mediaType(mediaType)
                 .data(data)
                 .build();
 
         image = imageRepository.save(image);
-        log.info("image_saved image_id={} filename={} size={}bytes", image.getId(), filename, data.length);
+        log.info("image_saved image_id={} filename={} size={}bytes", image.getId(), resolvedFilename, data.length);
 
-        return new ImageResponse(
-                image.getId(),
-                image.getFilename(),
-                image.getMediaType(),
-                (long) data.length
-        );
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Image get(Long imageId) {
-        return imageRepository.findById(imageId)
-                .orElseThrow(() -> new IllegalArgumentException("Imagen no encontrada: " + imageId));
+        return image;
     }
 
     @Override
@@ -51,9 +47,9 @@ public class ImageServiceImpl implements ImageService {
 
         return new ImageResponse(
                 image.getId(),
+                image.getUser() != null ? image.getUser().getId() : null,
                 image.getFilename(),
-                image.getMediaType(),
-                (long) image.getData().length
+                image.getMediaType()
         );
     }
 

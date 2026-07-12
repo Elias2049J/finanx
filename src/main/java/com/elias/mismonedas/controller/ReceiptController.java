@@ -1,14 +1,12 @@
 package com.elias.mismonedas.controller;
 
 import com.elias.mismonedas.dto.payment.ReceiptResponse;
-import com.elias.mismonedas.entity.Image;
 import com.elias.mismonedas.service.ReceiptScanService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -78,29 +76,5 @@ public class ReceiptController {
             @Parameter(description = "ID del usuario") @RequestParam Long userId,
             @PathVariable Long receiptId) {
         return ResponseEntity.ok(receiptScanService.getScanResult(userId, receiptId));
-    }
-
-    @Operation(
-            summary = "Obtener imagen del recibo",
-            description = "Retorna los bytes de la imagen asociada a un recibo.",
-            operationId = "getReceiptImage",
-            tags = {"Receipts"},
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Imagen encontrada"),
-                    @ApiResponse(responseCode = "404", description = "Recibo o imagen no encontrada")
-            }
-    )
-    @GetMapping("/{receiptId}/image")
-    public ResponseEntity<byte[]> getReceiptImage(
-            @Parameter(description = "ID del usuario") @RequestParam Long userId,
-            @Parameter(description = "ID del recibo") @PathVariable Long receiptId) {
-
-        Image image = receiptScanService.getReceiptImage(userId, receiptId);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(image.getMediaType()))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"" + image.getFilename() + "\"")
-                .contentLength(image.getData().length)
-                .body(image.getData());
     }
 }

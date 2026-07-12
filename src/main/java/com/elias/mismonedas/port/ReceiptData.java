@@ -13,6 +13,7 @@ public record ReceiptData(
     String currencyGuess,
     PaymentMethod paymentMethod,
     TransactionType transactionType,
-    double parseConfidence
+    double parseConfidence,
+    String category
 ) {
 }

@@ -13,9 +13,9 @@ import com.elias.mismonedas.port.OcrResult;
 import com.elias.mismonedas.port.ReceiptData;
 import com.elias.mismonedas.port.ReceiptParserPort;
 import com.elias.mismonedas.repository.CategoryRepository;
-import com.elias.mismonedas.repository.ImageRepository;
 import com.elias.mismonedas.repository.ReceiptRepository;
 import com.elias.mismonedas.repository.UserRepository;
+import com.elias.mismonedas.service.ImageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class ReceiptScanServiceImplTest {
     @Mock private ReceiptParserPort regexParser;
     @Mock private ReceiptParserPort geminiParser;
     @Mock private ReceiptRepository receiptRepository;
-    @Mock private ImageRepository imageRepository;
+    @Mock private ImageService imageService;
     @Mock private UserRepository userRepository;
     @Mock private CategoryRepository categoryRepository;
 
@@ -47,7 +47,7 @@ class ReceiptScanServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReceiptScanServiceImpl(ocrPort, regexParser, geminiParser, receiptRepository, imageRepository, userRepository, categoryRepository, 50, 60);
+        service = new ReceiptScanServiceImpl(ocrPort, regexParser, geminiParser, receiptRepository, imageService, userRepository, categoryRepository, 50, 60);
     }
 
     @Nested
@@ -59,7 +59,7 @@ class ReceiptScanServiceImplTest {
             when(userRepository.findById(1L)).thenReturn(Optional.of(createTestUser()));
             when(ocrPort.extractText(image)).thenReturn(new OcrResult("TOTAL S/. 45.00", 0.6, 1500L));
             when(regexParser.parse("TOTAL S/. 45.00")).thenReturn(
-                    new ReceiptData(new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado", "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.6));
+                    new ReceiptData(new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado", "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.6, null));
 
             Receipt saved = Receipt.builder()
                     .id(1L).user(createTestUser())
@@ -78,11 +78,12 @@ class ReceiptScanServiceImplTest {
 
             Image savedImage = Image.builder()
                     .id(1L)
+                    .user(createTestUser())
                     .filename("recibo.jpg")
                     .mediaType("image/jpeg")
                     .data(image)
                     .build();
-            when(imageRepository.save(any(Image.class))).thenReturn(savedImage);
+            when(imageService.save(any(User.class), any(), any(), any())).thenReturn(savedImage);
 
             ReceiptResponse result = service.scanReceipt(1L, image, "recibo.jpg", "image/jpeg");
 
@@ -104,9 +105,9 @@ class ReceiptScanServiceImplTest {
             when(userRepository.findById(1L)).thenReturn(Optional.of(createTestUser()));
             when(ocrPort.extractText(image)).thenReturn(new OcrResult("texto ambiguo sin monto claro", 0.4, 2000L));
             when(regexParser.parse("texto ambiguo sin monto claro")).thenReturn(
-                    new ReceiptData(null, null, null, "PEN", null, null, 0.0));
+                    new ReceiptData(null, null, null, "PEN", null, null, 0.0, null));
             when(geminiParser.parse("texto ambiguo sin monto claro")).thenReturn(
-                    new ReceiptData(new BigDecimal("32.50"), LocalDate.of(2026, 7, 2), "Restaurante", "PEN", PaymentMethod.CREDIT_CARD, TransactionType.SPENT, 0.85));
+                    new ReceiptData(new BigDecimal("32.50"), LocalDate.of(2026, 7, 2), "Restaurante", "PEN", PaymentMethod.CREDIT_CARD, TransactionType.SPENT, 0.85, null));
 
             Receipt saved = Receipt.builder()
                     .id(2L).user(createTestUser())
@@ -125,11 +126,12 @@ class ReceiptScanServiceImplTest {
 
             Image savedImage = Image.builder()
                     .id(2L)
+                    .user(createTestUser())
                     .filename("recibo.png")
                     .mediaType("image/png")
                     .data(image)
                     .build();
-            when(imageRepository.save(any(Image.class))).thenReturn(savedImage);
+            when(imageService.save(any(User.class), any(), any(), any())).thenReturn(savedImage);
 
             ReceiptResponse result = service.scanReceipt(1L, image, "recibo.png", "image/png");
 
@@ -166,7 +168,7 @@ class ReceiptScanServiceImplTest {
             when(userRepository.findById(1L)).thenReturn(Optional.of(createTestUser()));
             when(ocrPort.extractText(image)).thenReturn(new OcrResult("texto sin monto", 0.3, 1000L));
             when(regexParser.parse("texto sin monto")).thenReturn(
-                    new ReceiptData(null, null, null, "PEN", null, null, 0.0));
+                    new ReceiptData(null, null, null, "PEN", null, null, 0.0, null));
             when(geminiParser.parse("texto sin monto")).thenThrow(new RuntimeException("Gemini error"));
 
             assertThatThrownBy(() -> service.scanReceipt(1L, image, "test.jpg", "image/jpeg"))
@@ -180,7 +182,7 @@ class ReceiptScanServiceImplTest {
             when(userRepository.findById(1L)).thenReturn(Optional.of(createTestUser()));
             when(ocrPort.extractText(image)).thenReturn(new OcrResult("TOTAL S/. 25.00", 0.6, 1000L));
             when(regexParser.parse("TOTAL S/. 25.00")).thenReturn(
-                    new ReceiptData(new BigDecimal("25.00"), null, "Tienda", "PEN", null, null, 0.6));
+                    new ReceiptData(new BigDecimal("25.00"), null, "Tienda", "PEN", null, null, 0.6, null));
 
             Receipt saved = Receipt.builder()
                     .id(3L).user(createTestUser())
@@ -263,7 +265,7 @@ class ReceiptScanServiceImplTest {
                     .build();
             when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
             when(geminiParser.parse("TOTAL S/. 45.00")).thenReturn(
-                    new ReceiptData(new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado ABC", "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9));
+                    new ReceiptData(new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado ABC", "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
 
             Receipt updated = Receipt.builder()
                     .id(1L).user(createTestUser())
@@ -300,7 +302,7 @@ class ReceiptScanServiceImplTest {
                     .build();
             when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
             when(geminiParser.parse("TOTAL S/. 45.00")).thenReturn(
-                    new ReceiptData(new BigDecimal("44.00"), LocalDate.of(2026, 7, 1), "Supermercado", "PEN", null, null, 0.6));
+                    new ReceiptData(new BigDecimal("44.00"), LocalDate.of(2026, 7, 1), "Supermercado", "PEN", null, null, 0.6, null));
 
             ReceiptResponse result = service.improveWithAi(1L, 1L);
 
@@ -316,55 +318,6 @@ class ReceiptScanServiceImplTest {
 
             assertThatThrownBy(() -> service.improveWithAi(99L, 1L))
                     .isInstanceOf(IllegalArgumentException.class);
-        }
-    }
-
-    @Nested
-    class GetReceiptImageTest {
-
-        @Test
-        void shouldReturnImage() {
-            Image image = Image.builder()
-                    .id(1L)
-                    .filename("recibo.jpg")
-                    .mediaType("image/jpeg")
-                    .data("image-bytes".getBytes())
-                    .build();
-
-            Receipt receipt = Receipt.builder()
-                    .id(1L).user(createTestUser())
-                    .image(image)
-                    .build();
-
-            when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
-
-            Image result = service.getReceiptImage(1L, 1L);
-
-            assertThat(result.getId()).isEqualTo(1L);
-            assertThat(result.getFilename()).isEqualTo("recibo.jpg");
-            assertThat(result.getMediaType()).isEqualTo("image/jpeg");
-        }
-
-        @Test
-        void shouldThrowWhenReceiptNotFound() {
-            when(receiptRepository.findByIdAndUser_Id(99L, 1L)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.getReceiptImage(1L, 99L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Recibo no encontrado");
-        }
-
-        @Test
-        void shouldThrowWhenReceiptHasNoImage() {
-            Receipt receipt = Receipt.builder()
-                    .id(1L).user(createTestUser())
-                    .build();
-
-            when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
-
-            assertThatThrownBy(() -> service.getReceiptImage(1L, 1L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("no tiene imagen asociada");
         }
     }
 

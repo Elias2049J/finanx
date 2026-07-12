@@ -46,6 +46,12 @@ public class TransactionResponse {
     @Schema(description = "Identificador de la programacion asociada, si aplica", example = "2001")
     private Long scheduleId;
 
+    @Schema(description = "Identificador del recibo asociado, si aplica", example = "4001")
+    private Long receiptId;
+
+    @Schema(description = "Identificador de la imagen del recibo asociado, si aplica", example = "4001")
+    private Long receiptImageId;
+
     @Schema(description = "Monto de la transaccion", example = "150.75")
     private BigDecimal amount;
 

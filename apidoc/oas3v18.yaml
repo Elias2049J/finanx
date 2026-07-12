@@ -2340,43 +2340,6 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ReceiptResponse"
-  /receipts/{receiptId}/image:
-    get:
-      tags:
-        - Receipts
-      summary: Obtener imagen del recibo
-      description: Retorna los bytes de la imagen asociada a un recibo.
-      operationId: getReceiptImage
-      parameters:
-        - name: userId
-          in: query
-          description: ID del usuario
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: receiptId
-          in: path
-          description: ID del recibo
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: Imagen encontrada
-          content:
-            '*/*':
-              schema:
-                type: string
-                format: byte
-        "404":
-          description: Recibo o imagen no encontrada
-          content:
-            '*/*':
-              schema:
-                type: string
-                format: byte
   /reasons/user/{idUser}:
     get:
       tags:
@@ -3173,6 +3136,16 @@ components:
           format: int64
           description: "Identificador de la programacion asociada, si aplica"
           example: 2001
+        receiptId:
+          type: integer
+          format: int64
+          description: "Identificador del recibo asociado, si aplica"
+          example: 4001
+        receiptImageId:
+          type: integer
+          format: int64
+          description: "Identificador de la imagen del recibo asociado, si aplica"
+          example: 4001
         amount:
           type: number
           description: Monto de la transaccion

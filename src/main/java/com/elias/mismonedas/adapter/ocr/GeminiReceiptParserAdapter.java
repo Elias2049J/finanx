@@ -28,19 +28,31 @@ public class GeminiReceiptParserAdapter implements ReceiptParserPort {
 
     private static final String SYSTEM_EXTRACT_PROMPT =
             "Eres un extractor de datos de recibos/boletas peruanos. " +
-            "Extrae los siguientes campos del texto OCR y responde SOLO con JSON válido (sin markdown, sin explicación):\n" +
+            "Tu trabajo es EXTRAER TODOS LOS CAMPOS posibles del texto OCR. " +
+            "Responde SOLO con JSON válido (sin markdown, sin explicación):\n" +
             "{\n" +
-            "  \"amount\": número o null,\n" +
-            "  \"date\": \"YYYY-MM-DD\" o null (si la fecha no es visible, devuelve null sin error),\n" +
-            "  \"description\": string con el nombre/descripción del comercio o null,\n" +
-            "  \"currency\": \"PEN\" por defecto,\n" +
-            "  \"paymentMethod\": \"CASH\" | \"CREDIT_CARD\" | \"DEBIT_CARD\" | \"BANK_TRANSFER\" | \"YAPE\" | \"PLIN\" | \"OTHER\" o null,\n" +
-            "  \"transactionType\": \"SPENT\" | \"INCOME\" o null\n" +
+            "  \"amount\": número decimal con el MONTO TOTAL del recibo (obligatorio si hay cualquier número),\n" +
+            "  \"date\": \"YYYY-MM-DD\" (busca fechas en cualquier formato: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, etc),\n" +
+            "  \"description\": string con el nombre/descripción del comercio (la línea que identifica al negocio),\n" +
+            "  \"currency\": \"PEN\" por defecto (soles), \"USD\" si detectas dólares,\n" +
+            "  \"paymentMethod\": uno de estos valores exactos:\n" +
+            "    - \"CASH\" si ves EFECTIVO, CONTADO, CD, PAGO EN EFECTIVO\n" +
+            "    - \"CREDIT_CARD\" si ves TARJETA CREDITO, VISA, MASTERCARD, AMEX, TC, TRJ CRED\n" +
+            "    - \"DEBIT_CARD\" si ves TARJETA DEBITO, TD, TRJ DEB\n" +
+            "    - \"BANK_TRANSFER\" si ves TRANSFERENCIA, DEPOSITO, BANCO, CTA CTE\n" +
+            "    - \"YAPE\" si ves YAPE\n" +
+            "    - \"PLIN\" si ves PLIN\n" +
+            "    - \"OTHER\" si no coincide con ninguno\n" +
+            "  \"transactionType\": \"SPENT\" si es compra/venta/gasto (BOLETA, FACTURA, VENTA, COMPRA, SERVICIO), \"INCOME\" si es cobro/ingreso,\n" +
+            "  \"category\": string con la categoría del gasto basándote en TODO el texto (ej: Alimentación, Transporte, Servicios, Entretenimiento, Salud, Educación, Ropa, Hogar, etc.)\n" +
             "}\n" +
-            "Reglas:\n" +
-            "- Si no encuentras un campo, usa null.\n" +
-            "- paymentMethod: detecta keywords como EFECTIVO/CASH/CD (CASH), TARJETA VISA/MASTERCARD/TC (CREDIT_CARD), TARJETA DEBITO/TD (DEBIT_CARD), YAPE, PLIN, TRANSFERENCIA/DEPOSITO (BANK_TRANSFER).\n" +
-            "- transactionType: BOLETA/FACTURA/VENTA/COMPRA = SPENT, COBRO/INGRESO/RECAUDACION = INCOME. Si no se detecta, null.";
+            "REGLAS IMPORTANTES:\n" +
+            "- EXTRAÉ TODOS los campos posibles. Solo usa null si realmente no hay información en el texto.\n" +
+            "- El amount es el MONTO TOTAL (la línea que dice TOTAL o el monto más grande).\n" +
+            "- La description es el nombre del comercio/negocio (generalmente al inicio del recibo).\n" +
+            "- Analiza TODO el texto para detectar paymentMethod, transactionType y category.\n" +
+            "- Si ves un monto con S/. o S/ es PEN (soles peruanos).\n" +
+            "- Para category: infiere la categoría del gasto basándote en el tipo de negocio y productos/servicios mencionados.";
 
     private static final Logger log = LoggerFactory.getLogger(GeminiReceiptParserAdapter.class);
 
@@ -67,19 +79,33 @@ public class GeminiReceiptParserAdapter implements ReceiptParserPort {
 
         log.info("gemini_raw_json_response={}", jsonResponse);
 
-        return parseJsonToReceiptData(jsonResponse);
+        return parseJsonToReceiptData(stripMarkdownFences(jsonResponse));
     }
 
     private String buildStructuredExtractionPrompt(String rawOcrText) {
         return """
-                Extrae del siguiente texto de un recibo/boleta peruano: monto total,
-                fecha (formato ISO), descripción del comercio, método de pago y tipo de transacción.
-                Responde SOLO JSON válido con las claves amount, date, description, currency,
-                paymentMethod y transactionType. Si no encuentras un dato, usa null.
+                Analiza este recibo/boleta peruano y extrae TODOS los campos disponibles:
+                - amount: monto total (busca líneas con TOTAL, SUBTOTAL, o el monto más grande)
+                - date: fecha de emisión (cualquier formato: DD/MM/YYYY, DD-MM-YYYY, etc.)
+                - description: nombre del comercio/negocio (generalmente al inicio)
+                - currency: moneda (PEN si ves S/ o SOLES, USD si ves dólares)
+                - paymentMethod: cómo se pagó (efectivo, tarjeta, yape, plin, etc.)
+                - transactionType: si es gasto (SPENT) o ingreso (INCOME)
+                - category: categoría del gasto basándote en el tipo de negocio (Alimentación, Transporte, Servicios, etc.)
 
-                Texto:
+                Responde SOLO JSON válido con estas 7 claves. Solo usa null si no hay información.
+
+                Texto OCR:
                 %s
                 """.formatted(rawOcrText);
+    }
+
+    private String stripMarkdownFences(String text) {
+        if (text == null) return null;
+        String trimmed = text.strip();
+        trimmed = trimmed.replaceAll("(?s)^```(?:json)?\\s*\n?", "");
+        trimmed = trimmed.replaceAll("(?s)\n?```$","");
+        return trimmed.strip();
     }
 
     @SuppressWarnings("unchecked")
@@ -107,12 +133,16 @@ public class GeminiReceiptParserAdapter implements ReceiptParserPort {
                     : "PEN";
             PaymentMethod paymentMethod = parsePaymentMethod(map.get("paymentMethod"));
             TransactionType transactionType = parseTransactionType(map.get("transactionType"));
+            String category = map.get("category") != null
+                    ? map.get("category").toString()
+                    : null;
 
             if (amount == null && description == null) {
                 log.warn("gemini_parsed_null_fields amount=null description=null", description);
                 throw new OcrProcessingException("Gemini no pudo extraer datos del recibo");
             }
-            return new ReceiptData(amount, date, description, currency, paymentMethod, transactionType, 0.85);
+            log.info("gemini_parsed_fields paymentMethod={} transactionType={} category={}", paymentMethod, transactionType, category);
+            return new ReceiptData(amount, date, description, currency, paymentMethod, transactionType, 0.85, category);
         } catch (JsonProcessingException e) {
             log.warn("gemini_json_parse_error json={}", json, e);
             throw new OcrProcessingException("Error al interpretar la respuesta de Gemini: " + e.getMessage());
