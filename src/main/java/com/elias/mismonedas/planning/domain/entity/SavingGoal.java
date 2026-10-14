@@ -124,7 +124,11 @@ public class SavingGoal {
 
     public boolean isCompleted() {
         return state == SavingGoalState.RUNNING
-                && getAccumulated().compareTo(targetAmount) >= 0;
+                && hasReachedTarget(getAccumulated());
+    }
+
+    public boolean hasReachedTarget(BigDecimal accumulated) {
+        return accumulated.compareTo(targetAmount) >= 0;
     }
 
     public LocalDateTime getEstimatedCompletionDate() {

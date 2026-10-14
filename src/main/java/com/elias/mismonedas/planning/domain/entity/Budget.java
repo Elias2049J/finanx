@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -85,6 +86,51 @@ public class Budget {
     @ManyToOne
     @JoinColumn(name = "id_programacion")
     private BudgetSchedule schedule;
+
+    public BudgetHealth updateHealth(BigDecimal spent) {
+        if (!Boolean.TRUE.equals(alertable)) {
+            if (spent.compareTo(limitAmount) >= 0) {
+                health = BudgetHealth.EXCEEDED;
+            } else if (health != BudgetHealth.OK) {
+                health = BudgetHealth.OK;
+            }
+            return health;
+        }
+
+        int alertPercent = Math.clamp(percentAlert, 0, 100);
+        BigDecimal alertThreshold = limitAmount
+                .multiply(BigDecimal.valueOf(alertPercent))
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+        if (spent.compareTo(limitAmount) >= 0) {
+            health = BudgetHealth.EXCEEDED;
+        } else if (spent.compareTo(alertThreshold) >= 0) {
+            health = BudgetHealth.NEAR_LIMIT;
+        } else {
+            if (health != BudgetHealth.OK) {
+                nearLimitNotified = false;
+                exceededNotified = false;
+            }
+            health = BudgetHealth.OK;
+        }
+        return health;
+    }
+
+    public boolean markExceededNotified() {
+        if (Boolean.TRUE.equals(exceededNotified)) {
+            return false;
+        }
+        exceededNotified = true;
+        return true;
+    }
+
+    public boolean markNearLimitNotified() {
+        if (Boolean.TRUE.equals(nearLimitNotified)) {
+            return false;
+        }
+        nearLimitNotified = true;
+        return true;
+    }
 
     @PrePersist
     private void onCreate() {

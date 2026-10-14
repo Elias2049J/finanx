@@ -39,8 +39,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import static java.math.RoundingMode.HALF_UP;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -194,67 +192,47 @@ public class BudgetServiceImpl implements BudgetService {
                 }
             }
 
-            if (Boolean.TRUE.equals(b.getAlertable())) {
-                int pct = Math.clamp(b.getPercentAlert(), 0, 100);
-                BigDecimal threshold = b.getLimitAmount()
-                        .multiply(BigDecimal.valueOf(pct))
-                        .divide(BigDecimal.valueOf(100), 2, HALF_UP);
+            BudgetHealth previousHealth = b.getHealth();
+            BudgetHealth currentHealth = b.updateHealth(spent);
+            boolean alertable = Boolean.TRUE.equals(b.getAlertable());
 
-                if (spent.compareTo(b.getLimitAmount()) >= 0) {
-                    b.setHealth(BudgetHealth.EXCEEDED);
+            if (alertable && currentHealth == BudgetHealth.EXCEEDED) {
+                log.info("Budget {} superó el límite (spent={}, limit={})",
+                        b.getId(), spent, b.getLimitAmount());
 
-                    log.info("Budget {} superó el límite (spent={}, limit={})",
-                            b.getId(), spent, b.getLimitAmount());
-
-                    if (!b.getExceededNotified() && lastTx != null) {
-                        b.setExceededNotified(true);
-                        eventPublisher.publishEvent(new BudgetExceededEvent(
-                                b.getId(),
-                                u.getId(),
-                                c.getName(),
-                                spent,
-                                b.getLimitAmount(),
-                                lastTx.getCreatedAt(),
-                                lastTx.getAmount(),
-                                lastTx.getPaymentMethod().getDisplayName()
-                        ));
-                    }
-
-                } else if (spent.compareTo(threshold) >= 0) {
-                    b.setHealth(BudgetHealth.NEAR_LIMIT);
-
-                    log.info("Budget {} alcanzó {}% (spent={}, limit={})",
-                            b.getId(), pct, spent, b.getLimitAmount());
-
-                    if (!b.getNearLimitNotified() && lastTx != null) {
-                        b.setNearLimitNotified(true);
-                        eventPublisher.publishEvent(new BudgetNearLimitEvent(
-                                b.getId(),
-                                u.getId(),
-                                c.getName(),
-                                spent,
-                                b.getLimitAmount(),
-                                pct,
-                                lastTx.getCreatedAt(),
-                                lastTx.getAmount(),
-                                lastTx.getPaymentMethod().getDisplayName()
-                        ));
-                    }
-                } else {
-                    if (b.getHealth() != BudgetHealth.OK) {
-                        log.info("Budget {} volvió a estado OK (spent={}, limit={})",
-                                b.getId(), spent, b.getLimitAmount());
-                        b.setHealth(BudgetHealth.OK);
-                        b.setNearLimitNotified(false);
-                        b.setExceededNotified(false);
-                    }
+                if (lastTx != null && b.markExceededNotified()) {
+                    eventPublisher.publishEvent(new BudgetExceededEvent(
+                            b.getId(),
+                            u.getId(),
+                            c.getName(),
+                            spent,
+                            b.getLimitAmount(),
+                            lastTx.getCreatedAt(),
+                            lastTx.getAmount(),
+                            lastTx.getPaymentMethod().getDisplayName()
+                    ));
                 }
-            } else {
-                if (spent.compareTo(b.getLimitAmount()) >= 0) {
-                    b.setHealth(BudgetHealth.EXCEEDED);
-                } else if (b.getHealth() != BudgetHealth.OK) {
-                    b.setHealth(BudgetHealth.OK);
+            } else if (alertable && currentHealth == BudgetHealth.NEAR_LIMIT) {
+                int alertPercent = Math.clamp(b.getPercentAlert(), 0, 100);
+                log.info("Budget {} alcanzó {}% (spent={}, limit={})",
+                        b.getId(), alertPercent, spent, b.getLimitAmount());
+
+                if (lastTx != null && b.markNearLimitNotified()) {
+                    eventPublisher.publishEvent(new BudgetNearLimitEvent(
+                            b.getId(),
+                            u.getId(),
+                            c.getName(),
+                            spent,
+                            b.getLimitAmount(),
+                            alertPercent,
+                            lastTx.getCreatedAt(),
+                            lastTx.getAmount(),
+                            lastTx.getPaymentMethod().getDisplayName()
+                    ));
                 }
+            } else if (alertable && previousHealth != BudgetHealth.OK) {
+                log.info("Budget {} volvió a estado OK (spent={}, limit={})",
+                        b.getId(), spent, b.getLimitAmount());
             }
         }
 

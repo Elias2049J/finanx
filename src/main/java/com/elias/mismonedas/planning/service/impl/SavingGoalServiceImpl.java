@@ -133,7 +133,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
 
             BigDecimal convertedAccumulated = computeConvertedAccumulated(sa);
 
-            boolean completed = convertedAccumulated.compareTo(sa.getTargetAmount()) >= 0;
+            boolean completed = sa.hasReachedTarget(convertedAccumulated);
 
             if (completed) {
                 Transaction last = sa.getTransactions().stream()
