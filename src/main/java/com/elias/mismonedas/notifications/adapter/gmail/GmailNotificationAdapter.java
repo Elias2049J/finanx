@@ -2,6 +2,7 @@ package com.elias.mismonedas.notifications.adapter.gmail;
 
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.port.NotificationPort;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -19,6 +20,7 @@ public class GmailNotificationAdapter implements NotificationPort {
     private final GmailProperties gmailProperties;
 
     @Override
+    @CircuitBreaker(name = "gmail")
     public void send(NotificationDTO notification) {
         if (!notification.isEmailNotifications()) {
             log.debug("Email skip: user {} tiene notificaciones email deshabilitadas", notification.getUserId());

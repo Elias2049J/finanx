@@ -10,6 +10,7 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class NotificationScheduler {
     private final ObjectMapper objectMapper;
 
     @Scheduled(fixedDelay = 60_000)
+    @SchedulerLock(name = "notificationScheduler.processOutbox", lockAtMostFor = "PT5M", lockAtLeastFor = "PT30S")
     @Transactional
     public void processOutbox() {
         List<NotificationOutbox> pending = outboxRepository.findAllByState(OutboxState.PENDING);
@@ -69,6 +71,7 @@ public class NotificationScheduler {
     }
 
     @Scheduled(cron = "0 0 3 * * ?")
+    @SchedulerLock(name = "notificationScheduler.purgeOldEntries", lockAtMostFor = "PT30M", lockAtLeastFor = "PT5M")
     @Transactional
     public void purgeOldEntries() {
         OffsetDateTime cutoff = OffsetDateTime.now().minusDays(RETENTION_DAYS);

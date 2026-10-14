@@ -3,6 +3,7 @@ package com.elias.mismonedas.notifications.scheduler;
 import com.elias.mismonedas.notifications.repository.FcmTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ public class FcmTokenCleanupJob {
     private final FcmTokenRepository fcmTokenRepository;
 
     @Scheduled(cron = "0 0 2 * * ?")
+    @SchedulerLock(name = "fcmTokenCleanupJob.purgeStaleTokens", lockAtMostFor = "PT30M", lockAtLeastFor = "PT5M")
     @Transactional
     public void purgeStaleTokens() {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(60);

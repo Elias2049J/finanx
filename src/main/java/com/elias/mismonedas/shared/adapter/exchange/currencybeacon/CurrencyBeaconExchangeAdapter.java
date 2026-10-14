@@ -3,28 +3,28 @@ package com.elias.mismonedas.shared.adapter.exchange.currencybeacon;
 import com.elias.mismonedas.shared.port.ExchangePort;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Adapter de {@link ExchangePort} que envuelve a {@link CurrencyBeaconClient}
+ * con caché ({@code @Cacheable}) y fallback explícito a tasas en caché.
+ *
+ * <p>La resiliencia (circuit breaker / reintentos) vive en el cliente; aquí solo
+ * se traduce un fallo remoto en un valor servido desde caché para no romper el
+ * flujo de negocio.</p>
+ */
 @Slf4j
 public class CurrencyBeaconExchangeAdapter implements ExchangePort {
 
-    private final RestClient restClient;
-    private final CurrencyBeaconProperties properties;
+    private final CurrencyBeaconClient client;
 
-    public CurrencyBeaconExchangeAdapter(
-            CurrencyBeaconProperties properties,
-            RestClient.Builder restClientBuilder) {
-        this.properties = properties;
-        this.restClient = restClientBuilder
-                .baseUrl(properties.apiUrl())
-                .build();
+    public CurrencyBeaconExchangeAdapter(CurrencyBeaconClient client) {
+        this.client = client;
     }
 
     @Override
@@ -33,8 +33,13 @@ public class CurrencyBeaconExchangeAdapter implements ExchangePort {
         if (fromCurrency.equalsIgnoreCase(toCurrency)) {
             return amount;
         }
-        String url = "/convert?api_key={key}&from={from}&to={to}&amount={amount}";
-        return callConvert(url, amount, fromCurrency, toCurrency);
+        try {
+            return client.convert(amount, fromCurrency, toCurrency);
+        } catch (Exception e) {
+            log.warn("Fallo al convertir {} de {} a {}, usando tasas en cache: {}",
+                    amount, fromCurrency, toCurrency, e.getMessage());
+            return fallbackConvert(amount, fromCurrency, toCurrency);
+        }
     }
 
     @Override
@@ -43,60 +48,24 @@ public class CurrencyBeaconExchangeAdapter implements ExchangePort {
         if (fromCurrency.equalsIgnoreCase(toCurrency)) {
             return amount;
         }
-        String url = "/convert?api_key={key}&from={from}&to={to}&amount={amount}&date={date}";
-        return callConvertWithDate(url, amount, fromCurrency, toCurrency, date);
+        try {
+            return client.convert(amount, fromCurrency, toCurrency, date);
+        } catch (Exception e) {
+            log.warn("Fallo al convertir {} de {} a {} en {}, usando tasas en cache: {}",
+                    amount, fromCurrency, toCurrency, date, e.getMessage());
+            return fallbackConvert(amount, fromCurrency, toCurrency);
+        }
     }
 
     @Override
     @Cacheable(value = "exchangeRates", key = "'rates_' + #baseCurrency")
     public Map<String, BigDecimal> getExchangeRates(String baseCurrency) {
-        String url = "/latest?api_key={key}&base={base}";
         try {
-            var response = restClient.get()
-                    .uri(url, properties.apiKey(), baseCurrency)
-                    .retrieve()
-                    .body(CurrencyBeaconResponse.class);
-
-            if (response != null && response.response() != null && response.response().rates() != null) {
-                log.debug("Fetched exchange rates for base={}", baseCurrency);
-                return response.response().rates();
-            }
+            return client.getLatestRates(baseCurrency);
         } catch (Exception e) {
-            log.warn("Failed to fetch exchange rates for base={}, using cache fallback", baseCurrency, e);
+            log.warn("Fallo al obtener tasas para base={}, usando cache fallback: {}", baseCurrency, e.getMessage());
         }
         return Map.of();
-    }
-
-    private BigDecimal callConvert(String url, BigDecimal amount, String from, String to) {
-        try {
-            var response = restClient.get()
-                    .uri(url, properties.apiKey(), from, to, amount)
-                    .retrieve()
-                    .body(CurrencyBeaconConvertResponse.class);
-
-            if (response != null && response.response() != null) {
-                return response.response().value().setScale(2, RoundingMode.HALF_UP);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to convert {} from {} to {}, using cached rates as fallback", amount, from, to, e);
-        }
-        return fallbackConvert(amount, from, to);
-    }
-
-    private BigDecimal callConvertWithDate(String url, BigDecimal amount, String from, String to, LocalDate date) {
-        try {
-            var response = restClient.get()
-                    .uri(url, properties.apiKey(), from, to, amount, date.format(DateTimeFormatter.ISO_LOCAL_DATE))
-                    .retrieve()
-                    .body(CurrencyBeaconConvertResponse.class);
-
-            if (response != null && response.response() != null) {
-                return response.response().value().setScale(2, RoundingMode.HALF_UP);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to convert historical {} from {} to {} on {}, using cached rates", amount, from, to, date, e);
-        }
-        return fallbackConvert(amount, from, to);
     }
 
     private BigDecimal fallbackConvert(BigDecimal amount, String from, String to) {
@@ -104,15 +73,5 @@ public class CurrencyBeaconExchangeAdapter implements ExchangePort {
         return Optional.ofNullable(rates.get(to.toUpperCase()))
                 .map(rate -> amount.multiply(rate).setScale(2, RoundingMode.HALF_UP))
                 .orElse(amount);
-    }
-
-    private record CurrencyBeaconResponse(Meta meta, ResponseData response) {
-        private record Meta(Integer code) {}
-        private record ResponseData(String date, String base, Map<String, BigDecimal> rates) {}
-    }
-
-    private record CurrencyBeaconConvertResponse(Meta meta, ConvertResponseData response) {
-        private record Meta(Integer code) {}
-        private record ConvertResponseData(Long timestamp, String date, String from, String to, BigDecimal amount, BigDecimal value) {}
     }
 }

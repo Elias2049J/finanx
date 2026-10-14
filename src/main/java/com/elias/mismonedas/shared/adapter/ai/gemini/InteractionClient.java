@@ -4,7 +4,10 @@ import com.elias.mismonedas.shared.adapter.ai.gemini.dto.GeminiErrorEnvelope;
 import com.elias.mismonedas.shared.adapter.ai.gemini.dto.InteractionRequest;
 import com.elias.mismonedas.shared.adapter.ai.gemini.dto.InteractionResponse;
 import com.elias.mismonedas.shared.adapter.ai.gemini.exception.GeminiException;
+import com.elias.mismonedas.shared.adapter.ai.gemini.exception.GeminiException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +41,8 @@ public class InteractionClient {
                 .build();
     }
 
+    @CircuitBreaker(name = "gemini")
+    @Bulkhead(name = "gemini")
     public InteractionResponse create(InteractionRequest request) {
         log.debug("[GEMINI-CLIENT] POST /interactions model={} prevId={}",
                 request.model(), request.previousInteractionId());
@@ -53,6 +58,8 @@ public class InteractionClient {
                 .body(InteractionResponse.class);
     }
 
+    @CircuitBreaker(name = "gemini")
+    @Bulkhead(name = "gemini")
     public InteractionResponse get(String interactionId) {
         log.debug("[GEMINI-CLIENT] GET /interactions/{}", interactionId);
 

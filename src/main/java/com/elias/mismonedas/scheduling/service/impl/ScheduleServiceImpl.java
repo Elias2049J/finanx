@@ -31,8 +31,11 @@ import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -50,6 +53,9 @@ import java.util.function.Function;
 @Slf4j
 public class ScheduleServiceImpl implements ScheduleService {
 
+    /** Tamaño de lote de los barridos para acotar memoria y duración de transacción. */
+    private static final int BATCH_SIZE = 100;
+
     private final ScheduleRepository scheduleRepository;
     private final TransactionScheduleRepository tsRepository;
     private final BudgetScheduleRepository bsRepository;
@@ -65,6 +71,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final SavingGoalService savingGoalService;
     private final WalletRepository walletRepository;
     private final WalletService walletService;
+    private final TransactionTemplate transactionTemplate;
 
     // ─── CRUD ────────────────────────────────────────────────────────────────────
 
@@ -202,52 +209,90 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    @Transactional
     public void runDueTransactions() {
-        List<TransactionSchedule> candidates =
-                tsRepository.findAllByActiveTrueAndState(ScheduleState.RUNNING);
+        Long cursor = 0L;
+        while (cursor != null) {
+            final long afterId = cursor;
+            cursor = transactionTemplate.execute(status -> processTransactionBatch(afterId));
+        }
+    }
 
-        List<TransactionSchedule> dueList = candidates.stream()
+    /**
+     * Procesa un único lote de {@link TransactionSchedule} dentro de su propia
+     * transacción. Devuelve el id del último schedule del lote (cursor) o
+     * {@code null} si el lote fue el último.
+     */
+    private Long processTransactionBatch(long afterId) {
+        List<TransactionSchedule> batch = tsRepository.findByActiveTrueAndStateAndIdGreaterThan(
+                ScheduleState.RUNNING, afterId, PageRequest.of(0, BATCH_SIZE, Sort.by("id")));
+
+        if (batch.isEmpty()) {
+            return null;
+        }
+
+        List<TransactionSchedule> dueList = batch.stream()
                 .filter(this::isDue)
                 .toList();
 
-        Set<Long> affectedUsers = new HashSet<>();
+        if (!dueList.isEmpty()) {
+            Set<Long> affectedUsers = new HashSet<>();
+            runJob(
+                    "TransactionSchedule",
+                    dueList,
+                    st -> {
+                        affectedUsers.add(st.getUser().getId());
+                        return executeTransactionSchedule(st);
+                    },
+                    created -> {
+                        transactionRepository.saveAll((List<Transaction>) created);
+                        affectedUsers.forEach(userId -> {
+                            budgetService.checkAllBudgets(userId);
+                            savingGoalService.checkAllSavingGoals(userId);
+                        });
+                    }
+            );
+        }
 
-        runJob(
-                "TransactionSchedule",
-                dueList,
-                st -> {
-                    affectedUsers.add(st.getUser().getId());
-                    return executeTransactionSchedule(st);
-                },
-                created -> {
-                    transactionRepository.saveAll((List<Transaction>) created);
-                    affectedUsers.forEach(userId -> {
-                        budgetService.checkAllBudgets(userId);
-                        savingGoalService.checkAllSavingGoals(userId);
-                    });
-                }
-        );
+        return batch.size() < BATCH_SIZE ? null : batch.get(batch.size() - 1).getId();
     }
 
     @Override
-    @Transactional
     public void runDueBudgets() {
-        List<BudgetSchedule> candidates =
-                bsRepository.findAllByActiveTrueAndState(ScheduleState.RUNNING);
+        Long cursor = 0L;
+        while (cursor != null) {
+            final long afterId = cursor;
+            cursor = transactionTemplate.execute(status -> processBudgetBatch(afterId));
+        }
+    }
 
-        List<BudgetSchedule> dueList = candidates.stream()
+    /**
+     * Procesa un único lote de {@link BudgetSchedule} dentro de su propia
+     * transacción. Devuelve el cursor al siguiente lote o {@code null} si se
+     * alcanzó el final.
+     */
+    private Long processBudgetBatch(long afterId) {
+        List<BudgetSchedule> batch = bsRepository.findByActiveTrueAndStateAndIdGreaterThan(
+                ScheduleState.RUNNING, afterId, PageRequest.of(0, BATCH_SIZE, Sort.by("id")));
+
+        if (batch.isEmpty()) {
+            return null;
+        }
+
+        List<BudgetSchedule> dueList = batch.stream()
                 .filter(this::isDue)
                 .toList();
 
-        runJob(
-                "BudgetSchedule",
-                dueList,
-                this::executeBudgetSchedule,
-                created -> budgetRepository.saveAll((List<Budget>) created)
-        );
-    }
+        if (!dueList.isEmpty()) {
+            runJob(
+                    "BudgetSchedule",
+                    dueList,
+                    this::executeBudgetSchedule,
+                    created -> budgetRepository.saveAll((List<Budget>) created)
+            );
+        }
 
+        return batch.size() < BATCH_SIZE ? null : batch.get(batch.size() - 1).getId();
+    }
 
     private Transaction executeTransactionSchedule(TransactionSchedule st) {
         OffsetDateTime executedAt = st.getNextRunAt();

@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.time.OffsetDateTime;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -48,6 +49,8 @@ public class ChatGeminiAdapter implements ChatPort {
 
     private final InteractionClient geminiClient;
 
+    private final ExecutorService externalTaskExecutor;
+
     @Override
     public ChatMessage sendMessage(ChatMessageRequest request) {
         ChatSession session = resolveSession(request);
@@ -70,13 +73,8 @@ public class ChatGeminiAdapter implements ChatPort {
 
             InteractionRequest body = buildInteractionRequest(model, request, session);
 
-            CompletableFuture<InteractionResponse> future = CompletableFuture.supplyAsync(() -> {
-                try {
-                    return geminiClient.create(body);
-                } catch (Exception e) {
-                    throw new CompletionException(e);
-                }
-            });
+            CompletableFuture<InteractionResponse> future = CompletableFuture.supplyAsync(
+                    () -> geminiClient.create(body), externalTaskExecutor);
 
             InteractionResponse response = future.get(aiProperties.timeoutMs(), TimeUnit.MILLISECONDS);
             long latency = System.currentTimeMillis() - t0;

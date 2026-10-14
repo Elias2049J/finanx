@@ -7,6 +7,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.*;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class FCMNotificationAdapter implements NotificationPort {
     }
 
     @Override
+    @CircuitBreaker(name = "fcm")
     public void send(NotificationDTO notification) {
         List<String> tokens = notification.getFcmTokens();
         if (tokens == null || tokens.isEmpty()) {
