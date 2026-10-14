@@ -25,14 +25,20 @@ public interface PaymentService {
 
     PaymentResponse refund(Long paymentId);
 
-    /** Verifies, deduplicates and applies an inbound webhook notification. */
-    void processWebhookEvent(PaymentProvider provider, String rawPayload, String signatureHeader);
+    /** Verifies and durably records an inbound notification before publishing its id. */
+    void receiveWebhookEvent(PaymentProvider provider, String rawPayload, String signatureHeader);
+
+    /** Processes one persisted webhook event; transient failures are propagated for broker retry. */
+    void processWebhookEvent(Long webhookEventId);
+
+    /** Marks an event FAILED after the broker has exhausted its retry attempts. */
+    void markWebhookEventFailed(Long webhookEventId, String errorMessage);
 
     /**
-     * Re-drives webhook events left {@code RECEIVED} (stuck) or {@code FAILED}
-     * (transient) by replaying their stored payload. Idempotent.
+     * Republishes stale {@code RECEIVED} events left behind by a process or
+     * broker failure. Failed events are retained in the DLQ for explicit redrive.
      *
-     * @return number of events successfully reconciled
+     * @return number of events successfully handed to the broker
      */
     int reconcileWebhookEvents();
 }

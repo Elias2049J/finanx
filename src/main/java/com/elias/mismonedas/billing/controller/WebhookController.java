@@ -39,7 +39,7 @@ public class WebhookController {
             @RequestHeader(value = "X-Signature", required = false) String signature,
             @RequestBody String rawPayload) {
         log.info("Webhook received provider={}", provider);
-        paymentService.processWebhookEvent(provider, rawPayload, signature);
+        paymentService.receiveWebhookEvent(provider, rawPayload, signature);
         return ResponseEntity.ok().build();
     }
 }

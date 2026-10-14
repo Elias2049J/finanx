@@ -8,8 +8,10 @@ import com.elias.mismonedas.billing.domain.enums.WebhookEventState;
 import com.elias.mismonedas.billing.dto.payment.PaymentRequest;
 import com.elias.mismonedas.billing.dto.payment.PaymentResponse;
 import com.elias.mismonedas.billing.dto.webhook.PaymentWebhookNotification;
+import com.elias.mismonedas.billing.exception.InvalidWebhookSignatureException;
 import com.elias.mismonedas.billing.mapper.PaymentMapper;
 import com.elias.mismonedas.billing.port.PaymentPort;
+import com.elias.mismonedas.billing.port.PaymentWebhookPublisher;
 import com.elias.mismonedas.billing.repository.PaymentRepository;
 import com.elias.mismonedas.billing.repository.WebhookEventRepository;
 import com.elias.mismonedas.billing.service.PaymentService;
@@ -19,6 +21,7 @@ import com.elias.mismonedas.shared.exception.PaymentNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.AmqpException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -41,6 +44,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserRepository userRepository;
     private final PaymentMapper paymentMapper;
     private final PaymentPort paymentPort;
+    private final PaymentWebhookPublisher webhookPublisher;
 
     @Override
     @Transactional
@@ -119,15 +123,19 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public void processWebhookEvent(PaymentProvider provider, String rawPayload, String signatureHeader) {
+    public void receiveWebhookEvent(PaymentProvider provider, String rawPayload, String signatureHeader) {
         if (!paymentPort.verifyWebhookSignature(rawPayload, signatureHeader)) {
             log.warn("Rejected webhook from provider={} due to invalid signature", provider);
-            throw new SecurityException("Invalid webhook signature for provider " + provider);
+            throw new InvalidWebhookSignatureException("Invalid webhook signature for provider " + provider);
         }
 
         PaymentWebhookNotification notification = paymentPort.parseWebhookPayload(rawPayload);
+        if (notification == null || notification.getExternalEventId() == null
+                || notification.getExternalEventId().isBlank()) {
+            throw new IllegalArgumentException("Webhook payload has no external event id");
+        }
 
-        if (webhookEventRepository.existsByExternalEventId(notification.getExternalEventId())) {
+        if (webhookEventRepository.findByExternalEventId(notification.getExternalEventId()).isPresent()) {
             log.info("Duplicate webhook event ignored externalEventId={}", notification.getExternalEventId());
             return;
         }
@@ -143,42 +151,60 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             event = webhookEventRepository.saveAndFlush(event);
         } catch (DataIntegrityViolationException ex) {
-            log.info("Duplicate webhook event ignored (concurrent) externalEventId={}",
-                    notification.getExternalEventId());
+            if (webhookEventRepository.findByExternalEventId(notification.getExternalEventId()).isPresent()) {
+                log.info("Duplicate webhook event ignored (concurrent) externalEventId={}",
+                        notification.getExternalEventId());
+                return;
+            }
+            throw ex;
+        }
+
+        publishReceivedEvent(event);
+    }
+
+    @Override
+    @Transactional
+    public void processWebhookEvent(Long webhookEventId) {
+        WebhookEvent event = webhookEventRepository.findByIdForUpdate(webhookEventId)
+                .orElseThrow(() -> new EntityNotFoundException("Webhook event not found with id " + webhookEventId));
+
+        if (event.getState() != WebhookEventState.RECEIVED && event.getState() != WebhookEventState.FAILED) {
             return;
         }
 
-        try {
-            applyWebhookEvent(event, notification);
-        } catch (Exception ex) {
-            event.setState(WebhookEventState.FAILED);
-            event.setErrorMessage(ex.getMessage());
-            log.error("Failed to process webhook externalEventId={}", notification.getExternalEventId(), ex);
-        }
-        webhookEventRepository.save(event);
+        PaymentWebhookNotification notification = paymentPort.parseWebhookPayload(event.getRawPayload());
+        applyWebhookEvent(event, notification);
     }
 
     @Override
     public int reconcileWebhookEvents() {
         OffsetDateTime cutoff = OffsetDateTime.now().minusMinutes(RECONCILE_STUCK_MINUTES);
-        List<WebhookEvent> events = webhookEventRepository.findReconcilable(
-                WebhookEventState.RECEIVED, WebhookEventState.FAILED, cutoff,
+        List<WebhookEvent> events = webhookEventRepository.findStaleReceived(
+                WebhookEventState.RECEIVED, cutoff,
                 PageRequest.of(0, RECONCILE_BATCH_SIZE));
 
-        int reconciled = 0;
+        int published = 0;
         for (WebhookEvent event : events) {
             try {
-                PaymentWebhookNotification notification = paymentPort.parseWebhookPayload(event.getRawPayload());
-                applyWebhookEvent(event, notification);
-                reconciled++;
-            } catch (Exception ex) {
-                event.setState(WebhookEventState.FAILED);
-                event.setErrorMessage(ex.getMessage());
-                log.error("Webhook reconciliation failed eventId={}", event.getId(), ex);
+                webhookPublisher.publish(event.getId());
+                published++;
+            } catch (AmqpException ex) {
+                log.error("Could not republish stale webhook event id={}", event.getId(), ex);
             }
-            webhookEventRepository.save(event);
         }
-        return reconciled;
+        return published;
+    }
+
+    @Override
+    @Transactional
+    public void markWebhookEventFailed(Long webhookEventId, String errorMessage) {
+        WebhookEvent event = webhookEventRepository.findByIdForUpdate(webhookEventId)
+                .orElseThrow(() -> new EntityNotFoundException("Webhook event not found with id " + webhookEventId));
+        if (event.getState() == WebhookEventState.PROCESSED || event.getState() == WebhookEventState.IGNORED) {
+            return;
+        }
+        event.setState(WebhookEventState.FAILED);
+        event.setErrorMessage(abbreviate(errorMessage, 255));
     }
 
     /**
@@ -186,7 +212,7 @@ public class PaymentServiceImpl implements PaymentService {
      * resulting webhook state. Idempotent: a payment that already sits in the
      * target state, or a transition the state machine forbids, is a no-op rather
      * than a failure. A notification for an unknown payment is stored as IGNORED
-     * so it stays visible for reconciliation.
+     * for audit and is not automatically retried.
      */
     private void applyWebhookEvent(WebhookEvent event, PaymentWebhookNotification notification) {
         paymentRepository.findByExternalReference(notification.getExternalReference())
@@ -216,6 +242,22 @@ public class PaymentServiceImpl implements PaymentService {
         }
         payment.transitionTo(target);
         paymentRepository.save(payment);
+    }
+
+    private void publishReceivedEvent(WebhookEvent event) {
+        try {
+            webhookPublisher.publish(event.getId());
+        } catch (AmqpException ex) {
+            // The event is already durable in the database; the reconciliation job republishes it.
+            log.warn("Webhook event persisted but broker publish failed id={}", event.getId(), ex);
+        }
+    }
+
+    private static String abbreviate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 
     private static PaymentState mapStatus(String status) {

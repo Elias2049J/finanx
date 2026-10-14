@@ -6,8 +6,10 @@ import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
 import com.elias.mismonedas.billing.domain.enums.PaymentState;
 import com.elias.mismonedas.billing.domain.enums.WebhookEventState;
 import com.elias.mismonedas.billing.dto.webhook.PaymentWebhookNotification;
+import com.elias.mismonedas.billing.exception.InvalidWebhookSignatureException;
 import com.elias.mismonedas.billing.mapper.PaymentMapper;
 import com.elias.mismonedas.billing.port.PaymentPort;
+import com.elias.mismonedas.billing.port.PaymentWebhookPublisher;
 import com.elias.mismonedas.billing.repository.PaymentRepository;
 import com.elias.mismonedas.billing.repository.WebhookEventRepository;
 import com.elias.mismonedas.billing.service.impl.PaymentServiceImpl;
@@ -20,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.AmqpException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 
@@ -39,6 +42,7 @@ class PaymentServiceImplTest {
     @Mock private UserRepository userRepository;
     @Mock private PaymentMapper paymentMapper;
     @Mock private PaymentPort paymentPort;
+    @Mock private PaymentWebhookPublisher webhookPublisher;
 
     @Captor private ArgumentCaptor<WebhookEvent> eventCaptor;
 
@@ -47,7 +51,7 @@ class PaymentServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new PaymentServiceImpl(
-                paymentRepository, webhookEventRepository, userRepository, paymentMapper, paymentPort);
+                paymentRepository, webhookEventRepository, userRepository, paymentMapper, paymentPort, webhookPublisher);
     }
 
     private PaymentWebhookNotification notification(String externalEventId, String externalReference, String status) {
@@ -65,92 +69,178 @@ class PaymentServiceImplTest {
     }
 
     @Nested
-    class ProcessWebhookEventTest {
+    class ReceiveWebhookEventTest {
 
         @Test
-        void shouldTreatExistingEventAsIdempotentWithoutSaving() {
+        void shouldTreatExistingEventAsIdempotentWithoutPublishingAgain() {
+            WebhookEvent existing = WebhookEvent.builder()
+                    .id(1L)
+                    .externalEventId("EVT-1")
+                    .state(WebhookEventState.RECEIVED)
+                    .build();
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-1", "REF-1", "approved"));
-            when(webhookEventRepository.existsByExternalEventId("EVT-1")).thenReturn(true);
+            when(webhookEventRepository.findByExternalEventId("EVT-1")).thenReturn(Optional.of(existing));
 
-            service.processWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
 
             verify(webhookEventRepository, never()).saveAndFlush(any());
-            verify(webhookEventRepository, never()).save(any());
+            verify(webhookPublisher, never()).publish(any());
         }
 
         @Test
         void shouldTreatConcurrentDuplicateConstraintAsIdempotent() {
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-1", "REF-1", "approved"));
-            when(webhookEventRepository.existsByExternalEventId("EVT-1")).thenReturn(false);
             when(webhookEventRepository.saveAndFlush(any()))
                     .thenThrow(new DataIntegrityViolationException("uq id_evento_externo"));
+            when(webhookEventRepository.findByExternalEventId("EVT-1"))
+                    .thenReturn(Optional.empty(), Optional.of(WebhookEvent.builder().id(1L).build()));
 
-            service.processWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
 
             verify(webhookEventRepository, never()).save(any());
+            verify(webhookPublisher, never()).publish(any());
         }
 
         @Test
-        void shouldMarkIgnoredWhenPaymentNotFound() {
+        void shouldPersistReceivedAndPublishOnlyTheEventId() {
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-2", "REF-2", "approved"));
-            when(webhookEventRepository.existsByExternalEventId("EVT-2")).thenReturn(false);
-            when(webhookEventRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
-            when(paymentRepository.findByExternalReference("REF-2")).thenReturn(Optional.empty());
+            when(webhookEventRepository.findByExternalEventId("EVT-2")).thenReturn(Optional.empty());
+            when(webhookEventRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+                WebhookEvent event = invocation.getArgument(0);
+                event.setId(2L);
+                return event;
+            });
 
-            service.processWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
 
-            verify(webhookEventRepository).save(eventCaptor.capture());
-            assertThat(eventCaptor.getValue().getState()).isEqualTo(WebhookEventState.IGNORED);
-            assertThat(eventCaptor.getValue().getProcessedAt()).isNotNull();
-            verify(paymentRepository, never()).save(any());
+            verify(webhookEventRepository).saveAndFlush(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().getState()).isEqualTo(WebhookEventState.RECEIVED);
+            verify(webhookPublisher).publish(2L);
+            verify(paymentRepository, never()).findByExternalReference(any());
         }
+
+        @Test
+        void shouldKeepDurableReceiptAndReturnNormallyWhenBrokerIsUnavailable() {
+            when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
+            when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-2B", "REF-2B", "approved"));
+            when(webhookEventRepository.findByExternalEventId("EVT-2B")).thenReturn(Optional.empty());
+            when(webhookEventRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+                WebhookEvent event = invocation.getArgument(0);
+                event.setId(22L);
+                return event;
+            });
+            doThrow(new AmqpException("broker unavailable")).when(webhookPublisher).publish(22L);
+
+            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+
+            verify(webhookEventRepository).saveAndFlush(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().getState()).isEqualTo(WebhookEventState.RECEIVED);
+            verify(webhookPublisher).publish(22L);
+        }
+
+        @Test
+        void shouldRejectInvalidSignatureWithWebhookSpecificException() {
+            when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(false);
+
+            org.assertj.core.api.Assertions
+                    .assertThatThrownBy(() -> service.receiveWebhookEvent(
+                            PaymentProvider.MANUAL_TRANSFER, "{}", "sig"))
+                    .isInstanceOf(InvalidWebhookSignatureException.class);
+
+            verify(webhookEventRepository, never()).saveAndFlush(any());
+        }
+
+        @Test
+        void shouldRejectPayloadWithoutExternalEventId() {
+            when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
+            when(paymentPort.parseWebhookPayload(any())).thenReturn(notification(null, "REF-3", "approved"));
+
+            org.assertj.core.api.Assertions
+                    .assertThatThrownBy(() -> service.receiveWebhookEvent(
+                            PaymentProvider.MANUAL_TRANSFER, "{}", "sig"))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            verify(webhookEventRepository, never()).saveAndFlush(any());
+        }
+    }
+
+    @Nested
+    class ProcessQueuedWebhookEventTest {
 
         @Test
         void shouldApplyTransitionAndMarkProcessed() {
+            WebhookEvent event = WebhookEvent.builder()
+                    .id(3L)
+                    .externalEventId("EVT-3")
+                    .rawPayload("{}")
+                    .state(WebhookEventState.RECEIVED)
+                    .build();
             Payment payment = paymentInState(PaymentState.PENDING);
-            when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-3", "REF-3", "approved"));
-            when(webhookEventRepository.existsByExternalEventId("EVT-3")).thenReturn(false);
-            when(webhookEventRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(webhookEventRepository.findByIdForUpdate(3L)).thenReturn(Optional.of(event));
             when(paymentRepository.findByExternalReference("REF-3")).thenReturn(Optional.of(payment));
 
-            service.processWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.processWebhookEvent(3L);
 
             assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
             verify(paymentRepository).save(payment);
-            verify(webhookEventRepository).save(eventCaptor.capture());
-            assertThat(eventCaptor.getValue().getState()).isEqualTo(WebhookEventState.PROCESSED);
+            assertThat(event.getState()).isEqualTo(WebhookEventState.PROCESSED);
         }
 
         @Test
         void shouldBeNoOpWhenPaymentAlreadyInTargetState() {
+            WebhookEvent event = WebhookEvent.builder()
+                    .id(4L)
+                    .externalEventId("EVT-4")
+                    .rawPayload("{}")
+                    .state(WebhookEventState.RECEIVED)
+                    .build();
             Payment payment = paymentInState(PaymentState.COMPLETED);
-            when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-4", "REF-4", "approved"));
-            when(webhookEventRepository.existsByExternalEventId("EVT-4")).thenReturn(false);
-            when(webhookEventRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(webhookEventRepository.findByIdForUpdate(4L)).thenReturn(Optional.of(event));
             when(paymentRepository.findByExternalReference("REF-4")).thenReturn(Optional.of(payment));
 
-            service.processWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.processWebhookEvent(4L);
 
             assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
             verify(paymentRepository, never()).save(any());
-            verify(webhookEventRepository).save(eventCaptor.capture());
-            assertThat(eventCaptor.getValue().getState()).isEqualTo(WebhookEventState.PROCESSED);
+            assertThat(event.getState()).isEqualTo(WebhookEventState.PROCESSED);
         }
 
         @Test
-        void shouldRejectInvalidSignature() {
-            when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(false);
+        void shouldMarkUnknownPaymentAsIgnored() {
+            WebhookEvent event = WebhookEvent.builder()
+                    .id(6L)
+                    .externalEventId("EVT-6")
+                    .rawPayload("{}")
+                    .state(WebhookEventState.RECEIVED)
+                    .build();
+            when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-6", "REF-6", "approved"));
+            when(webhookEventRepository.findByIdForUpdate(6L)).thenReturn(Optional.of(event));
+            when(paymentRepository.findByExternalReference("REF-6")).thenReturn(Optional.empty());
 
-            org.assertj.core.api.Assertions
-                    .assertThatThrownBy(() -> service.processWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig"))
-                    .isInstanceOf(SecurityException.class);
+            service.processWebhookEvent(6L);
 
-            verify(webhookEventRepository, never()).saveAndFlush(any());
+            assertThat(event.getState()).isEqualTo(WebhookEventState.IGNORED);
+            assertThat(event.getProcessedAt()).isNotNull();
+            verify(paymentRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldIgnoreTerminalEventDelivery() {
+            WebhookEvent event = WebhookEvent.builder()
+                    .id(5L)
+                    .state(WebhookEventState.PROCESSED)
+                    .build();
+            when(webhookEventRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(event));
+
+            service.processWebhookEvent(5L);
+
+            verify(paymentPort, never()).parseWebhookPayload(any());
+            verify(paymentRepository, never()).findByExternalReference(any());
         }
     }
 
@@ -158,52 +248,59 @@ class PaymentServiceImplTest {
     class ReconcileWebhookEventsTest {
 
         @Test
-        void shouldReplayFailedEventAndMarkProcessed() {
-            WebhookEvent failed = WebhookEvent.builder()
+        void shouldRepublishStaleReceivedEventWithoutProcessingInline() {
+            WebhookEvent received = WebhookEvent.builder()
                     .id(50L)
                     .provider(PaymentProvider.MANUAL_TRANSFER)
                     .externalEventId("EVT-9")
                     .rawPayload("{}")
-                    .state(WebhookEventState.FAILED)
+                    .state(WebhookEventState.RECEIVED)
                     .build();
-            Payment payment = paymentInState(PaymentState.PENDING);
 
-            when(webhookEventRepository.findReconcilable(
-                    eq(WebhookEventState.RECEIVED), eq(WebhookEventState.FAILED), any(), any(Pageable.class)))
-                    .thenReturn(List.of(failed));
-            when(paymentPort.parseWebhookPayload("{}")).thenReturn(notification("EVT-9", "REF-9", "approved"));
-            when(paymentRepository.findByExternalReference("REF-9")).thenReturn(Optional.of(payment));
+            when(webhookEventRepository.findStaleReceived(eq(WebhookEventState.RECEIVED), any(), any(Pageable.class)))
+                    .thenReturn(List.of(received));
 
-            int reconciled = service.reconcileWebhookEvents();
+            int published = service.reconcileWebhookEvents();
 
-            assertThat(reconciled).isEqualTo(1);
-            assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
-            assertThat(failed.getState()).isEqualTo(WebhookEventState.PROCESSED);
-            assertThat(failed.getErrorMessage()).isNull();
-            verify(webhookEventRepository).save(failed);
+            assertThat(published).isEqualTo(1);
+            assertThat(received.getState()).isEqualTo(WebhookEventState.RECEIVED);
+            verify(webhookPublisher).publish(50L);
+            verify(paymentPort, never()).parseWebhookPayload(any());
         }
 
         @Test
-        void shouldKeepEventFailedWhenReplayThrows() {
-            WebhookEvent failed = WebhookEvent.builder()
+        void shouldKeepReceivedEventWhenBrokerPublishFails() {
+            WebhookEvent received = WebhookEvent.builder()
                     .id(51L)
                     .provider(PaymentProvider.MANUAL_TRANSFER)
                     .externalEventId("EVT-10")
                     .rawPayload("bad")
-                    .state(WebhookEventState.FAILED)
+                    .state(WebhookEventState.RECEIVED)
                     .build();
 
-            when(webhookEventRepository.findReconcilable(
-                    eq(WebhookEventState.RECEIVED), eq(WebhookEventState.FAILED), any(), any(Pageable.class)))
-                    .thenReturn(List.of(failed));
-            when(paymentPort.parseWebhookPayload("bad")).thenThrow(new IllegalStateException("bad payload"));
+            when(webhookEventRepository.findStaleReceived(eq(WebhookEventState.RECEIVED), any(), any(Pageable.class)))
+                    .thenReturn(List.of(received));
+            doThrow(new AmqpException("broker down")).when(webhookPublisher).publish(51L);
 
-            int reconciled = service.reconcileWebhookEvents();
+            int published = service.reconcileWebhookEvents();
 
-            assertThat(reconciled).isZero();
-            assertThat(failed.getState()).isEqualTo(WebhookEventState.FAILED);
-            assertThat(failed.getErrorMessage()).isEqualTo("bad payload");
-            verify(webhookEventRepository).save(failed);
+            assertThat(published).isZero();
+            assertThat(received.getState()).isEqualTo(WebhookEventState.RECEIVED);
+            verify(paymentPort, never()).parseWebhookPayload(any());
+        }
+
+        @Test
+        void shouldMarkEventFailedAfterBrokerRetriesAreExhausted() {
+            WebhookEvent event = WebhookEvent.builder()
+                    .id(52L)
+                    .state(WebhookEventState.RECEIVED)
+                    .build();
+            when(webhookEventRepository.findByIdForUpdate(52L)).thenReturn(Optional.of(event));
+
+            service.markWebhookEventFailed(52L, "processing failed");
+
+            assertThat(event.getState()).isEqualTo(WebhookEventState.FAILED);
+            assertThat(event.getErrorMessage()).isEqualTo("processing failed");
         }
     }
 }

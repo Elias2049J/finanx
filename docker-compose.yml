@@ -8,10 +8,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_mismonedas
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 12345678
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-finanx}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-finanx-dev}
+      SPRING_RABBITMQ_CONNECTION_TIMEOUT: 1s
     networks:
       - springnet
     restart: unless-stopped
@@ -36,6 +43,26 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: rabbitmq_broker
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-finanx}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-finanx-dev}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - springnet
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   nginx:
     image: nginx:latest
     container_name: nginx_proxy
@@ -55,3 +82,4 @@ networks:
 
 volumes:
   postgres_data:
+  rabbitmq_data:

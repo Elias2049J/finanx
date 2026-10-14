@@ -8,11 +8,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Periodically re-drives inbound webhook events left {@code RECEIVED} (a crash
- * between persisting and processing) or {@code FAILED} (a transient error) by
- * replaying their stored raw payload. The work itself lives in
- * {@link PaymentService#reconcileWebhookEvents()} and is idempotent, so this job
- * only schedules it.
+ * Periodically republishes webhook events left {@code RECEIVED} after a crash
+ * or broker outage. Processing and transient retries happen asynchronously in
+ * the RabbitMQ consumer; exhausted messages stay in the DLQ for redrive.
  */
 @Service
 @RequiredArgsConstructor
@@ -26,7 +24,7 @@ public class PaymentReconciliationScheduler {
     public void reconcilePendingPayments() {
         int reconciled = paymentService.reconcileWebhookEvents();
         if (reconciled > 0) {
-            log.info("Reconciled {} webhook events", reconciled);
+            log.info("Republished {} stale webhook events", reconciled);
         }
     }
 }
