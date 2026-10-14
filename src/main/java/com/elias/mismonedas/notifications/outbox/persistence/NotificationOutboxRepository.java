@@ -6,10 +6,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 
 public interface NotificationOutboxRepository extends JpaRepository<NotificationOutbox, Long> {
     List<NotificationOutbox> findAllByState(OutboxState state);
+
+    long deleteByStateInAndCreatedAtBefore(Collection<OutboxState> states, OffsetDateTime cutoff);
 
     @Query("""
     SELECT COUNT(o) > 0

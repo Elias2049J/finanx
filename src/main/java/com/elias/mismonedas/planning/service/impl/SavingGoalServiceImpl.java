@@ -3,20 +3,19 @@ package com.elias.mismonedas.planning.service.impl;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
-import com.elias.mismonedas.notifications.domain.enums.NotificationType;
-import com.elias.mismonedas.notifications.service.NotificationService;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
+import com.elias.mismonedas.planning.domain.event.SavingGoalCompletedEvent;
 import com.elias.mismonedas.planning.dto.saving.SavingGoalRequest;
 import com.elias.mismonedas.planning.dto.saving.SavingGoalResponse;
 import com.elias.mismonedas.planning.mapper.SavingGoalMapper;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.shared.domain.vo.Money;
-import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +33,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     private final SavingGoalRepository sgRepository;
     private final SavingGoalMapper sgMapper;
     private final UserRepository userRepository;
-    private final NotificationService notificationService;
-    private final DateMapper dateMapper;
+    private final ApplicationEventPublisher eventPublisher;
     private final CurrencyConverter currencyConverter;
 
     @Override
@@ -130,7 +128,6 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     public void checkAllSavingGoals(Long userId) {
         List<SavingGoal> all = sgRepository.findAllByUser_IdAndActiveAndState(userId, true, SavingGoalState.RUNNING);
         for (SavingGoal sa: all) {
-            StringBuilder sb = new StringBuilder();
             User u = sa.getUser();
             String goalCurrency = sa.getCurrencyCode();
 
@@ -151,26 +148,16 @@ public class SavingGoalServiceImpl implements SavingGoalService {
                 sa.setFrozenAccumulated(convertedAccumulated);
                 log.info("COMPLETING SavingGoal id={} desc={} convertedAccumulated={}", sa.getId(), sa.getDescription(), convertedAccumulated);
 
-                notificationService.generate(b -> b
-                        .savingGoal(sa)
-                        .user(u)
-                        .type(NotificationType.SUCCESS)
-                        .message(sb
-                                .append("🎉 ¡Felicitaciones! Has alcanzado tu meta de ahorro '")
-                                .append(sa.getDescription())
-                                .append("' con un total acumulado de ")
-                                .append(convertedAccumulated)
-                                .append(" ")
-                                .append(goalCurrency)
-                                .append(" de ")
-                                .append(sa.getTargetAmount())
-                                .append(". El último movimiento fue de ")
-                                .append(last.getAmount())
-                                .append(" el ")
-                                .append(dateMapper.toStringES(last.getCreatedAt(), u.getTimeZone().toZoneId()))
-                                .append(". ¡Excelente disciplina financiera!")
-                                .toString())
-                );
+                eventPublisher.publishEvent(new SavingGoalCompletedEvent(
+                        sa.getId(),
+                        u.getId(),
+                        sa.getDescription(),
+                        convertedAccumulated,
+                        sa.getTargetAmount(),
+                        goalCurrency,
+                        last.getCreatedAt(),
+                        last.getAmount()
+                ));
             }
         }
         sgRepository.saveAll(all);

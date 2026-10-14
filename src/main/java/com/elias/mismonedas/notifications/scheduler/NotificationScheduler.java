@@ -22,6 +22,8 @@ import java.util.List;
 @Slf4j
 public class NotificationScheduler {
 
+    private static final int RETENTION_DAYS = 90;
+
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationRepository notificationRepository;
     private final List<NotificationPort> notificationPorts;
@@ -63,6 +65,22 @@ public class NotificationScheduler {
             }
 
             outboxRepository.save(entry);
+        }
+    }
+
+    @Scheduled(cron = "0 0 3 * * ?")
+    @Transactional
+    public void purgeOldEntries() {
+        OffsetDateTime cutoff = OffsetDateTime.now().minusDays(RETENTION_DAYS);
+
+        long outboxDeleted = outboxRepository.deleteByStateInAndCreatedAtBefore(
+                List.of(OutboxState.SENT, OutboxState.FAILED), cutoff);
+        long notificationsDeleted = notificationRepository.deleteByStateInAndCreatedAtBefore(
+                List.of(NotificationState.READ, NotificationState.SENT, NotificationState.DISCARD), cutoff);
+
+        if (outboxDeleted > 0 || notificationsDeleted > 0) {
+            log.info("Retención: eliminados {} outbox y {} notificaciones anteriores a {}",
+                    outboxDeleted, notificationsDeleted, cutoff);
         }
     }
 }

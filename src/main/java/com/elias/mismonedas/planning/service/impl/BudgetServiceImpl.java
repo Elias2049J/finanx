@@ -8,11 +8,11 @@ import com.elias.mismonedas.insights.dto.analytics.component.TimeBoundList;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
-import com.elias.mismonedas.notifications.domain.enums.NotificationType;
-import com.elias.mismonedas.notifications.service.NotificationService;
 import com.elias.mismonedas.planning.domain.entity.Budget;
 import com.elias.mismonedas.planning.domain.enums.BudgetHealth;
 import com.elias.mismonedas.planning.domain.enums.BudgetState;
+import com.elias.mismonedas.planning.domain.event.BudgetExceededEvent;
+import com.elias.mismonedas.planning.domain.event.BudgetNearLimitEvent;
 import com.elias.mismonedas.planning.dto.budget.BudgetRequest;
 import com.elias.mismonedas.planning.dto.budget.BudgetResponse;
 import com.elias.mismonedas.planning.mapper.BudgetMapper;
@@ -28,6 +28,7 @@ import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,7 +52,7 @@ public class BudgetServiceImpl implements BudgetService {
     private final RecurrenceService recurrenceService;
     private final TransactionRepository transactionRepository;
     private final RecurrenceCalculatorService rcService;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final DateMapper dateMapper;
     private final CurrencyConverter currencyConverter;
 
@@ -207,21 +208,16 @@ public class BudgetServiceImpl implements BudgetService {
 
                     if (!b.getExceededNotified() && lastTx != null) {
                         b.setExceededNotified(true);
-                        BigDecimal finalSpent = spent;
-                        Transaction finalLastTx = lastTx;
-                        notificationService.generate(builder -> builder
-                                .budget(b)
-                                .user(u)
-                                .type(NotificationType.WARNING)
-                                .message(
-                                        "Has superado el límite de tu presupuesto para: " + c.getName() +
-                                                ".\n Total gastado: " + finalSpent +
-                                                " de " + b.getLimitAmount() +
-                                                ".\n Último movimiento:" +
-                                                "\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt(), zoneId) +
-                                                ",\n Monto: " + finalLastTx.getAmount() +
-                                                ",\n Método: " + finalLastTx.getPaymentMethod().getDisplayName()
-                                ));
+                        eventPublisher.publishEvent(new BudgetExceededEvent(
+                                b.getId(),
+                                u.getId(),
+                                c.getName(),
+                                spent,
+                                b.getLimitAmount(),
+                                lastTx.getCreatedAt(),
+                                lastTx.getAmount(),
+                                lastTx.getPaymentMethod().getDisplayName()
+                        ));
                     }
 
                 } else if (spent.compareTo(threshold) >= 0) {
@@ -232,20 +228,17 @@ public class BudgetServiceImpl implements BudgetService {
 
                     if (!b.getNearLimitNotified() && lastTx != null) {
                         b.setNearLimitNotified(true);
-                        BigDecimal finalSpent = spent;
-                        Transaction finalLastTx = lastTx;
-                        notificationService.generate(builder -> builder
-                                .budget(b)
-                                .user(u)
-                                .type(NotificationType.WARNING)
-                                .message(
-                                        "Has alcanzado tu porcentaje de alerta de presupuesto para: " + c.getName() +
-                                                ".\n Total: " + finalSpent +
-                                                ".\n Último movimiento:" +
-                                                "\n Fecha: " + dateMapper.toStringES(finalLastTx.getCreatedAt(), zoneId) +
-                                                ",\n Monto: " + finalLastTx.getAmount() +
-                                                ",\n Método: " + finalLastTx.getPaymentMethod().getDisplayName()
-                                ));
+                        eventPublisher.publishEvent(new BudgetNearLimitEvent(
+                                b.getId(),
+                                u.getId(),
+                                c.getName(),
+                                spent,
+                                b.getLimitAmount(),
+                                pct,
+                                lastTx.getCreatedAt(),
+                                lastTx.getAmount(),
+                                lastTx.getPaymentMethod().getDisplayName()
+                        ));
                     }
                 } else {
                     if (b.getHealth() != BudgetHealth.OK) {

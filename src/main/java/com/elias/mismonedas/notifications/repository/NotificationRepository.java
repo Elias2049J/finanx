@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -19,6 +20,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findAllByUser_IdAndStateIsNotOrderByCreatedAtDesc(Long userId, NotificationState state);
     boolean existsByBudget_IdAndStateInAndType(
             Long budgetId, List<NotificationState> states, NotificationType type);
+
+    long deleteByStateInAndCreatedAtBefore(Collection<NotificationState> states, OffsetDateTime cutoff);
 
     void deleteAllByUser_Id(Long userId);
 }
