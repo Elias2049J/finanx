@@ -1,0 +1,34 @@
+package com.elias.mismonedas.scheduling.mapper;
+
+import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
+import com.elias.mismonedas.scheduling.dto.recurrencerule.RecurrenceRuleRequest;
+import com.elias.mismonedas.scheduling.dto.recurrencerule.RecurrenceRuleResponse;
+import com.elias.mismonedas.shared.mapper.DateMapper;
+import org.mapstruct.*;
+
+@Mapper(componentModel = "spring", uses = DateMapper.class)
+public interface RecurrenceRuleMapper{
+    @Mapping(target = "durationDays", expression = "java(entity.getDurationDays())")
+    @Mapping(source = "start", target = "start", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "end", target = "end", qualifiedByName = "OffsetToLocal")
+    RecurrenceRuleResponse toResponseWithContext(RecurrenceRule entity, @Context User user);
+    
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "start", ignore = true)
+    @Mapping(target = "end", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    RecurrenceRule toEntity(RecurrenceRuleRequest dto);
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "start", ignore = true)
+    @Mapping(target = "end", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    void updateFromDto(RecurrenceRuleRequest dto, @MappingTarget RecurrenceRule entity);
+
+    @Named("RecurrenceRuleToResponse")
+    default RecurrenceRuleResponse toResponse(RecurrenceRule entity) {
+        return toResponseWithContext(entity, entity.getUser());
+    }
+}

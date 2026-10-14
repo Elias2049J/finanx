@@ -1,0 +1,137 @@
+package com.elias.mismonedas.planning.domain.entity;
+
+import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.ledger.domain.entity.Transaction;
+import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.math.RoundingMode.HALF_UP;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(name = "metas_ahorro")
+public class SavingGoal {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "descripcion", nullable = false)
+    private String description;
+
+    @Column(name = "monto_objetivo", nullable = false, precision = 12, scale = 2)
+    private BigDecimal targetAmount;
+
+    @Column(name = "codigo_moneda", nullable = false, length = 3)
+    private String currencyCode;
+
+    @Column(name = "fecha_limite")
+    private OffsetDateTime deadline;
+
+    @Column(name = "monto_acumulado_congelado", precision = 19, scale = 2)
+    private BigDecimal frozenAccumulated;
+
+    @Column(name = "fecha_creacion")
+    private OffsetDateTime createdAt;
+
+    @Column(name = "fecha_desactivacion")
+    private OffsetDateTime disabledAt;
+
+    @Column(name = "fecha_completado")
+    private OffsetDateTime completedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado")
+    private SavingGoalState state;
+
+    @Column(name = "activo")
+    private Boolean active;
+
+    @ManyToOne
+    @JoinColumn(name = "id_usuario")
+    private User user;
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "savingGoal")
+    private List<Transaction> transactions = new ArrayList<>();
+
+    @jakarta.persistence.Transient
+    private BigDecimal displayAccumulated;
+
+    public BigDecimal getAccumulated() {
+        if (displayAccumulated != null) return displayAccumulated;
+        return transactions
+                .stream()
+                .filter(t -> Boolean.TRUE.equals(t.getActive()))
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public void setDisplayAccumulated(BigDecimal displayAccumulated) {
+        this.displayAccumulated = displayAccumulated;
+    }
+
+    @PrePersist
+    private void onCreate() {
+        active = true;
+        state = SavingGoalState.RUNNING;
+        createdAt = OffsetDateTime.now(user.getTimeZone().toZoneId());
+    }
+
+    public double getProgressPercentage() {
+        if (targetAmount == null || targetAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return 0.0;
+        }
+        return getAccumulated().divide(targetAmount, 2, HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .doubleValue();
+    }
+
+    public BigDecimal getOutstanding() {
+        return targetAmount.subtract(getAccumulated());
+
+    }
+
+    public int getTransactionsCount() {
+        return transactions.stream()
+                .mapToInt(t -> Boolean.TRUE.equals(t.getActive()) ? 1 : 0)
+                .sum();
+    }
+
+    public long getDaysRemaining() {
+        return Math.max(0, Duration
+                .between(OffsetDateTime.now(user.getTimeZone().toZoneId()), deadline)
+                .toDays());
+    }
+
+    public BigDecimal getAverageContribution() {
+        long count = getTransactionsCount();
+        return count == 0 ? BigDecimal.ZERO :
+                getAccumulated().divide(BigDecimal.valueOf(count), 2, HALF_UP);
+    }
+
+    public boolean isCompleted() {
+        return state == SavingGoalState.RUNNING
+                && getAccumulated().compareTo(targetAmount) >= 0;
+    }
+
+    public LocalDateTime getEstimatedCompletionDate() {
+        BigDecimal outstanding = getOutstanding();
+        BigDecimal avg = getAverageContribution();
+        if (avg.compareTo(BigDecimal.ZERO) == 0) return null;
+        long months = outstanding.divide(avg, 0, HALF_UP).longValue();
+        return OffsetDateTime.now(user.getTimeZone().toZoneId()).toLocalDateTime().plusMonths(months);
+    }
+}

@@ -1,0 +1,39 @@
+package com.elias.mismonedas.billing.mapper;
+
+import com.elias.mismonedas.billing.domain.entity.Subscription;
+import com.elias.mismonedas.billing.dto.subscription.SubscriptionRequest;
+import com.elias.mismonedas.billing.dto.subscription.SubscriptionResponse;
+import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.shared.mapper.DateMapper;
+import org.mapstruct.Context;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+@Mapper(componentModel = "spring", uses = DateMapper.class)
+public interface SubscriptionMapper {
+
+    @Mapping(source = "user.id", target = "userId")
+    @Mapping(target = "currentPeriodStart", qualifiedByName = "OffsetToLocal")
+    @Mapping(target = "currentPeriodEnd", qualifiedByName = "OffsetToLocal")
+    @Mapping(target = "canceledAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(target = "createdAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(target = "updatedAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(source = "currencyCode", target = "currency")
+    SubscriptionResponse toResponseWithContext(Subscription entity, @Context User user);
+
+    default SubscriptionResponse toResponse(Subscription entity) {
+        return toResponseWithContext(entity, entity.getUser());
+    }
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "state", ignore = true)
+    @Mapping(target = "currentPeriodStart", ignore = true)
+    @Mapping(target = "currentPeriodEnd", ignore = true)
+    @Mapping(target = "canceledAt", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "payments", ignore = true)
+    @Mapping(source = "currency", target = "currencyCode")
+    Subscription toEntity(SubscriptionRequest request);
+}
