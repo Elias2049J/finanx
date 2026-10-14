@@ -1,16 +1,15 @@
 package com.elias.mismonedas.notifications.scheduler;
-import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxRepository;
-import com.elias.mismonedas.notifications.port.NotificationPort;
-import com.elias.mismonedas.notifications.repository.NotificationRepository;
+
 import com.elias.mismonedas.notifications.domain.enums.NotificationState;
-import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.outbox.NotificationOutbox;
 import com.elias.mismonedas.notifications.outbox.OutboxState;
-import com.google.firebase.messaging.FirebaseMessagingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxRepository;
+import com.elias.mismonedas.notifications.port.NotificationOutboxPublisher;
+import com.elias.mismonedas.notifications.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.amqp.AmqpException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,49 +23,25 @@ import java.util.List;
 public class NotificationScheduler {
 
     private static final int RETENTION_DAYS = 90;
-
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationRepository notificationRepository;
-    private final List<NotificationPort> notificationPorts;
-    private final ObjectMapper objectMapper;
+    private final NotificationOutboxPublisher outboxPublisher;
 
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "notificationScheduler.processOutbox", lockAtMostFor = "PT5M", lockAtLeastFor = "PT30S")
-    @Transactional
     public void processOutbox() {
-        List<NotificationOutbox> pending = outboxRepository.findAllByState(OutboxState.PENDING);
-
+        List<NotificationOutbox> pending = outboxRepository.findTop50ByStateOrderByIdAsc(OutboxState.PENDING);
         for (NotificationOutbox entry : pending) {
             try {
-                NotificationDTO dto = objectMapper.readValue(entry.getPayload(), NotificationDTO.class);
-                notificationPorts.forEach(port -> port.send(dto));
-
-                entry.setState(OutboxState.SENT);
-                entry.setSentAt(OffsetDateTime.now());
-
-                if (entry.getNotificationId() != null) {
-                    notificationRepository.findById(entry.getNotificationId()).ifPresentOrElse(n -> {
-                        n.setState(NotificationState.SENT);
-                        n.setSentAt(entry.getSentAt());
-                        notificationRepository.save(n);
-                    }, () -> log.warn("Outbox id={} apunta a notificationId={} inexistente", entry.getId(), entry.getNotificationId()));
-                } else {
-                    log.warn("Outbox id={} no tiene notificationId; no se actualiza entidad Notification", entry.getId());
+                outboxPublisher.publish(entry.getId());
+                int updated = outboxRepository.markPublishedIfPending(
+                        entry.getId(), OutboxState.PENDING, OutboxState.PUBLISHED);
+                if (updated == 0) {
+                    log.debug("Outbox id={} changed state while publishing; keeping current state", entry.getId());
                 }
-
-            } catch (Exception e) {
-                boolean isTransient = e instanceof RuntimeException
-                        && e.getCause() instanceof FirebaseMessagingException;
-                if (isTransient && entry.getCreatedAt().plusMinutes(30).isAfter(OffsetDateTime.now())) {
-                    log.warn("Error transitorio FCM, outbox id={} se mantiene PENDING para re-intento",
-                            entry.getId());
-                    continue;
-                }
-                entry.setState(OutboxState.FAILED);
-                log.error("Error enviando outbox id={} notificationId={}", entry.getId(), entry.getNotificationId(), e);
+            } catch (AmqpException ex) {
+                log.warn("Outbox id={} remains PENDING because the broker did not confirm publishing", entry.getId(), ex);
             }
-
-            outboxRepository.save(entry);
         }
     }
 
@@ -77,7 +52,7 @@ public class NotificationScheduler {
         OffsetDateTime cutoff = OffsetDateTime.now().minusDays(RETENTION_DAYS);
 
         long outboxDeleted = outboxRepository.deleteByStateInAndCreatedAtBefore(
-                List.of(OutboxState.SENT, OutboxState.FAILED), cutoff);
+                List.of(OutboxState.SENT, OutboxState.FAILED, OutboxState.SKIPPED), cutoff);
         long notificationsDeleted = notificationRepository.deleteByStateInAndCreatedAtBefore(
                 List.of(NotificationState.READ, NotificationState.SENT, NotificationState.DISCARD), cutoff);
 

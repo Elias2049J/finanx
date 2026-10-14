@@ -1,6 +1,7 @@
 package com.elias.mismonedas.notifications.adapter.fcm;
 
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
+import com.elias.mismonedas.notifications.outbox.NotificationDeliveryChannel;
 import com.elias.mismonedas.notifications.port.NotificationPort;
 import com.elias.mismonedas.notifications.repository.FcmTokenRepository;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -25,6 +26,11 @@ import java.util.Map;
 public class FCMNotificationAdapter implements NotificationPort {
     private final FCMProperties fcmProperties;
     private final FcmTokenRepository fcmTokenRepository;
+
+    @Override
+    public NotificationDeliveryChannel channel() {
+        return NotificationDeliveryChannel.FCM;
+    }
 
     @PostConstruct
     public void init() {

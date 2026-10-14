@@ -85,7 +85,7 @@ public class PaymentWebhookRabbitConfiguration {
     @Bean(name = PAYMENT_WEBHOOK_LISTENER_FACTORY)
     SimpleRabbitListenerContainerFactory paymentWebhookListenerContainerFactory(
             ConnectionFactory connectionFactory,
-            StatelessRetryOperationsInterceptor retryInterceptor,
+            @Qualifier("paymentWebhookRetryInterceptor") StatelessRetryOperationsInterceptor retryInterceptor,
             @Value("${app.messaging.rabbitmq.consumer-auto-startup:true}") boolean autoStartup
     ) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();

@@ -19,6 +19,9 @@ services:
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-finanx}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-finanx-dev}
       SPRING_RABBITMQ_CONNECTION_TIMEOUT: 1s
+      SPRING_RABBITMQ_PUBLISHER_CONFIRM_TYPE: correlated
+      SPRING_RABBITMQ_PUBLISHER_RETURNS: "true"
+      SPRING_RABBITMQ_TEMPLATE_MANDATORY: "true"
     networks:
       - springnet
     restart: unless-stopped

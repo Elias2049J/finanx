@@ -1,6 +1,7 @@
 package com.elias.mismonedas.notifications.adapter.gmail;
 
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
+import com.elias.mismonedas.notifications.outbox.NotificationDeliveryChannel;
 import com.elias.mismonedas.notifications.port.NotificationPort;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.mail.*;
@@ -18,6 +19,11 @@ import java.util.Properties;
 public class GmailNotificationAdapter implements NotificationPort {
 
     private final GmailProperties gmailProperties;
+
+    @Override
+    public NotificationDeliveryChannel channel() {
+        return NotificationDeliveryChannel.EMAIL;
+    }
 
     @Override
     @CircuitBreaker(name = "gmail")
