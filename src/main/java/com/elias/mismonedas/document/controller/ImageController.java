@@ -1,14 +1,13 @@
 package com.elias.mismonedas.document.controller;
 
-import com.elias.mismonedas.document.dto.ImageResponse;
 import com.elias.mismonedas.document.service.ImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,25 +24,23 @@ public class ImageController {
 
     @Operation(
             summary = "Descargar imagen",
-            description = "Retorna los bytes de una imagen por su ID.",
+            description = "Redirige a una URL prefirmada de corta duración después de validar que la imagen pertenece al usuario autenticado.",
             operationId = "downloadImage",
             tags = {"Images"},
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Imagen encontrada"),
-                    @ApiResponse(responseCode = "404", description = "Imagen no encontrada")
+                    @ApiResponse(responseCode = "302", description = "Redirección a SeaweedFS"),
+                    @ApiResponse(responseCode = "404", description = "Imagen no encontrada"),
+                    @ApiResponse(responseCode = "401", description = "Usuario no autenticado")
             }
     )
     @GetMapping("/{imageId}")
-    public ResponseEntity<byte[]> download(
+    public ResponseEntity<Void> download(
             @Parameter(description = "ID de la imagen") @PathVariable Long imageId) {
-
-        ImageResponse meta = imageService.getMetadata(imageId);
-        byte[] data = imageService.getData(imageId);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(meta.getMediaType()))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"" + meta.getFilename() + "\"")
-                .contentLength(data.length)
-                .body(data);
+        return imageService.getPresignedDownloadUrl(imageId)
+                .map(url -> ResponseEntity.status(HttpStatus.FOUND)
+                        .cacheControl(CacheControl.noStore())
+                        .location(url)
+                        .<Void>build())
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

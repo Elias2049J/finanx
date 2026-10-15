@@ -10,6 +10,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      seaweedfs:
+        condition: service_started
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/db_mismonedas
       SPRING_DATASOURCE_USERNAME: postgres
@@ -22,6 +24,12 @@ services:
       SPRING_RABBITMQ_PUBLISHER_CONFIRM_TYPE: correlated
       SPRING_RABBITMQ_PUBLISHER_RETURNS: "true"
       SPRING_RABBITMQ_TEMPLATE_MANDATORY: "true"
+      APP_STORAGE_SEAWEEDFS_INTERNAL_ENDPOINT: http://seaweedfs:8333
+      APP_STORAGE_SEAWEEDFS_PUBLIC_ENDPOINT: ${SEAWEEDFS_PUBLIC_ENDPOINT:-http://localhost:8333}
+      APP_STORAGE_SEAWEEDFS_BUCKET: ${SEAWEEDFS_BUCKET:-finanx-images}
+      APP_STORAGE_SEAWEEDFS_ACCESS_KEY: ${SEAWEEDFS_ACCESS_KEY:-finanx-storage}
+      APP_STORAGE_SEAWEEDFS_SECRET_KEY: ${SEAWEEDFS_SECRET_KEY:-finanx-storage-dev}
+      APP_STORAGE_SEAWEEDFS_PRESIGNED_URL_TTL: 5m
     networks:
       - springnet
     restart: unless-stopped
@@ -66,6 +74,22 @@ services:
       timeout: 5s
       retries: 5
 
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.48
+    container_name: seaweedfs_object_store
+    command: ["mini", "-dir=/data"]
+    restart: unless-stopped
+    environment:
+      AWS_ACCESS_KEY_ID: ${SEAWEEDFS_ACCESS_KEY:-finanx-storage}
+      AWS_SECRET_ACCESS_KEY: ${SEAWEEDFS_SECRET_KEY:-finanx-storage-dev}
+      S3_BUCKET: ${SEAWEEDFS_BUCKET:-finanx-images}
+    ports:
+      - "8333:8333"
+    volumes:
+      - seaweedfs_data:/data
+    networks:
+      - springnet
+
   nginx:
     image: nginx:latest
     container_name: nginx_proxy
@@ -86,3 +110,4 @@ networks:
 volumes:
   postgres_data:
   rabbitmq_data:
+  seaweedfs_data:

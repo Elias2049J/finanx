@@ -82,7 +82,9 @@ class ReceiptScanServiceImplTest {
                     .user(createTestUser())
                     .filename("recibo.jpg")
                     .mediaType("image/jpeg")
-                    .data(image)
+                    .bucketName("finanx-images")
+                    .objectKey("images/1/receipt-1.jpg")
+                    .sizeBytes((long) image.length)
                     .build();
             when(imageService.save(any(User.class), any(), any(), any())).thenReturn(savedImage);
 
@@ -130,7 +132,9 @@ class ReceiptScanServiceImplTest {
                     .user(createTestUser())
                     .filename("recibo.png")
                     .mediaType("image/png")
-                    .data(image)
+                    .bucketName("finanx-images")
+                    .objectKey("images/1/receipt-2.jpg")
+                    .sizeBytes((long) image.length)
                     .build();
             when(imageService.save(any(User.class), any(), any(), any())).thenReturn(savedImage);
 
