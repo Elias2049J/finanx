@@ -16,6 +16,7 @@ import com.elias.mismonedas.identity.dto.user.UserResponse;
 import com.elias.mismonedas.identity.mapper.UserMapper;
 import com.elias.mismonedas.identity.repository.UserPreferencesRepository;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.identity.service.JwtTokenService;
 import com.elias.mismonedas.identity.service.UserService;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
@@ -58,6 +59,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final TransactionScheduleRepository transactionScheduleRepository;
     private final UserPreferencesRepository preferencesRepository;
     private final BillingService billingService;
+    private final SecurityService securityService;
 
     @Override
     @Transactional
@@ -99,6 +101,12 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 .stream()
                 .map(userMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponse findCurrentUser() {
+        return userMapper.toResponse(securityService.getCurrentUser());
     }
 
     private User getEntityById(Long aLong) {

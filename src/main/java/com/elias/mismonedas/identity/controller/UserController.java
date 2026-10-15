@@ -28,6 +28,12 @@ public class UserController {
         return ResponseEntity.ok(userService.findAll());
     }
 
+    @Operation(summary = "Obtener el usuario autenticado", operationId = "findCurrentUser", tags = {"Users"})
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> me() {
+        return ResponseEntity.ok(userService.findCurrentUser());
+    }
+
     @Operation(summary = "Buscar usuario por ID", operationId = "findUserById", tags = {"Users"})
     @PreAuthorize("hasRole('SYSTEM')")
     @GetMapping("/{id}")

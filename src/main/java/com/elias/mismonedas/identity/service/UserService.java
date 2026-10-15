@@ -12,6 +12,8 @@ public interface UserService {
 
     List<UserResponse> findAll();
 
+    UserResponse findCurrentUser();
+
     UserResponse findById(Long aLong);
 
     UserResponse disable(Long id);
