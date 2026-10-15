@@ -37,7 +37,7 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
 
     @Transactional(readOnly = true)
     @Override
-    public abstract DashboardResponse buildDashboard(PeriodRequest request) throws HttpException, IOException;
+    public abstract DashboardResponse buildDashboard(PeriodRequest request, Long userId) throws HttpException, IOException;
 
     protected Aggregate buildAggregate(
             String title,

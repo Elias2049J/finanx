@@ -12,6 +12,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     List<Subscription> findAllByUser_Id(Long userId);
 
+    Optional<Subscription> findByIdAndUser_Id(Long id, Long userId);
+
     Optional<Subscription> findFirstByUser_IdAndStateOrderByCreatedAtDesc(Long userId, SubscriptionState state);
 
     List<Subscription> findAllByStateAndCurrentPeriodEndBefore(SubscriptionState state, OffsetDateTime moment);

@@ -7,6 +7,7 @@ import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.service.ReasonResolver;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
@@ -29,6 +30,7 @@ import com.elias.mismonedas.scheduling.repository.TransactionScheduleRepository;
 import com.elias.mismonedas.scheduling.service.RecurrenceCalculatorService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -72,6 +74,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final WalletRepository walletRepository;
     private final WalletService walletService;
     private final TransactionTemplate transactionTemplate;
+    private final SecurityService securityService;
 
     // ─── CRUD ────────────────────────────────────────────────────────────────────
 
@@ -81,7 +84,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         Schedule s = tsMapper.toEntityDispatch(request);
         Category c = categoryRepository.findById(request.getCategoryId()).orElseThrow();
 
-        s.setUser(userRepository.getReferenceById(request.getUserId()));
+        Long userId = securityService.getCurrentUser().getId();
+        s.setUser(securityService.getCurrentUser());
         s.setCategory(c);
 
         if (request instanceof TransactionScheduleRequest tr
@@ -91,7 +95,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             }
             ts.setReason(
                     reasonResolver
-                            .resolveOrCreate(tr.getUserId(), tr.getReasonId(), tr.getDescription())
+                            .resolveOrCreate(userId, tr.getReasonId(), tr.getDescription())
                             .orElse(null)
             );
         }
@@ -107,17 +111,17 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Override
     @Transactional
     public ScheduleResponse update(Long id, ScheduleRequest request) {
-        Schedule existing = scheduleRepository.findById(id).orElseThrow();
+        Schedule existing = getOwned(id);
 
         tsMapper.updateFromDtoDispatch(request, existing);
         existing.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
-        existing.setUser(userRepository.getReferenceById(request.getUserId()));
 
         if (request instanceof TransactionScheduleRequest tr
                 && existing instanceof TransactionSchedule ts) {
             ts.setReason(
                     reasonResolver
-                            .resolveOrCreate(tr.getUserId(), tr.getReasonId(), tr.getDescription())
+                            .resolveOrCreate(securityService.getCurrentUser().getId(),
+                                    tr.getReasonId(), tr.getDescription())
                             .orElse(null)
             );
         }
@@ -137,7 +141,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Override
     @Transactional(readOnly = true)
     public ScheduleResponse findById(Long id) {
-        return tsMapper.toResponseDispatch(scheduleRepository.findById(id).orElseThrow());
+        return tsMapper.toResponseDispatch(getOwned(id));
     }
 
     @Transactional(readOnly = true)
@@ -180,7 +184,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional
     @Override
     public void disable(Long id) {
-        Schedule st = scheduleRepository.findById(id).orElseThrow();
+        Schedule st = getOwned(id);
         ZoneId zoneId =  st.getUser().getTimeZone().toZoneId();
         st.setActive(false);
         st.setDisabledAt(OffsetDateTime.now(zoneId));
@@ -189,23 +193,29 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     @Override
     public void pause(Long id) {
-        Schedule st = scheduleRepository.findById(id).orElseThrow();
+        Schedule st = getOwned(id);
         st.setState(ScheduleState.PAUSED);
         scheduleRepository.save(st);
     }
 
     @Override
     public void resume(Long id) {
-        Schedule st = scheduleRepository.findById(id).orElseThrow();
+        Schedule st = getOwned(id);
         st.setState(ScheduleState.RUNNING);
         scheduleRepository.save(st);
     }
 
     @Override
     public void cancel(Long id) {
-        Schedule st = scheduleRepository.findById(id).orElseThrow();
+        Schedule st = getOwned(id);
         st.setState(ScheduleState.CANCELLED);
         scheduleRepository.save(st);
+    }
+
+    private Schedule getOwned(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        return scheduleRepository.findByIdAndUser_Id(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Schedule not found: " + id));
     }
 
     @Override

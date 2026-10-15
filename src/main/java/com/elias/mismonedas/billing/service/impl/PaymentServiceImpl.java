@@ -17,6 +17,7 @@ import com.elias.mismonedas.billing.repository.WebhookEventRepository;
 import com.elias.mismonedas.billing.service.PaymentService;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.shared.exception.PaymentNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -45,12 +46,12 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final PaymentPort paymentPort;
     private final PaymentWebhookPublisher webhookPublisher;
+    private final SecurityService securityService;
 
     @Override
     @Transactional
     public PaymentResponse create(PaymentRequest request) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id " + request.getUserId()));
+        User user = securityService.getCurrentUser();
 
         Payment payment = paymentMapper.toEntity(request);
         payment.setUser(user);
@@ -68,7 +69,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(readOnly = true)
     public PaymentResponse findById(Long id) {
-        Payment payment = getPaymentOrThrow(id);
+        Payment payment = getOwned(id);
         return paymentMapper.toResponse(payment);
     }
 
@@ -85,7 +86,8 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(readOnly = true)
     public List<PaymentResponse> findAllBySubscription(Long subscriptionId) {
-        return paymentRepository.findAllBySubscription_Id(subscriptionId).stream()
+        Long userId = securityService.getCurrentUser().getId();
+        return paymentRepository.findAllBySubscription_IdAndUser_Id(subscriptionId, userId).stream()
                 .map(paymentMapper::toResponse)
                 .toList();
     }
@@ -114,7 +116,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentResponse refund(Long paymentId) {
-        Payment payment = getPaymentOrThrow(paymentId);
+        Payment payment = getOwned(paymentId);
         paymentPort.refund(payment);
         payment.transitionTo(PaymentState.REFUNDED);
         Payment saved = paymentRepository.save(payment);
@@ -273,5 +275,11 @@ public class PaymentServiceImpl implements PaymentService {
 
     private Payment getPaymentOrThrow(Long id) {
         return paymentRepository.findById(id).orElseThrow(() -> new PaymentNotFoundException(id));
+    }
+
+    private Payment getOwned(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        return paymentRepository.findByIdAndUser_Id(id, userId)
+                .orElseThrow(() -> new PaymentNotFoundException(id));
     }
 }

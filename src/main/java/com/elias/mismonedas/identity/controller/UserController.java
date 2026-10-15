@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -28,6 +29,7 @@ public class UserController {
     }
 
     @Operation(summary = "Buscar usuario por ID", operationId = "findUserById", tags = {"Users"})
+    @PreAuthorize("hasRole('SYSTEM')")
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.findById(id));
@@ -41,24 +43,28 @@ public class UserController {
     }
 
     @Operation(summary = "Actualizar datos de usuario", operationId = "updateUser", tags = {"Users"})
+    @PreAuthorize("hasRole('SYSTEM')")
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> update(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
         return ResponseEntity.ok(userService.update(id, request));
     }
 
     @Operation(summary = "Deshabilitar usuario", operationId = "disableUser", tags = {"Users"})
+    @PreAuthorize("hasRole('SYSTEM')")
     @PostMapping("/{id}/disable")
     public ResponseEntity<UserResponse> disable(@PathVariable Long id) {
         return ResponseEntity.ok(userService.disable(id));
     }
 
     @Operation(summary = "Habilitar usuario", operationId = "enableUser", tags = {"Users"})
+    @PreAuthorize("hasRole('SYSTEM')")
     @PostMapping("/{id}/activate")
     public ResponseEntity<UserResponse> enable(@PathVariable Long id) {
         return ResponseEntity.ok(userService.enable(id));
     }
 
     @Operation(summary = "Bloquear usuario", operationId = "blockUser", tags = {"Users"})
+    @PreAuthorize("hasRole('SYSTEM')")
     @PostMapping("/{id}/block")
     public ResponseEntity<UserResponse> block(@PathVariable Long id) {
         return ResponseEntity.ok(userService.block(id));
@@ -77,6 +83,7 @@ public class UserController {
     }
 
     @Operation(summary = "Eliminar usuario", operationId = "deleteUser", tags = {"Users"})
+    @PreAuthorize("hasRole('SYSTEM')")
     @DeleteMapping("/{id}/delete")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         userService.deleteUserAccount(id);
@@ -84,6 +91,7 @@ public class UserController {
     }
 
     @Operation(summary = "Resetear datos de usuario", operationId = "resetUserData", tags = {"Users"})
+    @PreAuthorize("hasRole('SYSTEM')")
     @PostMapping("/{id}/reset-data")
     public ResponseEntity<Void> resetData(@PathVariable Long id) {
         userService.resetAccountData(id);

@@ -2,6 +2,7 @@ package com.elias.mismonedas.notifications.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.notifications.domain.entity.Notification;
 import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
@@ -13,6 +14,7 @@ import com.elias.mismonedas.notifications.repository.NotificationRepository;
 import com.elias.mismonedas.notifications.service.NotificationService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final NotificationMapper notificationMapper;
     private final UserRepository userRepository;
+    private final SecurityService securityService;
 
     private final NotificationOutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
@@ -68,7 +71,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public NotificationDTO findById(Long id) {
-        return notificationMapper.toResponse(notificationRepository.findById(id).orElseThrow());
+        return notificationMapper.toResponse(getOwned(id));
     }
 
     @Override
@@ -90,7 +93,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void markAsRead(Long id) {
-        Notification n = notificationRepository.findById(id).orElseThrow();
+        Notification n = getOwned(id);
         n.setState(NotificationState.READ);
         notificationRepository.save(n);
     }
@@ -98,8 +101,14 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     @Override
     public void discard(Long id) {
-        Notification existing = notificationRepository.findById(id).orElseThrow();
+        Notification existing = getOwned(id);
         this.disable(existing);
+    }
+
+    private Notification getOwned(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        return notificationRepository.findByIdAndUser_Id(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Notification not found: " + id));
     }
 
     private void disable(Notification existing) {

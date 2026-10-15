@@ -11,5 +11,5 @@ public interface BudgetAnalyticsService extends AnalyticsService{
     BudgetExecutionResponse getBudgetExecution(Long id);
 
     @Transactional(readOnly = true)
-    List<BudgetExecutionResponse> getBudgetsExecutions(PeriodRequest request);
+    List<BudgetExecutionResponse> getBudgetsExecutions(PeriodRequest request, Long userId);
 }

@@ -2,6 +2,7 @@ package com.elias.mismonedas.insights.service.impl.analytics;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.dto.analytics.component.InsightSummary;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.BudgetsDashboard;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.DashboardResponse;
@@ -17,6 +18,7 @@ import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.dto.date.PeriodRequest;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,25 +36,28 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
     protected final TransactionRepository tRepository;
     protected final BudgetMapper budgetMapper;
     protected final CurrencyConverter currencyConverter;
+    protected final SecurityService securityService;
 
     public BudgetAnalyticsServiceImpl(DateMapper dateMapper,
                                       UserRepository userRepository,
                                       BudgetRepository bRepository,
                                       TransactionRepository tRepository,
                                       BudgetMapper budgetMapper,
-                                      CurrencyConverter currencyConverter
+                                      CurrencyConverter currencyConverter,
+                                      SecurityService securityService
     ) {
         super(dateMapper, userRepository);
         this.bRepository = bRepository;
         this.tRepository = tRepository;
         this.budgetMapper = budgetMapper;
         this.currencyConverter = currencyConverter;
+        this.securityService = securityService;
     }
 
-    private List<Budget> findBudgets(PeriodRequest request) {
-        ZoneId zoneId = this.getUser(request.getUserId()).getTimeZone().toZoneId();
+    private List<Budget> findBudgets(PeriodRequest request, Long userId) {
+        ZoneId zoneId = this.getUser(userId).getTimeZone().toZoneId();
         return bRepository.findAllByUser_IdAndActiveAndCreatedAtBetweenAndState(
-                request.getUserId(),
+                userId,
                 true,
                 request.getStart().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
                 request.getEnd().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
@@ -62,9 +67,9 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
 
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request) {
-        List<Budget> budgets = findBudgets(request);
-        User user = getUser(request.getUserId());
+    public DashboardResponse buildDashboard(PeriodRequest request, Long userId) {
+        List<Budget> budgets = findBudgets(request, userId);
+        User user = getUser(userId);
         String baseCurrency = user.getPreferences().getCurrencyCode();
 
         BigDecimal totalBudgetLimitAmount = budgets
@@ -159,12 +164,14 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
     @Override
     @Transactional(readOnly = true)
     public BudgetExecutionResponse getBudgetExecution(Long id) {
-        return this.mapToExecution(bRepository.findById(id).orElseThrow());
+        Long userId = securityService.getCurrentUser().getId();
+        return this.mapToExecution(bRepository.findByIdAndUser_Id(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Budget not found: " + id)));
     }
 
     @Transactional(readOnly = true)
     @Override
-    public List<BudgetExecutionResponse> getBudgetsExecutions(PeriodRequest request) {
-        return this.findBudgets(request).stream().map(this::mapToExecution).toList();
+    public List<BudgetExecutionResponse> getBudgetsExecutions(PeriodRequest request, Long userId) {
+        return this.findBudgets(request, userId).stream().map(this::mapToExecution).toList();
     }
 }

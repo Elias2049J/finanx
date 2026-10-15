@@ -60,7 +60,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
     }
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request) {
+    public DashboardResponse buildDashboard(PeriodRequest request, Long userId) {
         TransactionsDashboard td = new TransactionsDashboard();
 
         int topN = 5;
@@ -69,14 +69,14 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
                 "Ranking de Categorías y Motivos, y" +
                 " Resúmenes por Categoría, Método de Pago y Tipo";
 
-        User u = this.getUser(request.getUserId());
+        User u = this.getUser(userId);
         ZoneId zoneId = u.getTimeZone().toZoneId();
-        PeriodForQuery pq = dateMapper.toSmartMonthlyPeriod(request.getStart(), request.getEnd(), zoneId, request.getUserId());
+        PeriodForQuery pq = dateMapper.toSmartMonthlyPeriod(request.getStart(), request.getEnd(), zoneId, userId);
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
 
         List<TransactionResponse> all = transactionRepository
                 .findAllByWallet_User_IdAndCreatedAtBetweenAndActive(
-                        request.getUserId(),
+                        userId,
                         pq.getStart(),
                         pq.getEnd(),
                         true

@@ -1,5 +1,6 @@
 package com.elias.mismonedas.insights.controller;
 
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.DashboardResponse;
 import com.elias.mismonedas.insights.service.analytics.BudgetAnalyticsService;
 import com.elias.mismonedas.insights.service.analytics.TransactionAnalyticsService;
@@ -23,6 +24,7 @@ import java.util.List;
 public class AnalyticsController {
     private final BudgetAnalyticsService bas;
     private final TransactionAnalyticsService tas;
+    private final SecurityService securityService;
 
     @Operation(
             summary = "Dashboard de balance",
@@ -38,7 +40,7 @@ public class AnalyticsController {
     public ResponseEntity<DashboardResponse> balance(
             @Parameter(description = "Periodo") @Valid @RequestBody PeriodRequest request)
             throws HttpException, IOException {
-        return ResponseEntity.ok(tas.buildDashboard(request));
+        return ResponseEntity.ok(tas.buildDashboard(request, securityService.getCurrentUser().getId()));
     }
 
     @Operation(
@@ -55,7 +57,7 @@ public class AnalyticsController {
     public ResponseEntity<DashboardResponse> budgets(
             @Valid @RequestBody PeriodRequest request)
             throws HttpException, IOException {
-        return ResponseEntity.ok(bas.buildDashboard(request));
+        return ResponseEntity.ok(bas.buildDashboard(request, securityService.getCurrentUser().getId()));
     }
 
     @Operation(
@@ -87,7 +89,7 @@ public class AnalyticsController {
     @PostMapping("/budgets/executions")
     public ResponseEntity<List<BudgetExecutionResponse>> getExecutionsByPeriod(
             @Valid @RequestBody PeriodRequest request) {
-        return ResponseEntity.ok(bas.getBudgetsExecutions(request));
+        return ResponseEntity.ok(bas.getBudgetsExecutions(request, securityService.getCurrentUser().getId()));
     }
 
     /*

@@ -34,13 +34,6 @@ public class PeriodRequest {
             example = "2026-06-30"
     )
     private LocalDate end;
-
-    @NotNull
-    @Schema(
-            description = "Identificador unico del usuario asociado al periodo",
-            example = "42"
-    )
-    private Long userId;
 }
 
 

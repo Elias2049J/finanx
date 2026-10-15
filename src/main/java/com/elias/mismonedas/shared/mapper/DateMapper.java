@@ -17,6 +17,7 @@ import java.util.Locale;
 @Mapper(componentModel = "spring")
 public interface DateMapper {
     @Mapping(target = "readableString", expression = ("java(toStringES(request))"))
+    @Mapping(target = "userId", ignore = true)
     PeriodResponse toResponse(PeriodRequest request);
 
     @Named("OffsetToZoned")

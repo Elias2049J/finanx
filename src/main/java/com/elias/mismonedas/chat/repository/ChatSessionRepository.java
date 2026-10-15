@@ -9,5 +9,7 @@ import java.util.Optional;
 public interface ChatSessionRepository extends JpaRepository<ChatSession, Long> {
     Optional<ChatSession> findByUuid(String uuid);
 
+    Optional<ChatSession> findByUuidAndUser_Id(String uuid, Long userId);
+
     List<ChatSession> findAllByUser_Id(Long userId);
 }

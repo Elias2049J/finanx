@@ -9,9 +9,12 @@ import org.springframework.stereotype.Repository;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
+    Optional<Notification> findByIdAndUser_Id(Long id, Long userId);
+
     List<Notification> findAllByUser_IdAndStateAndScheduledAtBefore(Long userId, NotificationState state, OffsetDateTime scheduledAtBefore);
     List<Notification> findAllByUser_IdAndState(Long userId, NotificationState state);
     List<Notification> findAllByUser_Id(Long userId);

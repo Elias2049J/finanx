@@ -10,6 +10,7 @@ import com.elias.mismonedas.billing.repository.SubscriptionRepository;
 import com.elias.mismonedas.billing.service.BillingService;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.shared.exception.SubscriptionNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -28,26 +29,41 @@ public class BillingServiceImpl implements BillingService {
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
     private final SubscriptionMapper subscriptionMapper;
+    private final SecurityService securityService;
 
     @Override
     @Transactional
     public SubscriptionResponse subscribe(SubscriptionRequest request) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id " + request.getUserId()));
-
-        Subscription subscription = subscriptionMapper.toEntity(request);
-        subscription.setUser(user);
-        subscription.setState(SubscriptionState.PENDING);
-
+        User user = securityService.getCurrentUser();
+        Subscription subscription = buildPending(request, user);
         Subscription saved = subscriptionRepository.save(subscription);
         log.info("Subscription created id={} userId={} plan={}", saved.getId(), user.getId(), saved.getPlan());
         return subscriptionMapper.toResponse(saved);
     }
 
     @Override
+    @Transactional
+    public SubscriptionResponse subscribeAndActivate(SubscriptionRequest request) {
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id " + request.getUserId()));
+        Subscription subscription = buildPending(request, user);
+        activate(subscription);
+        Subscription saved = subscriptionRepository.save(subscription);
+        log.info("Subscription created+activated id={} userId={} plan={}", saved.getId(), user.getId(), saved.getPlan());
+        return subscriptionMapper.toResponse(saved);
+    }
+
+    private Subscription buildPending(SubscriptionRequest request, User user) {
+        Subscription subscription = subscriptionMapper.toEntity(request);
+        subscription.setUser(user);
+        subscription.setState(SubscriptionState.PENDING);
+        return subscription;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public SubscriptionResponse findById(Long id) {
-        Subscription subscription = getSubscriptionOrThrow(id);
+        Subscription subscription = getOwned(id);
         return subscriptionMapper.toResponse(subscription);
     }
 
@@ -64,22 +80,24 @@ public class BillingServiceImpl implements BillingService {
     @Override
     @Transactional
     public SubscriptionResponse activate(Long subscriptionId) {
-        Subscription subscription = getSubscriptionOrThrow(subscriptionId);
-        OffsetDateTime now = OffsetDateTime.now();
-
-        subscription.transitionTo(SubscriptionState.ACTIVE);
-        subscription.setCurrentPeriodStart(now);
-        subscription.setCurrentPeriodEnd(nextPeriodEnd(now, subscription.getBillingCycle()));
-
+        Subscription subscription = getOwned(subscriptionId);
+        activate(subscription);
         Subscription saved = subscriptionRepository.save(subscription);
         log.info("Subscription activated id={}", saved.getId());
         return subscriptionMapper.toResponse(saved);
     }
 
+    private void activate(Subscription subscription) {
+        OffsetDateTime now = OffsetDateTime.now();
+        subscription.transitionTo(SubscriptionState.ACTIVE);
+        subscription.setCurrentPeriodStart(now);
+        subscription.setCurrentPeriodEnd(nextPeriodEnd(now, subscription.getBillingCycle()));
+    }
+
     @Override
     @Transactional
     public SubscriptionResponse cancel(Long subscriptionId) {
-        Subscription subscription = getSubscriptionOrThrow(subscriptionId);
+        Subscription subscription = getOwned(subscriptionId);
         subscription.transitionTo(SubscriptionState.CANCELED);
         subscription.setCanceledAt(OffsetDateTime.now());
         subscription.setAutoRenew(false);
@@ -92,7 +110,7 @@ public class BillingServiceImpl implements BillingService {
     @Override
     @Transactional
     public SubscriptionResponse renew(Long subscriptionId) {
-        Subscription subscription = getSubscriptionOrThrow(subscriptionId);
+        Subscription subscription = getOwned(subscriptionId);
         OffsetDateTime newStart = subscription.getCurrentPeriodEnd() != null
                 ? subscription.getCurrentPeriodEnd()
                 : OffsetDateTime.now();
@@ -127,7 +145,9 @@ public class BillingServiceImpl implements BillingService {
         return cycle == BillingCycle.ANNUAL ? start.plusYears(1) : start.plusMonths(1);
     }
 
-    private Subscription getSubscriptionOrThrow(Long id) {
-        return subscriptionRepository.findById(id).orElseThrow(() -> new SubscriptionNotFoundException(id));
+    private Subscription getOwned(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        return subscriptionRepository.findByIdAndUser_Id(id, userId)
+                .orElseThrow(() -> new SubscriptionNotFoundException(id));
     }
 }

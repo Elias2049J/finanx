@@ -22,8 +22,10 @@ import com.elias.mismonedas.chat.util.AiUtils;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.entity.UserDataContext;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.identity.service.UserDataContextService;
 import com.elias.mismonedas.shared.config.AiProperties;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -57,6 +59,7 @@ public class ChatBotServiceImpl implements ChatBotService {
     private final ChatSessionMapper chatSessionMapper;
     private final ChatMessageMapper chatMessageMapper;
     private final AiProperties aiProperties;
+    private final SecurityService securityService;
 
     @Transactional
     @Override
@@ -91,8 +94,10 @@ public class ChatBotServiceImpl implements ChatBotService {
     @Transactional(readOnly = true)
     @Override
     public ChatSessionResponse findSessionByUUID(String uuid) {
+        Long userId = securityService.getCurrentUser().getId();
         return chatSessionMapper.toResponse(
-                chatSessionRepository.findByUuid(uuid).orElseThrow()
+                chatSessionRepository.findByUuidAndUser_Id(uuid, userId)
+                        .orElseThrow(() -> new EntityNotFoundException("Chat session not found: " + uuid))
         );
     }
 

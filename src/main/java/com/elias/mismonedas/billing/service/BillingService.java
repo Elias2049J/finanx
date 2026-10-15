@@ -12,6 +12,9 @@ public interface BillingService {
 
     SubscriptionResponse subscribe(SubscriptionRequest request);
 
+    /** System/internal: creates and activates a subscription for the user in the request (no auth context). */
+    SubscriptionResponse subscribeAndActivate(SubscriptionRequest request);
+
     SubscriptionResponse findById(Long id);
 
     List<SubscriptionResponse> findAllByUser(Long userId);

@@ -1,7 +1,7 @@
 package com.elias.mismonedas.planning.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.User;
-import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
@@ -13,6 +13,7 @@ import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -32,16 +33,16 @@ import java.util.Objects;
 public class SavingGoalServiceImpl implements SavingGoalService {
     private final SavingGoalRepository sgRepository;
     private final SavingGoalMapper sgMapper;
-    private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final CurrencyConverter currencyConverter;
+    private final SecurityService securityService;
 
     @Override
     @Transactional
     public SavingGoalResponse create(SavingGoalRequest request) {
         SavingGoal sg = sgMapper.toEntity(request);
 
-        User user = userRepository.getReferenceById(request.getUserId());
+        User user = securityService.getCurrentUser();
         sg.setUser(user);
 
         sg.setCurrencyCode(user.getPreferences().getCurrencyCode());
@@ -58,7 +59,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Override
     @Transactional
     public SavingGoalResponse update(Long id, SavingGoalRequest request) {
-        SavingGoal existing = sgRepository.findById(id).orElseThrow();
+        SavingGoal existing = getOwned(id);
 
         existing.setDescription(request.getDescription());
         existing.setTargetAmount(request.getTargetAmount());
@@ -72,7 +73,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Transactional
     @Override
     public void cancel(Long id) {
-        SavingGoal existing = sgRepository.findById(id).orElseThrow();
+        SavingGoal existing = getOwned(id);
         BigDecimal converted = computeConvertedAccumulated(existing);
         existing.setFrozenAccumulated(converted);
         existing.setState(SavingGoalState.CANCELLED);
@@ -98,7 +99,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Override
     @Transactional
     public void disable(Long id) {
-        SavingGoal existing = sgRepository.findById(id).orElseThrow();
+        SavingGoal existing = getOwned(id);
         ZoneId zoneId = existing.getUser().getTimeZone().toZoneId();
         existing.setActive(false);
         existing.setDisabledAt(OffsetDateTime.now(zoneId));
@@ -118,9 +119,15 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Override
     @Transactional(readOnly = true)
     public SavingGoalResponse findById(Long id) {
-        SavingGoal entity = sgRepository.findById(id).orElseThrow();
+        SavingGoal entity = getOwned(id);
         entity.setDisplayAccumulated(computeConvertedAccumulated(entity));
         return sgMapper.toResponse(entity);
+    }
+
+    private SavingGoal getOwned(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        return sgRepository.findByIdAndUser_Id(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("SavingGoal not found: " + id));
     }
 
     @Transactional

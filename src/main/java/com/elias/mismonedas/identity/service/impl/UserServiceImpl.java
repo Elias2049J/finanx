@@ -86,7 +86,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 .currency("PEN")
                 .autoRenew(false)
                 .build();
-        billingService.activate(billingService.subscribe(subRequest).getId());
+        billingService.subscribeAndActivate(subRequest);
 
         String token = jwtTokenService.generateToken(saved);
         return new LoginResponse(userMapper.toResponse(saved), token);

@@ -14,6 +14,7 @@ import com.elias.mismonedas.billing.repository.PaymentRepository;
 import com.elias.mismonedas.billing.repository.WebhookEventRepository;
 import com.elias.mismonedas.billing.service.impl.PaymentServiceImpl;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,7 @@ class PaymentServiceImplTest {
     @Mock private PaymentMapper paymentMapper;
     @Mock private PaymentPort paymentPort;
     @Mock private PaymentWebhookPublisher webhookPublisher;
+    @Mock private SecurityService securityService;
 
     @Captor private ArgumentCaptor<WebhookEvent> eventCaptor;
 
@@ -51,7 +53,8 @@ class PaymentServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new PaymentServiceImpl(
-                paymentRepository, webhookEventRepository, userRepository, paymentMapper, paymentPort, webhookPublisher);
+                paymentRepository, webhookEventRepository, userRepository, paymentMapper, paymentPort, webhookPublisher,
+                securityService);
     }
 
     private PaymentWebhookNotification notification(String externalEventId, String externalReference, String status) {

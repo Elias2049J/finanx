@@ -12,6 +12,8 @@ import com.elias.mismonedas.billing.service.SubscriptionService;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserPreferencesRepository;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ public class WalletServiceImpl implements WalletService {
     private final WalletMapper walletMapper;
     private final SubscriptionService subscriptionService;
     private final UserPreferencesRepository preferencesRepository;
+    private final SecurityService securityService;
 
     @Override
     @Transactional
@@ -64,7 +67,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional(readOnly = true)
     public WalletResponse findById(Long id) {
-        return walletMapper.toResponse(walletRepository.findById(id).orElseThrow());
+        return walletMapper.toResponse(getOwned(id));
     }
 
     @Override
@@ -79,7 +82,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletResponse update(Long id, WalletRequest request) {
-        Wallet existing = walletRepository.findById(id).orElseThrow();
+        Wallet existing = getOwned(id);
         walletMapper.updateFromDto(request, existing);
         return walletMapper.toResponse(walletRepository.save(existing));
     }
@@ -87,9 +90,15 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void disable(Long id) {
-        Wallet wallet = walletRepository.findById(id).orElseThrow();
+        Wallet wallet = getOwned(id);
         wallet.setPrimary(false);
         walletRepository.save(wallet);
+    }
+
+    private Wallet getOwned(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        return walletRepository.findByIdAndUser_Id(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Wallet not found: " + id));
     }
 
     @Override

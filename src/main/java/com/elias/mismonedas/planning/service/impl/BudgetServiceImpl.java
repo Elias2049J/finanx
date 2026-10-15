@@ -4,6 +4,7 @@ import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.dto.analytics.component.TimeBoundList;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
@@ -26,6 +27,7 @@ import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.dto.date.PeriodRequest;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -53,14 +55,15 @@ public class BudgetServiceImpl implements BudgetService {
     private final ApplicationEventPublisher eventPublisher;
     private final DateMapper dateMapper;
     private final CurrencyConverter currencyConverter;
+    private final SecurityService securityService;
 
     @Override
     @Transactional
     public BudgetResponse create(BudgetRequest request) {
+        User user = securityService.getCurrentUser();
         Budget b = budgetMapper.toEntity(request);
         b.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
-        b.setUser(userRepository.getReferenceById(request.getUserId()));
-        User user = b.getUser();
+        b.setUser(user);
         b.setCurrencyCode(user.getPreferences().getCurrencyCode());
         applyRequestDateTimes(request, b);
 
@@ -70,14 +73,13 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     @Transactional
     public BudgetResponse update(Long id, BudgetRequest request) {
-        Budget existing = budgetRepository.findById(id).orElseThrow();
+        Budget existing = getOwned(id);
         OffsetDateTime currentStart = existing.getStart();
         budgetMapper.updateFromDto(request, existing);
         applyRequestDateTimes(request, existing);
         existing.setStart(currentStart);
 
         existing.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
-        existing.setUser(userRepository.getReferenceById(request.getUserId()));
 
         return budgetMapper.toResponse(budgetRepository.save(existing));
     }
@@ -85,7 +87,7 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     @Transactional(readOnly = true)
     public BudgetResponse findById(Long id) {
-        return budgetMapper.toResponse(budgetRepository.findById(id).orElseThrow());
+        return budgetMapper.toResponse(getOwned(id));
     }
 
     @Override
@@ -108,7 +110,7 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public void cancel(Long id) {
-        Budget b = budgetRepository.findById(id).orElseThrow();
+        Budget b = getOwned(id);
         b.setState(BudgetState.CANCELLED);
         budgetRepository.save(b);
     }
@@ -116,7 +118,7 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     @Transactional
     public void disable(Long id) {
-        Budget b = budgetRepository.findById(id).orElseThrow();
+        Budget b = getOwned(id);
         ZoneId zoneId = b.getUser().getTimeZone().toZoneId();
         b.setState(BudgetState.DISABLED);
         b.setActive(false);
@@ -243,10 +245,10 @@ public class BudgetServiceImpl implements BudgetService {
     @Transactional(readOnly = true)
     @Override
     public TimeBoundList<BudgetResponse> getBudgetsByHealth(PeriodRequest request, BudgetHealth health) {
-        User u = userRepository.findById(request.getUserId()).orElseThrow();
+        User u = securityService.getCurrentUser();
         ZoneId zoneId = u.getTimeZone().toZoneId();
         List<BudgetResponse> budgets = budgetRepository.findAllByUser_IdAndActiveAndCreatedAtBetweenAndStateAndHealth(
-                request.getUserId(),
+                u.getId(),
                 true,
                 request.getStart().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
                 request.getEnd().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
@@ -258,6 +260,12 @@ public class BudgetServiceImpl implements BudgetService {
         tb.setItems(budgets);
         tb.setPeriodResponse(dateMapper.toResponse(request));
         return tb;
+    }
+
+    private Budget getOwned(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        return budgetRepository.findByIdAndUser_Id(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Budget not found: " + id));
     }
 
     private BigDecimal computeConvertedSpent(List<Transaction> txs, String budgetCurrency) {

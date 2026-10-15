@@ -36,21 +36,19 @@ public class UserDataContextServiceImpl implements UserDataContextService {
         LocalDate previousMonth = currentDate.minusMonths(1);
 
         PeriodRequest currentPeriod = new PeriodRequest();
-        currentPeriod.setUserId(userId);
         currentPeriod.setStart(currentDate.withDayOfMonth(1));
         currentPeriod.setEnd(currentDate);
 
         PeriodRequest previousPeriod = new PeriodRequest();
-        previousPeriod.setUserId(userId);
         previousPeriod.setStart(previousMonth.withDayOfMonth(1));
         previousPeriod.setEnd(previousMonth.withDayOfMonth(previousMonth.lengthOfMonth()));
 
         Optional<UserDataContext> context = userDataContextRepository.findByUser_Id(userId);
         User u = userRepository.findById(userId).orElseThrow();
         String currentData = analyticsService.buildContextSummary(
-                analyticsService.buildDashboard(currentPeriod));
+                analyticsService.buildDashboard(currentPeriod, userId));
         String previousData = analyticsService.buildContextSummary(
-                analyticsService.buildDashboard(previousPeriod));
+                analyticsService.buildDashboard(previousPeriod, userId));
 
         if (context.isEmpty()) {
             UserDataContext newContext = new UserDataContext();

@@ -6,7 +6,8 @@ import com.elias.mismonedas.catalog.dto.category.CategoryResponse;
 import com.elias.mismonedas.catalog.mapper.CategoryMapper;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.service.CategoryService;
-import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,22 +20,22 @@ import java.util.List;
 
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
-    private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
+    private final SecurityService securityService;
 
     @Override
     @Transactional
     public CategoryResponse create(CategoryRequest request) {
         Category category = categoryMapper.toEntity(request);
-        category.setUser(userRepository.getReferenceById(request.getUserId()));
+        category.setUser(securityService.getCurrentUser());
         return categoryMapper.toResponse(categoryRepository.save(category));
     }
 
     @Transactional
     @Override
     public CategoryResponse update(Long id, CategoryRequest request) {
-        Category existing = categoryRepository.findById(id).orElseThrow();
+        Category existing = getOwned(id);
         categoryMapper.updateFromDto(request, existing);
         return categoryMapper.toResponse(categoryRepository.save(existing));
     }
@@ -42,9 +43,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional(readOnly = true)
     @Override
     public CategoryResponse findById(Long id) {
-        return categoryMapper.toResponse(
-                categoryRepository.findById(id).orElseThrow()
-        );
+        return categoryMapper.toResponse(getOwned(id));
     }
 
     @Transactional(readOnly = true)
@@ -68,7 +67,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     @Override
     public void disable(Long id) {
-        Category existing = categoryRepository.findById(id).orElseThrow();
+        Category existing = getOwned(id);
         ZoneId zoneId = existing.getUser().getTimeZone().toZoneId();
         existing.setActive(false);
         existing.setDisabledAt(OffsetDateTime.now(zoneId));
@@ -78,8 +77,14 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     @Override
     public CategoryResponse activate(Long id) {
-        Category existing = categoryRepository.findById(id).orElseThrow();
+        Category existing = getOwned(id);
         existing.setActive(true);
         return categoryMapper.toResponse(categoryRepository.save(existing));
+    }
+
+    private Category getOwned(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        return categoryRepository.findByIdAndUser_Id(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Category not found: " + id));
     }
 }
