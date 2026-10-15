@@ -1,5 +1,6 @@
 package com.elias.mismonedas.notifications.controller;
 
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.service.NotificationService;
@@ -20,21 +21,21 @@ import java.util.List;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final SecurityService securityService;
 
     @Operation(
-            summary = "Listar notificaciones por usuario",
-            description = "Obtiene todas las notificaciones de un usuario.",
-            operationId = "findAllNotificationByUser",
+            summary = "Listar notificaciones del usuario",
+            description = "Obtiene todas las notificaciones del usuario autenticado.",
+            operationId = "findAllNotifications",
             tags = {"Notifications"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
             }
     )
-    @GetMapping("/user/{idUser}")
-    public ResponseEntity<List<NotificationDTO>> findAllByUser(
-            @Parameter(description = "ID usuario") @PathVariable Long idUser) {
-        return ResponseEntity.ok(notificationService.findAllByUser(idUser));
+    @GetMapping("/me")
+    public ResponseEntity<List<NotificationDTO>> findAllByUser() {
+        return ResponseEntity.ok(notificationService.findAllByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(
@@ -55,18 +56,18 @@ public class NotificationController {
 
     @Operation(
             summary = "Listar por estado",
-            description = "Obtiene notificaciones filtradas por estado.",
-            operationId = "findAllNotificationsByUserAndState",
+            description = "Obtiene notificaciones del usuario autenticado filtradas por estado.",
+            operationId = "findAllNotificationsByState",
             tags = {"Notifications"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
             }
     )
-    @GetMapping("/user/{idUser}/{state}")
+    @GetMapping("/me/{state}")
     public ResponseEntity<List<NotificationDTO>> findAllByUserAndState(
-            @Parameter(description = "ID usuario") @PathVariable Long idUser,
             @Parameter(description = "Estado") @PathVariable NotificationState state) {
-        return ResponseEntity.ok(notificationService.findAllByUserAndState(idUser, state));
+        return ResponseEntity.ok(notificationService.findAllByUserAndState(
+                securityService.getCurrentUser().getId(), state));
     }
 
     @Operation(
@@ -112,12 +113,11 @@ public class NotificationController {
                     @ApiResponse(responseCode = "204", description = "Eliminadas")
             }
     )
-    @PostMapping("/user/{userId}/purge-older-than")
+    @PostMapping("/me/purge-older-than")
     public ResponseEntity<Void> purge(
-            @Parameter(description = "ID usuario") @PathVariable Long userId,
             @Parameter(description = "Fecha limite")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTime) {
-        notificationService.purgeOlderThan(dateTime, userId);
+        notificationService.purgeOlderThan(dateTime, securityService.getCurrentUser().getId());
         return ResponseEntity.noContent().build();
     }
 }

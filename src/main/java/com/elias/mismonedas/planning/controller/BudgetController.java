@@ -6,6 +6,7 @@ import com.elias.mismonedas.planning.domain.enums.BudgetState;
 import com.elias.mismonedas.planning.dto.budget.BudgetRequest;
 import com.elias.mismonedas.planning.dto.budget.BudgetResponse;
 import com.elias.mismonedas.planning.service.BudgetService;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.shared.dto.date.PeriodRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,10 +24,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BudgetController {
     private final BudgetService budgetService;
+    private final SecurityService securityService;
 
     @Operation(
             summary = "Listar presupuestos por usuario",
-            description = "Obtiene todos los presupuestos de un usuario.",
+            description = "Obtiene todos los presupuestos del usuario autenticado.",
             operationId = "findAllBudgetsByUser",
             tags = {"Budgets"},
             responses = {
@@ -34,26 +36,25 @@ public class BudgetController {
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
             }
     )
-    @GetMapping("/user/{idUser}")
-    public ResponseEntity<List<BudgetResponse>> findAllByUser(
-            @Parameter(description = "ID usuario") @PathVariable Long idUser) {
-        return ResponseEntity.ok(budgetService.findAllByUser(idUser));
+    @GetMapping("/me")
+    public ResponseEntity<List<BudgetResponse>> findAllByUser() {
+        return ResponseEntity.ok(budgetService.findAllByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(
             summary = "Listar por usuario y estado",
-            description = "Obtiene presupuestos filtrados por estado.",
+            description = "Obtiene presupuestos del usuario autenticado filtrados por estado.",
             operationId = "findAllBudgetsByUserAndState",
             tags = {"Budgets"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
             }
     )
-    @GetMapping("/user/{idUser}/{state}")
+    @GetMapping("/me/{state}")
     public ResponseEntity<List<BudgetResponse>> findAllByUserAndState(
-            @PathVariable Long idUser,
             @PathVariable BudgetState state) {
-        return ResponseEntity.ok(budgetService.findAllActiveByUserAndState(idUser, state));
+        return ResponseEntity.ok(budgetService.findAllActiveByUserAndState(
+                securityService.getCurrentUser().getId(), state));
     }
 
     @Operation(

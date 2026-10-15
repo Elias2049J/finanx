@@ -3,6 +3,7 @@ package com.elias.mismonedas.catalog.controller;
 import com.elias.mismonedas.catalog.dto.reason.ReasonRequest;
 import com.elias.mismonedas.catalog.dto.reason.ReasonResponse;
 import com.elias.mismonedas.catalog.service.ReasonService;
+import com.elias.mismonedas.identity.security.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,21 +21,21 @@ import java.util.List;
 public class ReasonController {
 
     private final ReasonService reasonService;
+    private final SecurityService securityService;
 
     @Operation(
-            summary = "Listar razones por usuario",
-            description = "Obtiene todas las razones asociadas a un usuario.",
-            operationId = "findAllReasonByUser",
+            summary = "Listar razones del usuario",
+            description = "Obtiene todas las razones del usuario autenticado.",
+            operationId = "findAllReasons",
             tags = {"Reasons"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
             }
     )
-    @GetMapping("/user/{idUser}")
-    public ResponseEntity<List<ReasonResponse>> findAllByUser(
-            @Parameter(description = "ID del usuario") @PathVariable Long idUser) {
-        return ResponseEntity.ok(reasonService.findAllByUser(idUser));
+    @GetMapping("/me")
+    public ResponseEntity<List<ReasonResponse>> findAllByUser() {
+        return ResponseEntity.ok(reasonService.findAllByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(

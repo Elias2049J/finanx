@@ -3,6 +3,8 @@ package com.elias.mismonedas.document.controller;
 import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
 import com.elias.mismonedas.document.dto.ReceiptResponse;
 import com.elias.mismonedas.document.service.ReceiptScanService;
+import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.security.SecurityService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,11 +27,15 @@ import static org.mockito.Mockito.when;
 class ReceiptControllerTest {
 
     private final ReceiptScanService receiptScanService = mock(ReceiptScanService.class);
-    private final ReceiptController controller = new ReceiptController(receiptScanService);
+    private final SecurityService securityService = mock(SecurityService.class);
+    private final ReceiptController controller = new ReceiptController(receiptScanService, securityService);
 
     @BeforeEach
-    void bindRequest() {
+    void setUp() {
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(new MockHttpServletRequest()));
+        User user = new User();
+        user.setId(1L);
+        when(securityService.getCurrentUser()).thenReturn(user);
     }
 
     @AfterEach
@@ -47,7 +53,7 @@ class ReceiptControllerTest {
         when(receiptScanService.startScan(eq(1L), any(), eq("recibo.jpg"), eq("image/jpeg")))
                 .thenReturn(response);
 
-        ResponseEntity<ReceiptResponse> result = controller.scan(1L, image);
+        ResponseEntity<ReceiptResponse> result = controller.scan(image);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         assertThat(result.getHeaders().getLocation()).hasToString("http://localhost/receipts/7");
@@ -58,7 +64,7 @@ class ReceiptControllerTest {
     void shouldRejectEmptyImage() {
         MockMultipartFile image = new MockMultipartFile("image", "recibo.jpg", "image/jpeg", new byte[0]);
 
-        assertThatThrownBy(() -> controller.scan(1L, image))
+        assertThatThrownBy(() -> controller.scan(image))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("vacía");
         verify(receiptScanService, never()).startScan(any(), any(), any(), any());

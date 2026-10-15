@@ -4,6 +4,7 @@ import com.elias.mismonedas.chat.dto.ai.ChatMessageResponse;
 import com.elias.mismonedas.chat.dto.ai.ChatSessionResponse;
 import com.elias.mismonedas.chat.dto.ai.SendMessageRequest;
 import com.elias.mismonedas.chat.service.ChatBotService;
+import com.elias.mismonedas.identity.security.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,12 +18,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/users/{userId}/chat")
+@RequestMapping("/users/me/chat")
 @RequiredArgsConstructor
 @Tag(name = "ChatBot", description = "Chatbot financiero conversacional de Mis Monedas")
 public class ChatBotController {
 
     private final ChatBotService chatBotService;
+    private final SecurityService securityService;
 
     @Operation(
             summary = "Iniciar sesion de chat",
@@ -33,10 +35,8 @@ public class ChatBotController {
             @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
     })
     @PostMapping("/sessions")
-    public ResponseEntity<ChatSessionResponse> startSession(
-            @Parameter(description = "ID del usuario", example = "1", required = true)
-            @PathVariable Long userId) {
-        return ResponseEntity.ok(chatBotService.startSession(userId));
+    public ResponseEntity<ChatSessionResponse> startSession() {
+        return ResponseEntity.ok(chatBotService.startSession(securityService.getCurrentUser().getId()));
     }
 
     @Operation(
@@ -49,11 +49,9 @@ public class ChatBotController {
     })
     @PatchMapping("/sessions/{sessionId}/close")
     public ResponseEntity<ChatSessionResponse> closeSession(
-            @Parameter(description = "ID del usuario", example = "1", required = true)
-            @PathVariable Long userId,
             @Parameter(description = "ID de la sesion", example = "1", required = true)
             @PathVariable Long sessionId) {
-        return ResponseEntity.ok(chatBotService.closeSession(sessionId, userId));
+        return ResponseEntity.ok(chatBotService.closeSession(sessionId, securityService.getCurrentUser().getId()));
     }
 
     @Operation(
@@ -66,11 +64,9 @@ public class ChatBotController {
     })
     @GetMapping("/sessions/{sessionId}")
     public ResponseEntity<ChatSessionResponse> findSessionById(
-            @Parameter(description = "ID del usuario", example = "1", required = true)
-            @PathVariable Long userId,
             @Parameter(description = "ID de la sesion", example = "1", required = true)
             @PathVariable Long sessionId) {
-        return ResponseEntity.ok(chatBotService.findSessionById(sessionId, userId));
+        return ResponseEntity.ok(chatBotService.findSessionById(sessionId, securityService.getCurrentUser().getId()));
     }
 
     @Operation(
@@ -83,8 +79,6 @@ public class ChatBotController {
     })
     @GetMapping("/sessions/uuid/{uuid}")
     public ResponseEntity<ChatSessionResponse> findSessionByUUID(
-            @Parameter(description = "ID del usuario", example = "1", required = true)
-            @PathVariable Long userId,
             @Parameter(description = "UUID de la sesion", example = "550e8400-e29b-41d4-a716-446655440000", required = true)
             @PathVariable String uuid) {
         return ResponseEntity.ok(chatBotService.findSessionByUUID(uuid));
@@ -99,10 +93,8 @@ public class ChatBotController {
             @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
     })
     @GetMapping("/sessions")
-    public ResponseEntity<List<ChatSessionResponse>> findAllSessionsByUser(
-            @Parameter(description = "ID del usuario", example = "1", required = true)
-            @PathVariable Long userId) {
-        return ResponseEntity.ok(chatBotService.findAllSessionsByUser(userId));
+    public ResponseEntity<List<ChatSessionResponse>> findAllSessionsByUser() {
+        return ResponseEntity.ok(chatBotService.findAllSessionsByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(
@@ -122,11 +114,10 @@ public class ChatBotController {
     })
     @PostMapping("/sessions/{sessionId}/messages")
     public ResponseEntity<ChatMessageResponse> sendMessage(
-            @Parameter(description = "ID del usuario", example = "1", required = true)
-            @PathVariable Long userId,
             @Parameter(description = "ID de la sesion activa", example = "1", required = true)
             @PathVariable Long sessionId,
             @Valid @RequestBody SendMessageRequest request) {
-        return ResponseEntity.ok(chatBotService.sendMessage(sessionId, userId, request.getMessage()));
+        return ResponseEntity.ok(chatBotService.sendMessage(
+                sessionId, securityService.getCurrentUser().getId(), request.getMessage()));
     }
 }

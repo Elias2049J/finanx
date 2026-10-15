@@ -2,6 +2,7 @@ package com.elias.mismonedas.document.controller;
 
 import com.elias.mismonedas.document.dto.ReceiptResponse;
 import com.elias.mismonedas.document.service.ReceiptScanService;
+import com.elias.mismonedas.identity.security.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,6 +24,7 @@ import java.net.URI;
 public class ReceiptController {
 
     private final ReceiptScanService receiptScanService;
+    private final SecurityService securityService;
 
     @Operation(
             summary = "Encolar escaneo OCR de recibo",
@@ -38,10 +40,10 @@ public class ReceiptController {
     )
     @PostMapping(value = "/scan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ReceiptResponse> scan(
-            @Parameter(description = "ID del usuario") @RequestParam Long userId,
             @Parameter(description = "Imagen del recibo (max 5MB)") @RequestParam("image") MultipartFile image)
             throws IOException {
 
+        Long userId = securityService.getCurrentUser().getId();
         if (image.isEmpty()) {
             throw new IllegalArgumentException("La imagen no puede estar vacía");
         }
@@ -68,8 +70,8 @@ public class ReceiptController {
     )
     @PostMapping("/{receiptId}/improve")
     public ResponseEntity<ReceiptResponse> improve(
-            @Parameter(description = "ID del recibo") @PathVariable Long receiptId,
-            @Parameter(description = "ID del usuario") @RequestParam Long userId) {
+            @Parameter(description = "ID del recibo") @PathVariable Long receiptId) {
+        Long userId = securityService.getCurrentUser().getId();
         return ResponseEntity.ok(receiptScanService.improveWithAi(receiptId, userId));
     }
 
@@ -81,8 +83,8 @@ public class ReceiptController {
     )
     @GetMapping("/{receiptId}")
     public ResponseEntity<ReceiptResponse> getScanResult(
-            @Parameter(description = "ID del usuario") @RequestParam Long userId,
             @PathVariable Long receiptId) {
+        Long userId = securityService.getCurrentUser().getId();
         return ResponseEntity.ok(receiptScanService.getScanResult(userId, receiptId));
     }
 }

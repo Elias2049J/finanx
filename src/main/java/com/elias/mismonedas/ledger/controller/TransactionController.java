@@ -1,10 +1,10 @@
 package com.elias.mismonedas.ledger.controller;
 
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.apache.http.HttpException;
@@ -23,17 +23,17 @@ import java.util.List;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final SecurityService securityService;
 
     @Operation(
             summary = "Listar transacciones activas",
-            description = "Obtiene todas las transacciones activas de un usuario.",
-            operationId = "findAllActiveTransactionByUser",
+            description = "Obtiene todas las transacciones activas del usuario autenticado.",
+            operationId = "findAllActiveTransactions",
             tags = {"Transactions"}
     )
-    @GetMapping("/user/{userId}/active")
-    public ResponseEntity<List<TransactionResponse>> findAllActiveByUser(
-            @Parameter(description = "ID usuario") @PathVariable Long userId) {
-        return ResponseEntity.ok(transactionService.findAllActiveByUser(userId));
+    @GetMapping("/me/active")
+    public ResponseEntity<List<TransactionResponse>> findAllActiveByUser() {
+        return ResponseEntity.ok(transactionService.findAllActiveByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(
@@ -48,28 +48,28 @@ public class TransactionController {
     }
 
     @Operation(
-            summary = "Listar transacciones por usuario",
-            description = "Obtiene todas las transacciones de un usuario.",
-            operationId = "findAllTransactionByUser",
+            summary = "Listar transacciones del usuario",
+            description = "Obtiene todas las transacciones del usuario autenticado.",
+            operationId = "findAllTransactions",
             tags = {"Transactions"}
     )
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<TransactionResponse>> findAllByUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(transactionService.findAllByUser(userId));
+    @GetMapping("/me")
+    public ResponseEntity<List<TransactionResponse>> findAllByUser() {
+        return ResponseEntity.ok(transactionService.findAllByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(
             summary = "Listar transacciones por rango",
             description = "Obtiene transacciones en un rango de fechas.",
-            operationId = "findAllTransactionsByUserBetween",
+            operationId = "findAllTransactionsBetween",
             tags = {"Transactions"}
     )
-    @GetMapping("/user/{userId}/between")
+    @GetMapping("/me/between")
     public ResponseEntity<List<TransactionResponse>> findAllByUserBetween(
-            @PathVariable Long userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(transactionService.findAllByUserAndIssueDateBetween(userId, from, to));
+        return ResponseEntity.ok(transactionService.findAllByUserAndIssueDateBetween(
+                securityService.getCurrentUser().getId(), from, to));
     }
 
     @Operation(
@@ -112,17 +112,15 @@ public class TransactionController {
     @Operation(
             summary = "Filtrar por categoria y fecha",
             description = "Obtiene transacciones por categoria y rango de fechas.",
-            operationId = "findAllTransactionByCategoryAndDateBetween",
+            operationId = "findAllTransactionsByCategoryAndDateBetween",
             tags = {"Transactions"}
     )
-    @GetMapping("/user/{userId}/category/{categoryId}/between")
+    @GetMapping("/me/category/{categoryId}/between")
     public ResponseEntity<List<TransactionResponse>> findAllByCategoryAndDateBetween(
-            @PathVariable Long userId,
             @PathVariable Long categoryId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(
-                transactionService.findAllActiveByCategoryAndDateBetween(userId, categoryId, from, to)
-        );
+        return ResponseEntity.ok(transactionService.findAllActiveByCategoryAndDateBetween(
+                securityService.getCurrentUser().getId(), categoryId, from, to));
     }
 }

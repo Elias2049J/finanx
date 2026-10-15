@@ -1,5 +1,6 @@
 package com.elias.mismonedas.scheduling.controller;
 
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.schedule.BudgetScheduleResponse;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
@@ -21,22 +22,22 @@ import java.util.List;
 public class BudgetScheduleController {
 
     private final ScheduleService scheduleService;
+    private final SecurityService securityService;
 
     @Operation(
             summary = "Listar programaciones de presupuestos",
-            description = "Obtiene programaciones de presupuestos por usuario y estado.",
+            description = "Obtiene programaciones de presupuestos del usuario autenticado por estado.",
             operationId = "findAllBudgetScheduleByUserAndState",
             tags = {"Schedule-Budgets"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
             }
     )
-    @GetMapping("/user/{idUser}/{state}")
+    @GetMapping("/me/{state}")
     public ResponseEntity<List<BudgetScheduleResponse>> findAllByUserAndState(
-            @Parameter(description = "ID usuario") @PathVariable Long idUser,
             @Parameter(description = "Estado") @PathVariable ScheduleState state) {
         return ResponseEntity.ok(
-                scheduleService.findAllBScheduleActiveByUserAndState(idUser, state)
+                scheduleService.findAllBScheduleActiveByUserAndState(securityService.getCurrentUser().getId(), state)
         );
     }
 }

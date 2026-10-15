@@ -3,6 +3,7 @@ package com.elias.mismonedas.catalog.controller;
 import com.elias.mismonedas.catalog.dto.category.CategoryRequest;
 import com.elias.mismonedas.catalog.dto.category.CategoryResponse;
 import com.elias.mismonedas.catalog.service.CategoryService;
+import com.elias.mismonedas.identity.security.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,37 +21,37 @@ import java.util.List;
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final SecurityService securityService;
 
     @Operation(
-            summary = "Listar categorias por usuario",
-            description = "Obtiene todas las categorias asociadas a un usuario.",
-            operationId = "findAllCategoriesByUser",
+            summary = "Listar categorias del usuario",
+            description = "Obtiene todas las categorias del usuario autenticado.",
+            operationId = "findAllCategories",
             tags = {"Categories"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
             }
     )
-    @GetMapping("/user/{idUser}")
-    public ResponseEntity<List<CategoryResponse>> findAllByUser(
-            @Parameter(description = "ID del usuario") @PathVariable Long idUser) {
-        return ResponseEntity.ok(categoryService.findAllByUser(idUser));
+    @GetMapping("/me")
+    public ResponseEntity<List<CategoryResponse>> findAllByUser() {
+        return ResponseEntity.ok(categoryService.findAllByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(
-            summary = "Listar categorias por usuario y estado",
-            description = "Obtiene categorias filtradas por estado activo/inactivo.",
-            operationId = "findAllCategoriesyUserAndActive",
+            summary = "Listar categorias por estado",
+            description = "Obtiene categorias del usuario autenticado filtradas por estado activo/inactivo.",
+            operationId = "findAllCategoriesByActive",
             tags = {"Categories"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
             }
     )
-    @GetMapping("/user/{idUser}/{active}")
+    @GetMapping("/me/{active}")
     public ResponseEntity<List<CategoryResponse>> findAllByUserAndActive(
-            @Parameter(description = "ID del usuario") @PathVariable Long idUser,
             @Parameter(description = "Estado activo") @PathVariable boolean active) {
-        return ResponseEntity.ok(categoryService.findAllByUserAndActive(idUser, active));
+        return ResponseEntity.ok(categoryService.findAllByUserAndActive(
+                securityService.getCurrentUser().getId(), active));
     }
 
     @Operation(
@@ -75,7 +76,7 @@ public class CategoryController {
             operationId = "createCategory",
             tags = {"Categories"},
             responses = {
-                    @ApiResponse(responseCode = "201", description = "Categoria creada"),
+                    @ApiResponse(responseCode = "201", description = "Creada"),
                     @ApiResponse(responseCode = "400", description = "Datos invalidos")
             }
     )

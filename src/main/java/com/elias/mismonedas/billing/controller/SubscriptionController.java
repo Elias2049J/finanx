@@ -3,6 +3,7 @@ package com.elias.mismonedas.billing.controller;
 import com.elias.mismonedas.billing.dto.subscription.SubscriptionRequest;
 import com.elias.mismonedas.billing.dto.subscription.SubscriptionResponse;
 import com.elias.mismonedas.billing.service.BillingService;
+import com.elias.mismonedas.identity.security.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,6 +21,7 @@ import java.util.List;
 public class SubscriptionController {
 
     private final BillingService billingService;
+    private final SecurityService securityService;
 
     @Operation(
             summary = "Create subscription",
@@ -56,7 +58,7 @@ public class SubscriptionController {
 
     @Operation(
             summary = "List subscriptions by user",
-            description = "Gets all subscriptions belonging to a user.",
+            description = "Gets all subscriptions belonging to the authenticated user.",
             operationId = "findAllSubscriptionsByUser",
             tags = {"Subscriptions"},
             responses = {
@@ -64,10 +66,9 @@ public class SubscriptionController {
                     @ApiResponse(responseCode = "404", description = "User not found")
             }
     )
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<SubscriptionResponse>> findAllByUser(
-            @Parameter(description = "User id") @PathVariable Long userId) {
-        return ResponseEntity.ok(billingService.findAllByUser(userId));
+    @GetMapping("/me")
+    public ResponseEntity<List<SubscriptionResponse>> findAllByUser() {
+        return ResponseEntity.ok(billingService.findAllByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(

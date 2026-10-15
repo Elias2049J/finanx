@@ -1,5 +1,6 @@
 package com.elias.mismonedas.planning.controller;
 
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.planning.dto.saving.SavingGoalRequest;
 import com.elias.mismonedas.planning.dto.saving.SavingGoalResponse;
 import com.elias.mismonedas.planning.service.SavingGoalService;
@@ -14,30 +15,31 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 import java.util.List;
 
-@RequestMapping("/savings")
 @RestController
+@RequestMapping("/savings")
 @RequiredArgsConstructor
 public class SavingGoalController {
 
     private final SavingGoalService savingGoalService;
+    private final SecurityService securityService;
 
     @Operation(
-            summary = "Listar metas activas",
-            description = "Obtiene metas de ahorro activas por usuario.",
-            operationId = "findAllActiveSavingGoalByUser",
+            summary = "Listar metas del usuario",
+            description = "Obtiene las metas de ahorro del usuario autenticado.",
+            operationId = "findAllSavingGoals",
             tags = {"Savings"},
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Listado obtenido")
+                    @ApiResponse(responseCode = "200", description = "Listado obtenido"),
+                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
             }
     )
-    @GetMapping("/user/{idUser}")
-    public ResponseEntity<List<SavingGoalResponse>> findAllActiveByUser(
-            @Parameter(description = "ID usuario") @PathVariable Long idUser) {
-        return ResponseEntity.ok(savingGoalService.findAllActiveByUser(idUser));
+    @GetMapping("/me")
+    public ResponseEntity<List<SavingGoalResponse>> findAllByUser() {
+        return ResponseEntity.ok(savingGoalService.findAllActiveByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(
-            summary = "Obtener una meta de ahorro",
+            summary = "Buscar meta",
             description = "Obtiene una meta de ahorro por ID.",
             operationId = "findSavingGoalById",
             tags = {"Savings"},
@@ -63,10 +65,9 @@ public class SavingGoalController {
             }
     )
     @PostMapping
-    public ResponseEntity<SavingGoalResponse> create(
-            @Valid @RequestBody SavingGoalRequest request) {
+    public ResponseEntity<SavingGoalResponse> create(@Valid @RequestBody SavingGoalRequest request) {
         SavingGoalResponse saved = savingGoalService.create(request);
-        return ResponseEntity.created(URI.create("/reasons/" + saved.getId())).body(saved);
+        return ResponseEntity.created(URI.create("/savings/" + saved.getId())).body(saved);
     }
 
     @Operation(

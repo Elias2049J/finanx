@@ -3,6 +3,7 @@ package com.elias.mismonedas.billing.controller;
 import com.elias.mismonedas.billing.dto.payment.PaymentRequest;
 import com.elias.mismonedas.billing.dto.payment.PaymentResponse;
 import com.elias.mismonedas.billing.service.PaymentService;
+import com.elias.mismonedas.identity.security.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,6 +21,7 @@ import java.util.List;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final SecurityService securityService;
 
     @Operation(
             summary = "Create payment",
@@ -56,7 +58,7 @@ public class PaymentController {
 
     @Operation(
             summary = "List payments by user",
-            description = "Gets all payments made by a user.",
+            description = "Gets all payments made by the authenticated user.",
             operationId = "findAllPaymentsByUser",
             tags = {"Payments"},
             responses = {
@@ -64,10 +66,9 @@ public class PaymentController {
                     @ApiResponse(responseCode = "404", description = "User not found")
             }
     )
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<PaymentResponse>> findAllByUser(
-            @Parameter(description = "User id") @PathVariable Long userId) {
-        return ResponseEntity.ok(paymentService.findAllByUser(userId));
+    @GetMapping("/me")
+    public ResponseEntity<List<PaymentResponse>> findAllByUser() {
+        return ResponseEntity.ok(paymentService.findAllByUser(securityService.getCurrentUser().getId()));
     }
 
     @Operation(
