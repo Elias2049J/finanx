@@ -10,7 +10,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 
 @Entity
 @Table(name = "notificaciones")
@@ -67,8 +66,7 @@ public class Notification {
     @PrePersist
     private void onCreate() {
         if (createdAt == null) {
-            ZoneId tz = user != null ? user.getTimeZone().toZoneId() : ZoneId.of("America/Lima");
-            createdAt = OffsetDateTime.now(tz);
+            createdAt = OffsetDateTime.now(user.getTimeZone().toZoneId());
         }
         if (state == null) {
             state = NotificationState.SCHEDULED;
