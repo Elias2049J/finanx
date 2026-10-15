@@ -34,6 +34,32 @@ services:
       - springnet
     restart: unless-stopped
 
+  doc-processing:
+    build: ./services/doc-processing
+    container_name: doc_processing
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_started
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-finanx}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-finanx-dev}
+      SCAN_QUEUE: receipt.scan.job
+      SCAN_RESULT_EXCHANGE: receipt.scan.result
+      SCAN_RESULT_ROUTING_KEY: receipt.scan.result
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_REGION: us-east-1
+      S3_BUCKET: ${SEAWEEDFS_BUCKET:-finanx-images}
+      S3_ACCESS_KEY: ${SEAWEEDFS_ACCESS_KEY:-finanx-storage}
+      S3_SECRET_KEY: ${SEAWEEDFS_SECRET_KEY:-finanx-storage-dev}
+      OCR_LANG: es
+    networks:
+      - springnet
+    restart: unless-stopped
+
   db:
     image: postgres:17
     container_name: postgres_db

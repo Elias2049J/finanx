@@ -1,5 +1,6 @@
 package com.elias.mismonedas.document.dto;
 
+import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
 import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -16,6 +17,12 @@ public class ReceiptResponse {
 
     @Schema(description = "Identificador del recibo escaneado", example = "1")
     private Long receiptId;
+
+    @Schema(description = "Estado del procesamiento OCR", example = "PENDING")
+    private ReceiptScanStatus status;
+
+    @Schema(description = "Mensaje de error si el escaneo falló (nullable)", example = "No se detectó el monto")
+    private String errorMessage;
 
     @Schema(description = "ID de la imagen asociada (nullable si no tiene imagen)", example = "1")
     private Long imageId;

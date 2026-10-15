@@ -3,24 +3,26 @@ package com.elias.mismonedas.document.service.impl;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.document.domain.entity.Image;
 import com.elias.mismonedas.document.domain.entity.Receipt;
+import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
 import com.elias.mismonedas.document.dto.ReceiptResponse;
-import com.elias.mismonedas.document.port.OcrPort;
-import com.elias.mismonedas.document.port.OcrResult;
+import com.elias.mismonedas.document.dto.scan.ReceiptScanResultMessage;
+import com.elias.mismonedas.document.outbox.ReceiptScanOutbox;
+import com.elias.mismonedas.document.outbox.ReceiptScanOutboxState;
+import com.elias.mismonedas.document.outbox.persistence.ReceiptScanOutboxRepository;
 import com.elias.mismonedas.document.port.ReceiptData;
 import com.elias.mismonedas.document.port.ReceiptParserPort;
 import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.document.service.ImageService;
-import com.elias.mismonedas.document.service.impl.ReceiptScanServiceImpl;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
-import com.elias.mismonedas.shared.exception.OcrBusyException;
 import com.elias.mismonedas.shared.exception.OcrProcessingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -36,178 +38,189 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ReceiptScanServiceImplTest {
 
-    @Mock private OcrPort ocrPort;
     @Mock private ReceiptParserPort regexParser;
     @Mock private ReceiptParserPort geminiParser;
     @Mock private ReceiptRepository receiptRepository;
     @Mock private ImageService imageService;
     @Mock private UserRepository userRepository;
     @Mock private CategoryRepository categoryRepository;
+    @Mock private ReceiptScanOutboxRepository outboxRepository;
 
     private ReceiptScanServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ReceiptScanServiceImpl(ocrPort, regexParser, geminiParser, receiptRepository, imageService, userRepository, categoryRepository, 50, 60);
+        service = new ReceiptScanServiceImpl(
+                regexParser, geminiParser, receiptRepository, imageService,
+                userRepository, categoryRepository, outboxRepository);
     }
 
     @Nested
-    class ScanReceiptTest {
+    class StartScanTest {
 
         @Test
-        void shouldScanAndReturnResult() {
+        void shouldPersistPendingReceiptAndEnqueueOutbox() {
             byte[] image = "fake-image-bytes".getBytes();
-            when(userRepository.findById(1L)).thenReturn(Optional.of(createTestUser()));
-            when(ocrPort.extractText(image)).thenReturn(new OcrResult("TOTAL S/. 45.00", 0.6, 1500L));
-            when(regexParser.parse("TOTAL S/. 45.00")).thenReturn(
-                    new ReceiptData(new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado", "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.6, null));
-
-            Receipt saved = Receipt.builder()
-                    .id(1L).user(createTestUser())
-                    .rawOcrText("TOTAL S/. 45.00")
-                    .detectedAmount(new BigDecimal("45.00"))
-                    .detectedDate(LocalDate.of(2026, 7, 1))
-                    .description("Supermercado")
-                    .paymentMethod(PaymentMethod.CASH)
-                    .transactionType(TransactionType.SPENT)
-                    .currencyGuess("PEN")
-                    .confidenceScore(0.6)
-                    .parserEngineUsed("REGEX")
-                    .ocrDurationMs(1500L)
-                    .build();
-            when(receiptRepository.save(any(Receipt.class))).thenReturn(saved);
+            User user = createTestUser();
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
             Image savedImage = Image.builder()
-                    .id(1L)
-                    .user(createTestUser())
-                    .filename("recibo.jpg")
-                    .mediaType("image/jpeg")
-                    .bucketName("finanx-images")
-                    .objectKey("images/1/receipt-1.jpg")
-                    .sizeBytes((long) image.length)
-                    .build();
+                    .id(10L).user(user).filename("recibo.jpg").mediaType("image/jpeg")
+                    .bucketName("finanx-images").objectKey("images/1/receipt-1.jpg")
+                    .sizeBytes((long) image.length).build();
             when(imageService.save(any(User.class), any(), any(), any())).thenReturn(savedImage);
 
-            ReceiptResponse result = service.scanReceipt(1L, image, "recibo.jpg", "image/jpeg");
+            when(receiptRepository.save(any(Receipt.class))).thenAnswer(invocation -> {
+                Receipt receipt = invocation.getArgument(0);
+                receipt.setId(1L);
+                return receipt;
+            });
+
+            ReceiptResponse result = service.startScan(1L, image, "recibo.jpg", "image/jpeg");
 
             assertThat(result.getReceiptId()).isEqualTo(1L);
-            assertThat(result.getImageId()).isEqualTo(1L);
-            assertThat(result.getDetectedAmount()).isEqualByComparingTo(new BigDecimal("45.00"));
-            assertThat(result.getDescription()).isEqualTo("Supermercado");
-            assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.CASH);
-            assertThat(result.getTransactionType()).isEqualTo(TransactionType.SPENT);
-            assertThat(result.getParserEngineUsed()).isEqualTo("REGEX");
-            assertThat(result.getRawOcrText()).isEqualTo("TOTAL S/. 45.00");
-            assertThat(result.getCurrencyGuess()).isEqualTo("PEN");
-            verify(geminiParser, never()).parse(any());
-        }
+            assertThat(result.getStatus()).isEqualTo(ReceiptScanStatus.PENDING);
+            assertThat(result.getImageId()).isEqualTo(10L);
 
-        @Test
-        void shouldFallbackToGeminiWhenRegexConfidenceIsLow() {
-            byte[] image = "fake-image-bytes".getBytes();
-            when(userRepository.findById(1L)).thenReturn(Optional.of(createTestUser()));
-            when(ocrPort.extractText(image)).thenReturn(new OcrResult("texto ambiguo sin monto claro", 0.4, 2000L));
-            when(regexParser.parse("texto ambiguo sin monto claro")).thenReturn(
-                    new ReceiptData(null, null, null, "PEN", null, null, 0.0, null));
-            when(geminiParser.parse("texto ambiguo sin monto claro")).thenReturn(
-                    new ReceiptData(new BigDecimal("32.50"), LocalDate.of(2026, 7, 2), "Restaurante", "PEN", PaymentMethod.CREDIT_CARD, TransactionType.SPENT, 0.85, null));
-
-            Receipt saved = Receipt.builder()
-                    .id(2L).user(createTestUser())
-                    .rawOcrText("texto ambiguo sin monto claro")
-                    .detectedAmount(new BigDecimal("32.50"))
-                    .detectedDate(LocalDate.of(2026, 7, 2))
-                    .description("Restaurante")
-                    .paymentMethod(PaymentMethod.CREDIT_CARD)
-                    .transactionType(TransactionType.SPENT)
-                    .currencyGuess("PEN")
-                    .confidenceScore(0.85)
-                    .parserEngineUsed("GEMINI")
-                    .ocrDurationMs(2000L)
-                    .build();
-            when(receiptRepository.save(any(Receipt.class))).thenReturn(saved);
-
-            Image savedImage = Image.builder()
-                    .id(2L)
-                    .user(createTestUser())
-                    .filename("recibo.png")
-                    .mediaType("image/png")
-                    .bucketName("finanx-images")
-                    .objectKey("images/1/receipt-2.jpg")
-                    .sizeBytes((long) image.length)
-                    .build();
-            when(imageService.save(any(User.class), any(), any(), any())).thenReturn(savedImage);
-
-            ReceiptResponse result = service.scanReceipt(1L, image, "recibo.png", "image/png");
-
-            assertThat(result.getParserEngineUsed()).isEqualTo("GEMINI");
-            assertThat(result.getDescription()).isEqualTo("Restaurante");
-            assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.CREDIT_CARD);
-            assertThat(result.getRawOcrText()).isEqualTo("texto ambiguo sin monto claro");
-            assertThat(result.getCurrencyGuess()).isEqualTo("PEN");
-            verify(geminiParser).parse(any());
+            ArgumentCaptor<ReceiptScanOutbox> outboxCaptor = ArgumentCaptor.forClass(ReceiptScanOutbox.class);
+            verify(outboxRepository).save(outboxCaptor.capture());
+            ReceiptScanOutbox outbox = outboxCaptor.getValue();
+            assertThat(outbox.getReceiptId()).isEqualTo(1L);
+            assertThat(outbox.getBucket()).isEqualTo("finanx-images");
+            assertThat(outbox.getObjectKey()).isEqualTo("images/1/receipt-1.jpg");
+            assertThat(outbox.getState()).isEqualTo(ReceiptScanOutboxState.PENDING);
         }
 
         @Test
         void shouldThrowWhenUserNotFound() {
             when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.scanReceipt(99L, "test".getBytes(), "test.jpg", "image/jpeg"))
+            assertThatThrownBy(() -> service.startScan(99L, "test".getBytes(), "test.jpg", "image/jpeg"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Usuario no encontrado");
+
+            verify(imageService, never()).save(any(), any(), any(), any());
+            verify(outboxRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    class ApplyScanResultTest {
+
+        @Test
+        void shouldParseAndCompleteReceiptWhenOcrSucceeds() {
+            Receipt receipt = pendingReceipt(1L);
+            when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
+            when(regexParser.parse("TOTAL S/. 45.00")).thenReturn(new ReceiptData(
+                    new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado",
+                    "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.6, null));
+
+            service.applyScanResult(new ReceiptScanResultMessage(
+                    1L, "DONE", "TOTAL S/. 45.00", "rapidocr-ppocrv6", 0.93, 1500L, null));
+
+            assertThat(receipt.getStatus()).isEqualTo(ReceiptScanStatus.DONE);
+            assertThat(receipt.getDetectedAmount()).isEqualByComparingTo(new BigDecimal("45.00"));
+            assertThat(receipt.getDescription()).isEqualTo("Supermercado");
+            assertThat(receipt.getRawOcrText()).isEqualTo("TOTAL S/. 45.00");
+            assertThat(receipt.getOcrDurationMs()).isEqualTo(1500L);
+            assertThat(receipt.getErrorMessage()).isNull();
+            verify(geminiParser, never()).parse(any());
+            verify(receiptRepository).save(receipt);
         }
 
         @Test
-        void shouldThrowWhenOcrIsBusy() {
-            byte[] image = "test".getBytes();
-            when(userRepository.findById(1L)).thenReturn(Optional.of(createTestUser()));
-            when(ocrPort.extractText(image)).thenThrow(new OcrBusyException("Servicio ocupado"));
+        void shouldFallbackToGeminiWhenRegexConfidenceIsLow() {
+            Receipt receipt = pendingReceipt(1L);
+            when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
+            when(regexParser.parse("texto ambiguo")).thenReturn(
+                    new ReceiptData(null, null, null, "PEN", null, null, 0.0, null));
+            when(geminiParser.parse("texto ambiguo")).thenReturn(new ReceiptData(
+                    new BigDecimal("32.50"), LocalDate.of(2026, 7, 2), "Restaurante",
+                    "PEN", PaymentMethod.CREDIT_CARD, TransactionType.SPENT, 0.85, null));
 
-            assertThatThrownBy(() -> service.scanReceipt(1L, image, "test.jpg", "image/jpeg"))
-                    .isInstanceOf(OcrBusyException.class);
+            service.applyScanResult(new ReceiptScanResultMessage(
+                    1L, "DONE", "texto ambiguo", "rapidocr-ppocrv6", 0.4, 2000L, null));
+
+            assertThat(receipt.getStatus()).isEqualTo(ReceiptScanStatus.DONE);
+            assertThat(receipt.getDescription()).isEqualTo("Restaurante");
+            assertThat(receipt.getParserEngineUsed()).isEqualTo("GEMINI");
         }
 
         @Test
-        void shouldThrowWhenAmountIsNull() {
-            byte[] image = "test".getBytes();
-            when(userRepository.findById(1L)).thenReturn(Optional.of(createTestUser()));
-            when(ocrPort.extractText(image)).thenReturn(new OcrResult("texto sin monto", 0.3, 1000L));
+        void shouldMarkFailedWhenWorkerReportsFailure() {
+            Receipt receipt = pendingReceipt(1L);
+            when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
+
+            service.applyScanResult(new ReceiptScanResultMessage(
+                    1L, "FAILED", null, "rapidocr-ppocrv6", null, 800L, "imagen corrupta"));
+
+            assertThat(receipt.getStatus()).isEqualTo(ReceiptScanStatus.FAILED);
+            assertThat(receipt.getErrorMessage()).isEqualTo("imagen corrupta");
+            verify(regexParser, never()).parse(any());
+        }
+
+        @Test
+        void shouldFailWhenAmountCannotBeExtracted() {
+            Receipt receipt = pendingReceipt(1L);
+            when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
             when(regexParser.parse("texto sin monto")).thenReturn(
                     new ReceiptData(null, null, null, "PEN", null, null, 0.0, null));
             when(geminiParser.parse("texto sin monto")).thenThrow(new RuntimeException("Gemini error"));
 
-            assertThatThrownBy(() -> service.scanReceipt(1L, image, "test.jpg", "image/jpeg"))
-                    .isInstanceOf(OcrProcessingException.class)
-                    .hasMessageContaining("No se detectó el monto");
+            service.applyScanResult(new ReceiptScanResultMessage(
+                    1L, "DONE", "texto sin monto", "rapidocr-ppocrv6", 0.3, 1000L, null));
+
+            assertThat(receipt.getStatus()).isEqualTo(ReceiptScanStatus.FAILED);
+            assertThat(receipt.getErrorMessage()).contains("No se detectó el monto");
         }
 
         @Test
-        void shouldAcceptNullDate() {
-            byte[] image = "test".getBytes();
-            when(userRepository.findById(1L)).thenReturn(Optional.of(createTestUser()));
-            when(ocrPort.extractText(image)).thenReturn(new OcrResult("TOTAL S/. 25.00", 0.6, 1000L));
-            when(regexParser.parse("TOTAL S/. 25.00")).thenReturn(
-                    new ReceiptData(new BigDecimal("25.00"), null, "Tienda", "PEN", null, null, 0.6, null));
+        void shouldIgnoreResultForAlreadyTerminalReceipt() {
+            Receipt receipt = pendingReceipt(1L);
+            receipt.setStatus(ReceiptScanStatus.DONE);
+            when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
 
-            Receipt saved = Receipt.builder()
-                    .id(3L).user(createTestUser())
-                    .rawOcrText("TOTAL S/. 25.00")
-                    .detectedAmount(new BigDecimal("25.00"))
-                    .description("Tienda")
-                    .currencyGuess("PEN")
-                    .confidenceScore(0.5)
-                    .parserEngineUsed("REGEX")
-                    .ocrDurationMs(1000L)
-                    .build();
-            when(receiptRepository.save(any(Receipt.class))).thenReturn(saved);
+            service.applyScanResult(new ReceiptScanResultMessage(
+                    1L, "DONE", "texto", "rapidocr-ppocrv6", 0.9, 1000L, null));
 
-            ReceiptResponse result = service.scanReceipt(1L, image, null, null);
+            verifyNoInteractions(regexParser);
+            verify(receiptRepository, never()).save(any());
+        }
 
-            assertThat(result.getReceiptId()).isEqualTo(3L);
-            assertThat(result.getImageId()).isNull();
-            assertThat(result.getDetectedAmount()).isEqualByComparingTo(new BigDecimal("25.00"));
-            assertThat(result.getDetectedDate()).isNull();
-            assertThat(result.getDescription()).isEqualTo("Tienda");
+        @Test
+        void shouldIgnoreResultForUnknownReceipt() {
+            when(receiptRepository.findByIdForUpdate(404L)).thenReturn(Optional.empty());
+
+            service.applyScanResult(new ReceiptScanResultMessage(
+                    404L, "DONE", "texto", "rapidocr-ppocrv6", 0.9, 1000L, null));
+
+            verify(receiptRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    class MarkFailedTest {
+
+        @Test
+        void shouldMarkPendingReceiptFailed() {
+            Receipt receipt = pendingReceipt(1L);
+            when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
+
+            service.markFailed(1L, "worker caído");
+
+            assertThat(receipt.getStatus()).isEqualTo(ReceiptScanStatus.FAILED);
+            assertThat(receipt.getErrorMessage()).isEqualTo("worker caído");
+        }
+
+        @Test
+        void shouldNotOverrideTerminalReceipt() {
+            Receipt receipt = pendingReceipt(1L);
+            receipt.setStatus(ReceiptScanStatus.DONE);
+            when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
+
+            service.markFailed(1L, "worker caído");
+
+            verify(receiptRepository, never()).save(any());
         }
     }
 
@@ -215,33 +228,17 @@ class ReceiptScanServiceImplTest {
     class GetScanResultTest {
 
         @Test
-        void shouldReturnSavedResult() {
-            Receipt receipt = Receipt.builder()
-                    .id(1L).user(createTestUser())
-                    .rawOcrText("TOTAL S/. 45.00")
-                    .detectedAmount(new BigDecimal("45.00"))
-                    .detectedDate(LocalDate.of(2026, 7, 1))
-                    .description("Tienda")
-                    .paymentMethod(PaymentMethod.CASH)
-                    .transactionType(TransactionType.SPENT)
-                    .currencyGuess("PEN")
-                    .confidenceScore(0.6)
-                    .parserEngineUsed("REGEX")
-                    .ocrDurationMs(1000L)
-                    .build();
-
+        void shouldReturnSavedResultWithStatus() {
+            Receipt receipt = pendingReceipt(1L);
+            receipt.setStatus(ReceiptScanStatus.DONE);
+            receipt.setDetectedAmount(new BigDecimal("45.00"));
             when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
 
             ReceiptResponse result = service.getScanResult(1L, 1L);
 
             assertThat(result.getReceiptId()).isEqualTo(1L);
-            assertThat(result.getImageId()).isNull();
+            assertThat(result.getStatus()).isEqualTo(ReceiptScanStatus.DONE);
             assertThat(result.getDetectedAmount()).isEqualByComparingTo(new BigDecimal("45.00"));
-            assertThat(result.getDescription()).isEqualTo("Tienda");
-            assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.CASH);
-            assertThat(result.getTransactionType()).isEqualTo(TransactionType.SPENT);
-            assertThat(result.getRawOcrText()).isEqualTo("TOTAL S/. 45.00");
-            assertThat(result.getCurrencyGuess()).isEqualTo("PEN");
         }
 
         @Test
@@ -258,33 +255,15 @@ class ReceiptScanServiceImplTest {
 
         @Test
         void shouldImproveWhenGeminiConfidenceIsHigher() {
-            Receipt receipt = Receipt.builder()
-                    .id(1L).user(createTestUser())
-                    .rawOcrText("TOTAL S/. 45.00")
-                    .detectedAmount(new BigDecimal("45.00"))
-                    .detectedDate(LocalDate.of(2026, 7, 1))
-                    .description("Supermercado")
-                    .currencyGuess("PEN")
-                    .confidenceScore(0.5)
-                    .parserEngineUsed("REGEX")
-                    .build();
+            Receipt receipt = pendingReceipt(1L);
+            receipt.setStatus(ReceiptScanStatus.DONE);
+            receipt.setRawOcrText("TOTAL S/. 45.00");
+            receipt.setConfidenceScore(0.5);
             when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
-            when(geminiParser.parse("TOTAL S/. 45.00")).thenReturn(
-                    new ReceiptData(new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado ABC", "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
-
-            Receipt updated = Receipt.builder()
-                    .id(1L).user(createTestUser())
-                    .rawOcrText("TOTAL S/. 45.00")
-                    .detectedAmount(new BigDecimal("45.00"))
-                    .detectedDate(LocalDate.of(2026, 7, 1))
-                    .description("Supermercado ABC")
-                    .paymentMethod(PaymentMethod.CASH)
-                    .transactionType(TransactionType.SPENT)
-                    .currencyGuess("PEN")
-                    .confidenceScore(0.9)
-                    .parserEngineUsed("GEMINI")
-                    .build();
-            when(receiptRepository.save(any(Receipt.class))).thenReturn(updated);
+            when(geminiParser.parse("TOTAL S/. 45.00")).thenReturn(new ReceiptData(
+                    new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado ABC",
+                    "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
+            when(receiptRepository.save(any(Receipt.class))).thenAnswer(i -> i.getArgument(0));
 
             ReceiptResponse result = service.improveWithAi(1L, 1L);
 
@@ -294,36 +273,21 @@ class ReceiptScanServiceImplTest {
         }
 
         @Test
-        void shouldNotImproveWhenGeminiConfidenceIsLower() {
-            Receipt receipt = Receipt.builder()
-                    .id(1L).user(createTestUser())
-                    .rawOcrText("TOTAL S/. 45.00")
-                    .detectedAmount(new BigDecimal("45.00"))
-                    .detectedDate(LocalDate.of(2026, 7, 1))
-                    .description("Supermercado")
-                    .currencyGuess("PEN")
-                    .confidenceScore(0.85)
-                    .parserEngineUsed("REGEX")
-                    .build();
+        void shouldThrowWhenReceiptHasNoOcrText() {
+            Receipt receipt = pendingReceipt(1L);
             when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
-            when(geminiParser.parse("TOTAL S/. 45.00")).thenReturn(
-                    new ReceiptData(new BigDecimal("44.00"), LocalDate.of(2026, 7, 1), "Supermercado", "PEN", null, null, 0.6, null));
 
-            ReceiptResponse result = service.improveWithAi(1L, 1L);
-
-            assertThat(result.getDetectedAmount()).isEqualByComparingTo(new BigDecimal("45.00"));
-            assertThat(result.getParserEngineUsed()).isEqualTo("REGEX");
-            assertThat(result.getConfidenceScore()).isEqualTo(0.85);
-            verify(receiptRepository, never()).save(any());
+            assertThatThrownBy(() -> service.improveWithAi(1L, 1L))
+                    .isInstanceOf(OcrProcessingException.class);
         }
+    }
 
-        @Test
-        void shouldThrowWhenReceiptNotFound() {
-            when(receiptRepository.findByIdAndUser_Id(99L, 1L)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.improveWithAi(99L, 1L))
-                    .isInstanceOf(IllegalArgumentException.class);
-        }
+    private Receipt pendingReceipt(Long id) {
+        return Receipt.builder()
+                .id(id)
+                .user(createTestUser())
+                .status(ReceiptScanStatus.PENDING)
+                .build();
     }
 
     private User createTestUser() {

@@ -11,8 +11,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
+import java.net.URI;
 
 @RestController
 @RequestMapping("/receipts")
@@ -23,16 +25,15 @@ public class ReceiptController {
     private final ReceiptScanService receiptScanService;
 
     @Operation(
-            summary = "Escanear recibo con OCR",
-            description = "Procesa una imagen de recibo, extrae texto via Tesseract y parsea los datos (monto, fecha, comercio). " +
-                    "Requiere plan PREMIUM.",
+            summary = "Encolar escaneo OCR de recibo",
+            description = "Sube la imagen, crea el recibo en estado PENDING y encola el OCR en el microservicio doc-processing. " +
+                    "Responde 202 con la Location para consultar el resultado. Requiere plan PREMIUM.",
             operationId = "scanReceipt",
             tags = {"Receipts"},
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Escaneo completado"),
+                    @ApiResponse(responseCode = "202", description = "Escaneo encolado; consultar estado en Location"),
                     @ApiResponse(responseCode = "400", description = "Imagen invalida o muy grande"),
-                    @ApiResponse(responseCode = "403", description = "Plan no suficiente (PLAN_REQUIRED)"),
-                    @ApiResponse(responseCode = "503", description = "Servicio ocupado (OcrBusyException)")
+                    @ApiResponse(responseCode = "403", description = "Plan no suficiente (PLAN_REQUIRED)")
             }
     )
     @PostMapping(value = "/scan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -48,8 +49,15 @@ public class ReceiptController {
             throw new IllegalArgumentException("La imagen no debe superar 5MB");
         }
 
-        ReceiptResponse result = receiptScanService.scanReceipt(userId, image.getBytes(), image.getOriginalFilename(), image.getContentType());
-        return ResponseEntity.ok(result);
+        ReceiptResponse result = receiptScanService.startScan(
+                userId, image.getBytes(), image.getOriginalFilename(), image.getContentType());
+
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/receipts/{id}")
+                .buildAndExpand(result.getReceiptId())
+                .toUri();
+
+        return ResponseEntity.accepted().location(location).body(result);
     }
 
     @Operation(

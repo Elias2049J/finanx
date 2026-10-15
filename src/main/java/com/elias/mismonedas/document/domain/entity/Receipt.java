@@ -1,5 +1,6 @@
 package com.elias.mismonedas.document.domain.entity;
 
+import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
@@ -71,6 +72,15 @@ public class Receipt {
 
     @Column(name = "duracion_ocr_ms")
     private Long ocrDurationMs;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_scan", nullable = false, length = 20)
+    private ReceiptScanStatus status = ReceiptScanStatus.PENDING;
+
+    @Lob
+    @Column(name = "error_scan", columnDefinition = "TEXT")
+    private String errorMessage;
 
     @Builder.Default
     @Column(name = "activo")
