@@ -1,0 +1,21 @@
+{
+  "name": "qa",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "stress": "node run-stress.js load",
+    "stress:load": "node run-stress.js load",
+    "stress:stress": "node run-stress.js stress",
+    "stress:breakpoint": "node run-stress.js breakpoint",
+    "stress:spike": "node run-stress.js spike",
+    "stress:soak": "node run-stress.js soak",
+    "report": "node generate-report.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "k6-html-reporter": "^1.0.5"
+  }
+}
