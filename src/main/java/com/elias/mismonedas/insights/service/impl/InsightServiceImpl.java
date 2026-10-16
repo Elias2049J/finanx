@@ -1,7 +1,6 @@
 package com.elias.mismonedas.insights.service.impl;
 
 import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
-import com.elias.mismonedas.billing.plan.PlanSubject;
 import com.elias.mismonedas.billing.plan.RequiresPlan;
 import com.elias.mismonedas.chat.dto.ai.PromptRequest;
 import com.elias.mismonedas.identity.domain.entity.User;
@@ -29,7 +28,7 @@ public class InsightServiceImpl implements InsightService {
 
     @Override
     @RequiresPlan(SubscriptionPlan.PREMIUM)
-    public InsightResponse generateInsight(@PlanSubject User user, InsightRequest request) {
+    public InsightResponse generateInsight(User user, InsightRequest request) {
         log.info("Generando insight premium para userId={}, query={}", user.getId(), request.getQuery());
 
         InsightSummary summary = new InsightSummary(List.of(), 0);

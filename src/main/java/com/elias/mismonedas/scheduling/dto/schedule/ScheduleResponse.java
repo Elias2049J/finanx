@@ -4,6 +4,7 @@ import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.recurrencerule.RecurrenceRuleResponse;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -23,7 +24,12 @@ import java.time.LocalDateTime;
         @JsonSubTypes.Type(value = TransactionScheduleResponse.class, name = "TRANSACTION"),
         @JsonSubTypes.Type(value = BudgetScheduleResponse.class, name = "BUDGET")
 })
-@Schema(description = "Respuesta que representa una programacion asociada a un usuario y categoria, incluyendo estado y regla de recurrencia")
+@Schema(name = "ScheduleResponse", description = "Respuesta que representa una programacion asociada a un usuario y categoria, incluyendo estado y regla de recurrencia",
+        discriminatorProperty = "type",
+        subTypes = {BudgetScheduleRequest.class, TransactionScheduleRequest.class},
+        discriminatorMapping = {
+                @DiscriminatorMapping(value = "BUDGET", schema = BudgetScheduleResponse.class),
+                @DiscriminatorMapping(value = "TRANSACTION", schema = TransactionScheduleResponse.class)})
 public class ScheduleResponse {
 
     @Schema(description = "Identificador unico de la programacion", example = "2001")

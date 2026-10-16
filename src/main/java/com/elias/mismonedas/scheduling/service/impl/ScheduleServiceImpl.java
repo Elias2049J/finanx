@@ -27,6 +27,9 @@ import com.elias.mismonedas.scheduling.mapper.ScheduleMapper;
 import com.elias.mismonedas.scheduling.repository.BudgetScheduleRepository;
 import com.elias.mismonedas.scheduling.repository.ScheduleRepository;
 import com.elias.mismonedas.scheduling.repository.TransactionScheduleRepository;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.scheduling.service.RecurrenceCalculatorService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
@@ -36,6 +39,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -179,6 +185,39 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .stream()
                 .map(tsMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ScheduleResponse> list(ScheduleState state, Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.ASC, "nextRunAt"));
+        Page<Schedule> page = state == null
+                ? scheduleRepository.findAllByUser_IdAndActiveTrue(userId, stablePage)
+                : scheduleRepository.findAllByUser_IdAndActiveAndState(userId, true, state, stablePage);
+        return PageResponseFactory.from(page, tsMapper::toResponseDispatch);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BudgetScheduleResponse> listBudgetSchedules(ScheduleState state, Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.ASC, "nextRunAt"));
+        Page<BudgetSchedule> page = state == null
+                ? bsRepository.findAllByUser_IdAndActiveTrue(userId, stablePage)
+                : bsRepository.findAllByUser_IdAndActiveAndState(userId, true, state, stablePage);
+        return PageResponseFactory.from(page, tsMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<TransactionScheduleResponse> listTransactionSchedules(ScheduleState state, Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.ASC, "nextRunAt"));
+        Page<TransactionSchedule> page = state == null
+                ? tsRepository.findAllByUser_IdAndActiveTrue(userId, stablePage)
+                : tsRepository.findAllByUser_IdAndActiveAndState(userId, true, state, stablePage);
+        return PageResponseFactory.from(page, tsMapper::toResponse);
     }
 
     @Transactional

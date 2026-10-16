@@ -1,41 +1,49 @@
 package com.elias.mismonedas.notifications.controller;
 
-import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.service.NotificationService;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
-@RequestMapping("/notifications")
+@RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final SecurityService securityService;
 
     @Operation(
             summary = "Listar notificaciones del usuario",
-            description = "Obtiene todas las notificaciones del usuario autenticado.",
-            operationId = "findAllNotifications",
+            description = "Lista paginada de notificaciones del usuario autenticado con filtros opcionales state y search.",
+            operationId = "listNotifications",
             tags = {"Notifications"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
             }
     )
-    @GetMapping("/me")
-    public ResponseEntity<List<NotificationDTO>> findAllByUser() {
-        return ResponseEntity.ok(notificationService.findAllByUser(securityService.getCurrentUser().getId()));
+    @GetMapping
+    public ResponseEntity<PageResponse<NotificationDTO>> listNotifications(
+            @RequestParam(required = false) NotificationState state,
+            @RequestParam(required = false) String search,
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(notificationService.list(
+                state, search, pageable));
     }
 
     @Operation(
@@ -52,22 +60,6 @@ public class NotificationController {
     public ResponseEntity<NotificationDTO> findById(
             @Parameter(description = "ID notificacion") @PathVariable Long id) {
         return ResponseEntity.ok(notificationService.findById(id));
-    }
-
-    @Operation(
-            summary = "Listar por estado",
-            description = "Obtiene notificaciones del usuario autenticado filtradas por estado.",
-            operationId = "findAllNotificationsByState",
-            tags = {"Notifications"},
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Listado obtenido")
-            }
-    )
-    @GetMapping("/me/{state}")
-    public ResponseEntity<List<NotificationDTO>> findAllByUserAndState(
-            @Parameter(description = "Estado") @PathVariable NotificationState state) {
-        return ResponseEntity.ok(notificationService.findAllByUserAndState(
-                securityService.getCurrentUser().getId(), state));
     }
 
     @Operation(
@@ -113,11 +105,11 @@ public class NotificationController {
                     @ApiResponse(responseCode = "204", description = "Eliminadas")
             }
     )
-    @PostMapping("/me/purge-older-than")
+    @PostMapping("/purge-older-than")
     public ResponseEntity<Void> purge(
             @Parameter(description = "Fecha limite")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateTime) {
-        notificationService.purgeOlderThan(dateTime, securityService.getCurrentUser().getId());
+        notificationService.purgeOlderThan(dateTime);
         return ResponseEntity.noContent().build();
     }
 }

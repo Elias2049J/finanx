@@ -5,6 +5,9 @@ import com.elias.mismonedas.accounts.dto.wallet.WalletRequest;
 import com.elias.mismonedas.accounts.dto.wallet.WalletResponse;
 import com.elias.mismonedas.accounts.mapper.WalletMapper;
 import com.elias.mismonedas.accounts.repository.WalletRepository;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.accounts.service.WalletService;
 import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
 import com.elias.mismonedas.billing.plan.PlanRequiredException;
@@ -16,6 +19,8 @@ import com.elias.mismonedas.identity.security.SecurityService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -34,7 +39,9 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
-    public WalletResponse create(Long userId, WalletRequest request) {
+    public WalletResponse create(WalletRequest request) {
+        User user = securityService.getCurrentUser();
+        Long userId = user.getId();
         long walletCount = walletRepository.countByUser_Id(userId);
 
         if (walletCount == 0) {
@@ -51,7 +58,6 @@ public class WalletServiceImpl implements WalletService {
                     new SubscriptionPlan[]{SubscriptionPlan.PREMIUM}, plan);
         }
 
-        User user = userRepository.findById(userId).orElseThrow();
         Wallet wallet = walletMapper.toEntity(request);
         wallet.setUser(user);
         if (request.isPrimary()) {
@@ -77,6 +83,14 @@ public class WalletServiceImpl implements WalletService {
                 .stream()
                 .map(walletMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<WalletResponse> list(Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.ASC, "id"));
+        return PageResponseFactory.from(walletRepository.findByUserId(userId, stablePage), walletMapper::toResponse);
     }
 
     @Override

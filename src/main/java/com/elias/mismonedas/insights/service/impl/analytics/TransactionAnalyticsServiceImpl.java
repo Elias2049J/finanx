@@ -11,6 +11,7 @@ import com.elias.mismonedas.catalog.repository.ReasonRepository;
 import com.elias.mismonedas.chat.dto.ai.PromptRequest;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.dto.analytics.component.*;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.DashboardResponse;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.TransactionsDashboard;
@@ -20,10 +21,11 @@ import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
+import com.elias.mismonedas.ledger.repository.TransactionSpecifications;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.dto.date.PeriodRequest;
 import com.elias.mismonedas.shared.dto.date.PeriodResponse;
 import com.elias.mismonedas.shared.mapper.DateMapper;
-import com.elias.mismonedas.shared.util.PeriodForQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
@@ -58,8 +60,9 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
             TransactionMapper tMapper,
             ReasonMapper reasonMapper,
             CategoryMapper categoryMapper,
-            WalletRepository walletRepository) {
-        super(dateMapper, userRepository);
+            WalletRepository walletRepository,
+            SecurityService securityService) {
+        super(dateMapper, userRepository, securityService);
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.reasonRepository = reasonRepository;
@@ -82,7 +85,9 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
 
         User u = this.getUser(userId);
         ZoneId zoneId = u.getTimeZone().toZoneId();
-        PeriodForQuery pq = dateMapper.toSmartMonthlyPeriod(request.getStart(), request.getEnd(), zoneId, userId);
+        DateRange period = new DateRange(request.getStart(), request.getEnd()).coveringMonths();
+        var periodStart = period.startInclusive(zoneId);
+        var periodEnd = period.endExclusive(zoneId);
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
 
         Wallet primaryWallet = walletRepository.findByUserIdAndPrimaryTrue(userId)
@@ -91,13 +96,8 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         List<TransactionResponse> all;
         if (primaryWallet != null) {
             Long walletId = primaryWallet.getId();
-            all = transactionRepository
-                    .findAllByWallet_IdAndCreatedAtBetweenAndActive(
-                            walletId,
-                            pq.getStart(),
-                            pq.getEnd(),
-                            true
-                    )
+            all = transactionRepository.findAll(TransactionSpecifications.list(
+                            userId, true, null, walletId, null, periodStart, periodEnd))
                     .stream()
                     .map(tMapper::toResponse)
                     .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())
@@ -106,14 +106,14 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
             all = List.of();
         }
 
-        log.info("Period for query: {}", pq);
+        log.info("Period for query: {} to {}", periodStart, periodEnd);
 
         BigDecimal balance = BigDecimal.ZERO;
 
         PeriodResponse pr = dateMapper.toResponse(
                 new PeriodRequest(
-                        pq.getStart().atZoneSameInstant(zoneId).toLocalDate(),
-                        pq.getEnd().atZoneSameInstant(zoneId).toLocalDate()
+                        period.from(),
+                        period.to()
                 ));
         td.setPeriodResponse(pr);
 

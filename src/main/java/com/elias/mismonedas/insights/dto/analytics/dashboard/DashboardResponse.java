@@ -23,7 +23,9 @@ import java.time.LocalDateTime;
         @JsonSubTypes.Type(value = TSchedulesDashboard.class, name = "TSCHEDULES"),
         @JsonSubTypes.Type(value = BudgetsDashboard.class, name = "BUDGETS")
 })
-@Schema(description = "Respuesta base de un dashboard con periodo, titulo, fecha de creacion, resumen de insights y metricas agregadas")
+@Schema(
+        name = "DashboardResponse",
+        description = "Respuesta base de un dashboard con periodo, titulo, fecha de creacion, resumen de insights y metricas agregadas")
 public abstract class DashboardResponse {
 
     @Schema(

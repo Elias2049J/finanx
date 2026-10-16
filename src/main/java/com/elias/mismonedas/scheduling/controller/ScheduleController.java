@@ -1,15 +1,22 @@
 package com.elias.mismonedas.scheduling.controller;
 
-import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.schedule.ScheduleRequest;
 import com.elias.mismonedas.scheduling.dto.schedule.ScheduleResponse;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,12 +24,11 @@ import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping("/schedule")
+@RequestMapping("/api/v1/schedule")
 @RequiredArgsConstructor
 public class ScheduleController {
 
     private final ScheduleService scheduleService;
-    private final SecurityService securityService;
 
     @Operation(
             summary = "Crear programacion",
@@ -30,7 +36,8 @@ public class ScheduleController {
             operationId = "createSchedule",
             tags = {"Schedule"},
             responses = {
-                    @ApiResponse(responseCode = "201", description = "Programacion creada"),
+                    @ApiResponse(responseCode = "201", description = "Programacion creada",
+                            content = @Content(schema = @Schema(implementation = ScheduleResponse.class))),
                     @ApiResponse(responseCode = "400", description = "Datos invalidos")
             }
     )
@@ -39,7 +46,7 @@ public class ScheduleController {
             @Parameter(description = "Datos de la programacion")
             @Valid @RequestBody ScheduleRequest request) {
         ScheduleResponse saved = scheduleService.create(request);
-        return ResponseEntity.created(URI.create("/schedule/" + saved.getId())).body(saved);
+        return ResponseEntity.created(URI.create("/api/v1/schedule/" + saved.getId())).body(saved);
     }
 
     @Operation(
@@ -48,7 +55,8 @@ public class ScheduleController {
             operationId = "updateSchedule",
             tags = {"Schedule"},
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Actualizada"),
+                    @ApiResponse(responseCode = "200", description = "Actualizada",
+                            content = @Content(schema = @Schema(implementation = ScheduleResponse.class))),
                     @ApiResponse(responseCode = "400", description = "Datos invalidos"),
                     @ApiResponse(responseCode = "404", description = "No encontrada")
             }
@@ -63,18 +71,19 @@ public class ScheduleController {
 
     @Operation(
             summary = "Listar programaciones por usuario y estado",
-            description = "Obtiene programaciones activas del usuario autenticado filtradas por estado.",
-            operationId = "findAllScheduleByUserAndState",
+            description = "Lista programaciones activas paginadas con filtro opcional state.",
+            operationId = "listSchedules",
             tags = {"Schedule"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido")
             }
     )
-    @GetMapping("/me/{state}")
-    public ResponseEntity<List<ScheduleResponse>> findAllByUserAndState(
-            @Parameter(description = "Estado de la programacion") @PathVariable ScheduleState state) {
-        return ResponseEntity.ok(scheduleService.findAllActiveByUserAndState(
-                securityService.getCurrentUser().getId(), state));
+    @GetMapping
+    public ResponseEntity<PageResponse<ScheduleResponse>> listSchedules(
+            @RequestParam(required = false) ScheduleState state,
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "nextRunAt", direction = Sort.Direction.ASC)
+            Pageable pageable) {
+        return ResponseEntity.ok(scheduleService.list(state, pageable));
     }
 
     @Operation(

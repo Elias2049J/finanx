@@ -1,60 +1,55 @@
 package com.elias.mismonedas.planning.controller;
 
-import com.elias.mismonedas.insights.dto.analytics.component.TimeBoundList;
 import com.elias.mismonedas.planning.domain.enums.BudgetHealth;
 import com.elias.mismonedas.planning.domain.enums.BudgetState;
 import com.elias.mismonedas.planning.dto.budget.BudgetRequest;
 import com.elias.mismonedas.planning.dto.budget.BudgetResponse;
 import com.elias.mismonedas.planning.service.BudgetService;
-import com.elias.mismonedas.identity.security.SecurityService;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
+import java.time.LocalDate;
 
 @RestController
-@RequestMapping("/budgets")
+@RequestMapping("/api/v1/budgets")
 @RequiredArgsConstructor
 public class BudgetController {
     private final BudgetService budgetService;
-    private final SecurityService securityService;
 
     @Operation(
             summary = "Listar presupuestos por usuario",
-            description = "Obtiene todos los presupuestos del usuario autenticado.",
-            operationId = "findAllBudgetsByUser",
+            description = "Lista paginada del usuario autenticado. Admite filtros active, state, health y rango from/to; active=true por defecto.",
+            operationId = "listBudgets",
             tags = {"Budgets"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Listado obtenido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
             }
     )
-    @GetMapping("/me")
-    public ResponseEntity<List<BudgetResponse>> findAllByUser() {
-        return ResponseEntity.ok(budgetService.findAllByUser(securityService.getCurrentUser().getId()));
-    }
-
-    @Operation(
-            summary = "Listar por usuario y estado",
-            description = "Obtiene presupuestos del usuario autenticado filtrados por estado.",
-            operationId = "findAllBudgetsByUserAndState",
-            tags = {"Budgets"},
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Listado obtenido")
-            }
-    )
-    @GetMapping("/me/{state}")
-    public ResponseEntity<List<BudgetResponse>> findAllByUserAndState(
-            @PathVariable BudgetState state) {
-        return ResponseEntity.ok(budgetService.findAllActiveByUserAndState(
-                securityService.getCurrentUser().getId(), state));
+    @GetMapping
+    public ResponseEntity<PageResponse<BudgetResponse>> listBudgets(
+            @RequestParam(defaultValue = "true") Boolean active,
+            @RequestParam(required = false) BudgetState state,
+            @RequestParam(required = false) BudgetHealth health,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(budgetService.list(
+                active, state, health, from, to, pageable));
     }
 
     @Operation(
@@ -85,7 +80,7 @@ public class BudgetController {
     @PostMapping
     public ResponseEntity<BudgetResponse> create(@Valid @RequestBody BudgetRequest request) {
         BudgetResponse saved = budgetService.create(request);
-        return ResponseEntity.created(URI.create("/reasons/" + saved.getId())).body(saved);
+        return ResponseEntity.created(URI.create("/api/v1/budgets/" + saved.getId())).body(saved);
     }
 
     @Operation(
@@ -120,15 +115,4 @@ public class BudgetController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(
-            summary = "Filtrar por salud",
-            description = "Filtra presupuestos por health.",
-            operationId = "findAllBudgetsByPeriodAndHealth",
-            tags = {"Budgets"})
-    @PostMapping("/{health}")
-    public ResponseEntity<TimeBoundList<BudgetResponse>> getBudgetsByHealth(
-            @PathVariable BudgetHealth health,
-            @Valid @RequestBody PeriodRequest request) {
-        return ResponseEntity.ok(budgetService.getBudgetsByHealth(request, health));
-    }
 }

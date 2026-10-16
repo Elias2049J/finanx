@@ -1,9 +1,13 @@
 package com.elias.mismonedas.billing.service;
 
 import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
+import com.elias.mismonedas.billing.domain.enums.PaymentState;
 import com.elias.mismonedas.billing.dto.payment.PaymentRequest;
 import com.elias.mismonedas.billing.dto.payment.PaymentResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -16,6 +20,8 @@ public interface PaymentService {
     PaymentResponse findById(Long id);
 
     List<PaymentResponse> findAllByUser(Long userId);
+
+    PageResponse<PaymentResponse> list(PaymentState state, Long subscriptionId, LocalDate from, LocalDate to, Pageable pageable);
 
     List<PaymentResponse> findAllBySubscription(Long subscriptionId);
 

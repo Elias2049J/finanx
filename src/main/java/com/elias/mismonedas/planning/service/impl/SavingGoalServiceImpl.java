@@ -10,6 +10,9 @@ import com.elias.mismonedas.planning.dto.saving.SavingGoalRequest;
 import com.elias.mismonedas.planning.dto.saving.SavingGoalResponse;
 import com.elias.mismonedas.planning.mapper.SavingGoalMapper;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
@@ -18,6 +21,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -114,6 +120,17 @@ public class SavingGoalServiceImpl implements SavingGoalService {
                 .peek(sg -> sg.setDisplayAccumulated(computeConvertedAccumulated(sg)))
                 .map(sgMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<SavingGoalResponse> list(Boolean active, SavingGoalState state, Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<SavingGoal> page = state == null
+                ? sgRepository.findAllByUser_IdAndActive(userId, active, stablePage)
+                : sgRepository.findAllByUser_IdAndActiveAndState(userId, active, state, stablePage);
+        return PageResponseFactory.from(page, sgMapper::toResponse);
     }
 
     @Override

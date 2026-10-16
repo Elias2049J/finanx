@@ -3,17 +3,14 @@ package com.elias.mismonedas.billing.plan;
 import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
 import com.elias.mismonedas.billing.service.SubscriptionService;
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.security.SecurityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.util.Arrays;
 
 @Slf4j
@@ -23,10 +20,12 @@ import java.util.Arrays;
 public class RequiresPlanAspect {
 
     private final SubscriptionService subscriptionService;
+    private final SecurityService securityService;
 
     @Around("@annotation(requiresPlan)")
     public Object checkPlan(ProceedingJoinPoint pjp, RequiresPlan requiresPlan) throws Throwable {
-        Long userId = resolveSubjectUserId(pjp);
+        User user = securityService.getCurrentUser();
+        Long userId = user.getId();
         SubscriptionPlan currentPlan = subscriptionService.getActivePlanFor(userId);
 
         log.info("Verificando plan para usuario {}: actual={}, requerido={}",
@@ -41,40 +40,5 @@ public class RequiresPlanAspect {
 
         log.info("Acceso permitido para usuario {} con plan {}", userId, currentPlan);
         return pjp.proceed();
-    }
-
-    private Long resolveSubjectUserId(ProceedingJoinPoint pjp) {
-        MethodSignature signature = (MethodSignature) pjp.getSignature();
-        Method method = signature.getMethod();
-        Parameter[] parameters = method.getParameters();
-        Object[] args = pjp.getArgs();
-
-        log.debug("Resolviendo @PlanSubject en {}.{}",
-                method.getDeclaringClass().getSimpleName(), method.getName());
-
-        for (int i = 0; i < parameters.length; i++) {
-            if (hasPlanSubject(parameters[i])) {
-                return extractUserId(args[i], method);
-            }
-        }
-
-        throw new IllegalStateException(
-                "Metodo " + method.getDeclaringClass().getSimpleName() + "#" + method.getName()
-                + " esta anotado con @RequiresPlan pero no tiene ningun parametro @PlanSubject.");
-    }
-
-    private boolean hasPlanSubject(Parameter parameter) {
-        for (Annotation ann : parameter.getAnnotations()) {
-            if (ann.annotationType().equals(PlanSubject.class)) return true;
-        }
-        return false;
-    }
-
-    private Long extractUserId(Object arg, Method method) {
-        if (arg instanceof User user) return user.getId();
-        if (arg instanceof Long id) return id;
-        throw new IllegalStateException(
-                "@PlanSubject en " + method.getDeclaringClass().getSimpleName() + "#" + method.getName()
-                + " debe ser de tipo User o Long, no " + (arg == null ? "null" : arg.getClass()));
     }
 }

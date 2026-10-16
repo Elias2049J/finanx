@@ -2,6 +2,8 @@ package com.elias.mismonedas.notifications.repository;
 
 import com.elias.mismonedas.notifications.domain.entity.FcmToken;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,6 +16,8 @@ import java.util.Optional;
 public interface FcmTokenRepository extends JpaRepository<FcmToken, Long> {
 
     List<FcmToken> findAllByUser_Id(Long userId);
+
+    Page<FcmToken> findAllByUser_Id(Long userId, Pageable pageable);
 
     Optional<FcmToken> findByToken(String token);
 

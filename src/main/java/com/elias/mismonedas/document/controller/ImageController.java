@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/images")
+@RequestMapping("/api/v1/images")
 @RequiredArgsConstructor
 @Tag(name = "Images", description = "Almacenamiento generico de imagenes")
 public class ImageController {

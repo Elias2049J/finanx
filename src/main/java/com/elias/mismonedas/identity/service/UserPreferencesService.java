@@ -5,11 +5,11 @@ import com.elias.mismonedas.identity.dto.user.UserPreferencesResponse;
 
 public interface UserPreferencesService {
 
-    UserPreferencesResponse findByUserId(Long userId);
+    UserPreferencesResponse findByUserId();
 
     UserPreferencesResponse getOrCreateDefaults(Long userId);
 
-    UserPreferencesResponse create(Long userId, UserPreferencesRequest request);
+    UserPreferencesResponse create(UserPreferencesRequest request);
 
-    UserPreferencesResponse update(Long userId, UserPreferencesRequest request);
+    UserPreferencesResponse update(UserPreferencesRequest request);
 }

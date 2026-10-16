@@ -16,6 +16,7 @@ import com.elias.mismonedas.identity.dto.user.UserResponse;
 import com.elias.mismonedas.identity.mapper.UserMapper;
 import com.elias.mismonedas.identity.repository.UserPreferencesRepository;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.repository.UserSpecifications;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.identity.service.JwtTokenService;
 import com.elias.mismonedas.identity.service.UserService;
@@ -26,6 +27,9 @@ import com.elias.mismonedas.planning.repository.BudgetRepository;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import com.elias.mismonedas.scheduling.repository.BudgetScheduleRepository;
 import com.elias.mismonedas.scheduling.repository.TransactionScheduleRepository;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +37,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -101,6 +108,14 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 .stream()
                 .map(userMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UserResponse> list(String search, Pageable pageable) {
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<User> page = userRepository.findAll(UserSpecifications.list(search), stablePage);
+        return PageResponseFactory.from(page, userMapper::toResponse);
     }
 
     @Override

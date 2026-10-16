@@ -1,6 +1,8 @@
 package com.elias.mismonedas.accounts.repository;
 
 import com.elias.mismonedas.accounts.domain.entity.Wallet;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,6 +13,8 @@ import java.util.Optional;
 public interface WalletRepository extends JpaRepository<Wallet, Long> {
 
     List<Wallet> findByUserId(Long userId);
+
+    Page<Wallet> findByUserId(Long userId, Pageable pageable);
 
     Optional<Wallet> findByIdAndUser_Id(Long id, Long userId);
 

@@ -5,10 +5,18 @@ import com.elias.mismonedas.catalog.dto.category.CategoryRequest;
 import com.elias.mismonedas.catalog.dto.category.CategoryResponse;
 import com.elias.mismonedas.catalog.mapper.CategoryMapper;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
+import com.elias.mismonedas.catalog.repository.CategorySpecifications;
 import com.elias.mismonedas.catalog.service.CategoryService;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.ledger.domain.enums.TransactionType;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +61,16 @@ public class CategoryServiceImpl implements CategoryService {
                 .stream()
                 .map(categoryMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<CategoryResponse> list(Boolean active, TransactionType type, String search, Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.ASC, "name"));
+        Page<Category> page = categoryRepository.findAll(
+                CategorySpecifications.list(userId, active, type, search), stablePage);
+        return PageResponseFactory.from(page, categoryMapper::toResponse);
     }
 
     @Transactional(readOnly = true)

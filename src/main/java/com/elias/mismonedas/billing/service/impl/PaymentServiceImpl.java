@@ -13,11 +13,16 @@ import com.elias.mismonedas.billing.mapper.PaymentMapper;
 import com.elias.mismonedas.billing.port.PaymentPort;
 import com.elias.mismonedas.billing.port.PaymentWebhookPublisher;
 import com.elias.mismonedas.billing.repository.PaymentRepository;
+import com.elias.mismonedas.billing.repository.PaymentSpecifications;
 import com.elias.mismonedas.billing.repository.WebhookEventRepository;
 import com.elias.mismonedas.billing.service.PaymentService;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.shared.exception.PaymentNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +30,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,6 +89,26 @@ public class PaymentServiceImpl implements PaymentService {
         return paymentRepository.findAllByUser_Id(userId).stream()
                 .map(paymentMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentResponse> list(
+            PaymentState state,
+            Long subscriptionId,
+            java.time.LocalDate from,
+            java.time.LocalDate to,
+            Pageable pageable) {
+        var dateRange = DateRange.optional(from, to);
+        User user = securityService.getCurrentUser();
+        Long userId = user.getId();
+        var zoneId = user.getTimeZone().toZoneId();
+        OffsetDateTime start = dateRange.map(range -> range.startInclusive(zoneId)).orElse(null);
+        OffsetDateTime end = dateRange.map(range -> range.endExclusive(zoneId)).orElse(null);
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Payment> page = paymentRepository.findAll(
+                PaymentSpecifications.list(userId, state, subscriptionId, start, end), stablePage);
+        return PageResponseFactory.from(page, paymentMapper::toResponse);
     }
 
     @Override

@@ -9,6 +9,9 @@ import java.io.IOException;
 
 public interface AnalyticsService {
     @Transactional(readOnly = true)
+    DashboardResponse buildDashboard(PeriodRequest periodRequest) throws HttpException, IOException;
+
+    @Transactional(readOnly = true)
     DashboardResponse buildDashboard(PeriodRequest periodRequest, Long userId) throws HttpException, IOException;
 
     String buildContextSummary(DashboardResponse dr);

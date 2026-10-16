@@ -5,27 +5,35 @@ import com.elias.mismonedas.identity.dto.auth.LoginResponse;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
 import com.elias.mismonedas.identity.dto.user.UserResponse;
 import com.elias.mismonedas.identity.service.UserService;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "Listar todos los usuarios", operationId = "findAllUser", tags = {"Users"})
+    @Operation(summary = "Listar usuarios", description = "Lista paginada con búsqueda opcional por nombre, apellido, email o username.", operationId = "listUsers", tags = {"Users"})
     @GetMapping
-    public ResponseEntity<List<UserResponse>> findAll() {
-        return ResponseEntity.ok(userService.findAll());
+    public ResponseEntity<PageResponse<UserResponse>> listUsers(
+            @RequestParam(required = false) String search,
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(userService.list(search, pageable));
     }
 
     @Operation(summary = "Obtener el usuario autenticado", operationId = "findCurrentUser", tags = {"Users"})
@@ -42,10 +50,11 @@ public class UserController {
     }
 
     @Operation(summary = "Registrar un nuevo usuario", operationId = "registerUser", tags = {"Users"})
+    @PreAuthorize("hasRole('SYSTEM')")
     @PostMapping("/register")
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody UserRequest request) {
         LoginResponse saved = userService.register(request);
-        return ResponseEntity.created(URI.create("/users/" + saved.getUser().getId())).body(saved);
+        return ResponseEntity.created(URI.create("/api/v1/users/" + saved.getUser().getId())).body(saved);
     }
 
     @Operation(summary = "Actualizar datos de usuario", operationId = "updateUser", tags = {"Users"})
@@ -74,12 +83,6 @@ public class UserController {
     @PostMapping("/{id}/block")
     public ResponseEntity<UserResponse> block(@PathVariable Long id) {
         return ResponseEntity.ok(userService.block(id));
-    }
-
-    @Operation(summary = "Buscar usuarios por nombre", operationId = "searchUserByName", tags = {"Users"})
-    @GetMapping("/search")
-    public ResponseEntity<List<UserResponse>> searchByName(@RequestParam("string") String q) {
-        return ResponseEntity.ok(userService.searchByName(q));
     }
 
     @Operation(summary = "Listar zonas horarias disponibles", operationId = "listTimeZones", tags = {"Users"})

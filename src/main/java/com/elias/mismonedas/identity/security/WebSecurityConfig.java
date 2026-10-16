@@ -51,28 +51,36 @@ public class WebSecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/auth/login",
-                                "/auth/google",
-                                "/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/google",
+                                "/api/v1/auth/register",
                                 "/v3/api-docs.yaml",
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        .requestMatchers("/users/{id}/delete").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/users/{id}/disable").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/users/{id}/reset-data").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/users/search").hasAnyRole("SYSTEM")
-                        .requestMatchers("/users").hasAnyRole("SYSTEM")
-                        .requestMatchers("/transactions/**").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/reasons/**").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/budgets/**").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/reports/**").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/notifications/**").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/users/{userId}/preferences/**").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/users/{userId}/fcm-tokens/**").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/users/{userId}/chat/**").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/analytics/**").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/receipts/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/users/{id}/delete").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/users/{id}/disable").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/users/{id}/reset-data").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/users/search").hasAnyRole("SYSTEM")
+                        .requestMatchers("/api/v1/users").hasAnyRole("SYSTEM")
+                        .requestMatchers("/api/v1/transactions/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/reasons/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/budgets/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/savings/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/schedule/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/wallets/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/categories/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/payments/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/subscriptions/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/reports/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/notifications/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/users/{userId}/preferences/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/fcm-tokens/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/chat/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/analytics/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/receipts/**").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/images/**").hasAnyRole("USER", "SYSTEM")
+
 
                         .anyRequest().authenticated()
                 )

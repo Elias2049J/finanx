@@ -8,6 +8,7 @@ import com.elias.mismonedas.identity.dto.user.UserPreferencesResponse;
 import com.elias.mismonedas.identity.mapper.UserPreferencesMapper;
 import com.elias.mismonedas.identity.repository.UserPreferencesRepository;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.identity.service.UserPreferencesService;
 import com.elias.mismonedas.shared.exception.CurrencyChangeRateLimitException;
 import com.elias.mismonedas.shared.exception.UserPreferencesNotFoundException;
@@ -26,10 +27,12 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
     private final UserPreferencesRepository repository;
     private final UserPreferencesMapper mapper;
     private final UserRepository userRepository;
+    private final SecurityService securityService;
 
     @Override
     @Transactional(readOnly = true)
-    public UserPreferencesResponse findByUserId(Long userId) {
+    public UserPreferencesResponse findByUserId() {
+        Long userId = securityService.getCurrentUser().getId();
         UserPreferences prefs = repository.findByUser_Id(userId)
                 .orElseThrow(() -> new UserPreferencesNotFoundException(userId));
         return mapper.toResponse(prefs);
@@ -48,13 +51,17 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
                     defaults.setTimeZone(TimeZone.AMERICA_LIMA);
                     defaults.setCurrencyCode("PEN");
                     defaults.setEmailNotifications(true);
-                    return create(userId, defaults);
+                    return createFor(userId, defaults);
                 });
     }
 
     @Override
     @Transactional
-    public UserPreferencesResponse create(Long userId, UserPreferencesRequest request) {
+    public UserPreferencesResponse create(UserPreferencesRequest request) {
+        return createFor(securityService.getCurrentUser().getId(), request);
+    }
+
+    private UserPreferencesResponse createFor(Long userId, UserPreferencesRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
@@ -74,7 +81,8 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
 
     @Override
     @Transactional
-    public UserPreferencesResponse update(Long userId, UserPreferencesRequest request) {
+    public UserPreferencesResponse update(UserPreferencesRequest request) {
+        Long userId = securityService.getCurrentUser().getId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 

@@ -2,7 +2,6 @@ package com.elias.mismonedas.document.controller;
 
 import com.elias.mismonedas.document.dto.ReceiptResponse;
 import com.elias.mismonedas.document.service.ReceiptScanService;
-import com.elias.mismonedas.identity.security.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,13 +17,12 @@ import java.io.IOException;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/receipts")
+@RequestMapping("/api/v1/receipts")
 @RequiredArgsConstructor
 @Tag(name = "Receipts", description = "Escaneo OCR de recibos")
 public class ReceiptController {
 
     private final ReceiptScanService receiptScanService;
-    private final SecurityService securityService;
 
     @Operation(
             summary = "Encolar escaneo OCR de recibo",
@@ -43,7 +41,6 @@ public class ReceiptController {
             @Parameter(description = "Imagen del recibo (max 5MB)") @RequestParam("image") MultipartFile image)
             throws IOException {
 
-        Long userId = securityService.getCurrentUser().getId();
         if (image.isEmpty()) {
             throw new IllegalArgumentException("La imagen no puede estar vacía");
         }
@@ -52,10 +49,10 @@ public class ReceiptController {
         }
 
         ReceiptResponse result = receiptScanService.startScan(
-                userId, image.getBytes(), image.getOriginalFilename(), image.getContentType());
+                image.getBytes(), image.getOriginalFilename(), image.getContentType());
 
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/receipts/{id}")
+                .path("/api/v1/receipts/{id}")
                 .buildAndExpand(result.getReceiptId())
                 .toUri();
 
@@ -71,8 +68,7 @@ public class ReceiptController {
     @PostMapping("/{receiptId}/improve")
     public ResponseEntity<ReceiptResponse> improve(
             @Parameter(description = "ID del recibo") @PathVariable Long receiptId) {
-        Long userId = securityService.getCurrentUser().getId();
-        return ResponseEntity.ok(receiptScanService.improveWithAi(receiptId, userId));
+        return ResponseEntity.ok(receiptScanService.improveWithAi(receiptId));
     }
 
     @Operation(
@@ -84,7 +80,6 @@ public class ReceiptController {
     @GetMapping("/{receiptId}")
     public ResponseEntity<ReceiptResponse> getScanResult(
             @PathVariable Long receiptId) {
-        Long userId = securityService.getCurrentUser().getId();
-        return ResponseEntity.ok(receiptScanService.getScanResult(userId, receiptId));
+        return ResponseEntity.ok(receiptScanService.getScanResult(receiptId));
     }
 }

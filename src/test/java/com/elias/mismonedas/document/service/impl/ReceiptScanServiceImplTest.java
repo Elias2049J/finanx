@@ -11,10 +11,11 @@ import com.elias.mismonedas.document.outbox.ReceiptScanOutboxState;
 import com.elias.mismonedas.document.outbox.persistence.ReceiptScanOutboxRepository;
 import com.elias.mismonedas.document.port.ReceiptData;
 import com.elias.mismonedas.document.port.ReceiptParserPort;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.document.service.ImageService;
 import com.elias.mismonedas.identity.domain.entity.User;
-import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.shared.exception.OcrProcessingException;
@@ -42,7 +43,7 @@ class ReceiptScanServiceImplTest {
     @Mock private ReceiptParserPort geminiParser;
     @Mock private ReceiptRepository receiptRepository;
     @Mock private ImageService imageService;
-    @Mock private UserRepository userRepository;
+    @Mock private SecurityService securityService;
     @Mock private CategoryRepository categoryRepository;
     @Mock private ReceiptScanOutboxRepository outboxRepository;
 
@@ -52,7 +53,7 @@ class ReceiptScanServiceImplTest {
     void setUp() {
         service = new ReceiptScanServiceImpl(
                 regexParser, geminiParser, receiptRepository, imageService,
-                userRepository, categoryRepository, outboxRepository);
+                securityService, categoryRepository, outboxRepository);
     }
 
     @Nested
@@ -62,7 +63,7 @@ class ReceiptScanServiceImplTest {
         void shouldPersistPendingReceiptAndEnqueueOutbox() {
             byte[] image = "fake-image-bytes".getBytes();
             User user = createTestUser();
-            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(securityService.getCurrentUser()).thenReturn(user);
 
             Image savedImage = Image.builder()
                     .id(10L).user(user).filename("recibo.jpg").mediaType("image/jpeg")
@@ -76,7 +77,7 @@ class ReceiptScanServiceImplTest {
                 return receipt;
             });
 
-            ReceiptResponse result = service.startScan(1L, image, "recibo.jpg", "image/jpeg");
+            ReceiptResponse result = service.startScan(image, "recibo.jpg", "image/jpeg");
 
             assertThat(result.getReceiptId()).isEqualTo(1L);
             assertThat(result.getStatus()).isEqualTo(ReceiptScanStatus.PENDING);
@@ -92,12 +93,12 @@ class ReceiptScanServiceImplTest {
         }
 
         @Test
-        void shouldThrowWhenUserNotFound() {
-            when(userRepository.findById(99L)).thenReturn(Optional.empty());
+        void shouldThrowWhenNoAuthenticatedUser() {
+            when(securityService.getCurrentUser())
+                    .thenThrow(new AuthenticationCredentialsNotFoundException("No authenticated user"));
 
-            assertThatThrownBy(() -> service.startScan(99L, "test".getBytes(), "test.jpg", "image/jpeg"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Usuario no encontrado");
+            assertThatThrownBy(() -> service.startScan("test".getBytes(), "test.jpg", "image/jpeg"))
+                    .isInstanceOf(AuthenticationCredentialsNotFoundException.class);
 
             verify(imageService, never()).save(any(), any(), any(), any());
             verify(outboxRepository, never()).save(any());
@@ -229,12 +230,13 @@ class ReceiptScanServiceImplTest {
 
         @Test
         void shouldReturnSavedResultWithStatus() {
+            when(securityService.getCurrentUser()).thenReturn(createTestUser());
             Receipt receipt = pendingReceipt(1L);
             receipt.setStatus(ReceiptScanStatus.DONE);
             receipt.setDetectedAmount(new BigDecimal("45.00"));
             when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
 
-            ReceiptResponse result = service.getScanResult(1L, 1L);
+            ReceiptResponse result = service.getScanResult(1L);
 
             assertThat(result.getReceiptId()).isEqualTo(1L);
             assertThat(result.getStatus()).isEqualTo(ReceiptScanStatus.DONE);
@@ -243,9 +245,10 @@ class ReceiptScanServiceImplTest {
 
         @Test
         void shouldThrowWhenNotFound() {
+            when(securityService.getCurrentUser()).thenReturn(createTestUser());
             when(receiptRepository.findByIdAndUser_Id(99L, 1L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getScanResult(1L, 99L))
+            assertThatThrownBy(() -> service.getScanResult(99L))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -255,6 +258,7 @@ class ReceiptScanServiceImplTest {
 
         @Test
         void shouldImproveWhenGeminiConfidenceIsHigher() {
+            when(securityService.getCurrentUser()).thenReturn(createTestUser());
             Receipt receipt = pendingReceipt(1L);
             receipt.setStatus(ReceiptScanStatus.DONE);
             receipt.setRawOcrText("TOTAL S/. 45.00");
@@ -265,7 +269,7 @@ class ReceiptScanServiceImplTest {
                     "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
             when(receiptRepository.save(any(Receipt.class))).thenAnswer(i -> i.getArgument(0));
 
-            ReceiptResponse result = service.improveWithAi(1L, 1L);
+            ReceiptResponse result = service.improveWithAi(1L);
 
             assertThat(result.getDescription()).isEqualTo("Supermercado ABC");
             assertThat(result.getParserEngineUsed()).isEqualTo("GEMINI");
@@ -274,10 +278,11 @@ class ReceiptScanServiceImplTest {
 
         @Test
         void shouldThrowWhenReceiptHasNoOcrText() {
+            when(securityService.getCurrentUser()).thenReturn(createTestUser());
             Receipt receipt = pendingReceipt(1L);
             when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
 
-            assertThatThrownBy(() -> service.improveWithAi(1L, 1L))
+            assertThatThrownBy(() -> service.improveWithAi(1L))
                     .isInstanceOf(OcrProcessingException.class);
         }
     }

@@ -5,7 +5,6 @@ import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
-import com.elias.mismonedas.insights.dto.analytics.component.TimeBoundList;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
@@ -18,20 +17,26 @@ import com.elias.mismonedas.planning.dto.budget.BudgetRequest;
 import com.elias.mismonedas.planning.dto.budget.BudgetResponse;
 import com.elias.mismonedas.planning.mapper.BudgetMapper;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
+import com.elias.mismonedas.planning.repository.BudgetSpecifications;
 import com.elias.mismonedas.planning.service.BudgetService;
 import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
 import com.elias.mismonedas.scheduling.service.RecurrenceCalculatorService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.shared.domain.vo.Money;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
-import com.elias.mismonedas.shared.mapper.DateMapper;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -53,7 +58,6 @@ public class BudgetServiceImpl implements BudgetService {
     private final TransactionRepository transactionRepository;
     private final RecurrenceCalculatorService rcService;
     private final ApplicationEventPublisher eventPublisher;
-    private final DateMapper dateMapper;
     private final CurrencyConverter currencyConverter;
     private final SecurityService securityService;
 
@@ -106,6 +110,29 @@ public class BudgetServiceImpl implements BudgetService {
                 .stream()
                 .map(budgetMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BudgetResponse> list(
+            Boolean active,
+            BudgetState state,
+            BudgetHealth health,
+            java.time.LocalDate from,
+            java.time.LocalDate to,
+            Pageable pageable) {
+        var user = securityService.getCurrentUser();
+        Long userId = user.getId();
+        var dateRange = DateRange.optional(from, to);
+        ZoneId zoneId = dateRange.isPresent() ? user.getTimeZone().toZoneId() : null;
+        OffsetDateTime start = dateRange.map(range -> range.startInclusive(zoneId)).orElse(null);
+        OffsetDateTime end = dateRange.map(range -> range.endExclusive(zoneId)).orElse(null);
+        Pageable stablePage = PaginationDefaults.stablePage(
+                pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Budget> page = budgetRepository.findAll(
+                BudgetSpecifications.list(userId, active, state, health, start, end),
+                stablePage);
+        return PageResponseFactory.from(page, budgetMapper::toResponse);
     }
 
     @Override
@@ -241,26 +268,6 @@ public class BudgetServiceImpl implements BudgetService {
         budgetRepository.saveAll(budgets);
     }
 
-
-    @Transactional(readOnly = true)
-    @Override
-    public TimeBoundList<BudgetResponse> getBudgetsByHealth(PeriodRequest request, BudgetHealth health) {
-        User u = securityService.getCurrentUser();
-        ZoneId zoneId = u.getTimeZone().toZoneId();
-        List<BudgetResponse> budgets = budgetRepository.findAllByUser_IdAndActiveAndCreatedAtBetweenAndStateAndHealth(
-                u.getId(),
-                true,
-                request.getStart().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
-                request.getEnd().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
-                BudgetState.ACTIVE,
-                health
-        ).stream().map(budgetMapper::toResponse).toList();
-
-        TimeBoundList<BudgetResponse> tb = new TimeBoundList<>();
-        tb.setItems(budgets);
-        tb.setPeriodResponse(dateMapper.toResponse(request));
-        return tb;
-    }
 
     private Budget getOwned(Long id) {
         Long userId = securityService.getCurrentUser().getId();

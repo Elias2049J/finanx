@@ -10,6 +10,7 @@ import com.elias.mismonedas.document.domain.entity.Receipt;
 import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.identity.service.UserDataContextService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
@@ -17,6 +18,7 @@ import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
+import com.elias.mismonedas.ledger.repository.TransactionSpecifications;
 import com.elias.mismonedas.ledger.service.TransactionService;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
@@ -24,11 +26,18 @@ import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import com.elias.mismonedas.planning.service.BudgetService;
 import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.shared.domain.vo.Money;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
@@ -54,6 +63,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final SavingGoalRepository sgRepository;
     private final UserDataContextService userDataContextService;
     private final CurrencyConverter currencyConverter;
+    private final SecurityService securityService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -225,14 +235,38 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public List<TransactionResponse> findAllByUserAndIssueDateBetween(Long userId, LocalDate from, LocalDate to) {
         User user = userRepository.findById(userId).orElseThrow();
-        return transactionRepository.findAllByWallet_User_IdAndCreatedAtBetweenAndActive(
-                userId,
-                from.atStartOfDay(user.getTimeZone().toZoneId()).toOffsetDateTime(),
-                to.atStartOfDay(user.getTimeZone().toZoneId()).toOffsetDateTime(),
-                        true)
+        DateRange range = new DateRange(from, to);
+        return transactionRepository.findAll(TransactionSpecifications.list(
+                        userId, true, null, null, null,
+                        range.startInclusive(user.getTimeZone().toZoneId()),
+                        range.endExclusive(user.getTimeZone().toZoneId())))
                 .stream()
                 .map(transactionMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<TransactionResponse> list(
+            Boolean active,
+            TransactionType type,
+            Long walletId,
+            Long categoryId,
+            LocalDate from,
+            LocalDate to,
+            Pageable pageable) {
+        User user = securityService.getCurrentUser();
+        Long userId = user.getId();
+        var dateRange = DateRange.optional(from, to);
+        ZoneId zoneId = dateRange.isPresent() ? user.getTimeZone().toZoneId() : null;
+        OffsetDateTime start = dateRange.map(range -> range.startInclusive(zoneId)).orElse(null);
+        OffsetDateTime end = dateRange.map(range -> range.endExclusive(zoneId)).orElse(null);
+        Pageable stablePage = PaginationDefaults.stablePage(
+                pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Transaction> page = transactionRepository.findAll(
+                TransactionSpecifications.list(userId, active, type, walletId, categoryId, start, end),
+                stablePage);
+        return PageResponseFactory.from(page, transactionMapper::toResponse);
     }
 
     @Override
@@ -266,12 +300,11 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public List<TransactionResponse> findAllActiveByCategoryAndDateBetween(Long userId, Long categoryId, LocalDate from, LocalDate to) {
         User user = userRepository.findById(userId).orElseThrow();
-        return transactionRepository.findAllByCategory_IdAndCreatedAtBetweenAndActive(
-                categoryId,
-                        from.atStartOfDay(user.getTimeZone().toZoneId()).toOffsetDateTime(),
-                        to.atStartOfDay(user.getTimeZone().toZoneId()).toOffsetDateTime(),
-                        true
-                )
+        DateRange range = new DateRange(from, to);
+        return transactionRepository.findAll(TransactionSpecifications.list(
+                        userId, true, null, null, categoryId,
+                        range.startInclusive(user.getTimeZone().toZoneId()),
+                        range.endExclusive(user.getTimeZone().toZoneId())))
                 .stream()
                 .map(transactionMapper::toResponse)
                 .toList();

@@ -5,14 +5,10 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
-import com.elias.mismonedas.billing.plan.PlanRequiredException;
-import com.elias.mismonedas.billing.plan.PlanSubject;
-import com.elias.mismonedas.billing.plan.RequiresPlan;
-import com.elias.mismonedas.billing.plan.RequiresPlanAspect;
 import com.elias.mismonedas.billing.service.SubscriptionService;
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.security.SecurityService;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.reflect.MethodSignature;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -37,6 +33,9 @@ class RequiresPlanAspectTest {
     private SubscriptionService subscriptionService;
 
     @Mock
+    private SecurityService securityService;
+
+    @Mock
     private ProceedingJoinPoint pjp;
 
     @InjectMocks
@@ -55,22 +54,20 @@ class RequiresPlanAspectTest {
 
     @AfterEach
     void tearDown() {
-        aspectLogger.detachAndStopAllAppenders();
+        listAppender.stop();
+        aspectLogger.detachAppender(listAppender);
     }
 
     @Nested
-    class CheckPlanTest {
+    class PlanResolutionTest {
 
         @Test
-        void shouldProceedWhenPlanIsAllowed() throws Throwable {
-            Method method = TestService.class.getMethod("premiumOnly", Long.class);
-            MethodSignature signature = mockSignature(method);
-            when(pjp.getSignature()).thenReturn(signature);
-            when(pjp.getArgs()).thenReturn(new Object[]{1L});
-            when(pjp.proceed()).thenReturn("ok");
+        void shouldAllowWhenCurrentUserPlanMatches() throws Throwable {
+            givenCurrentUser(1L);
             when(subscriptionService.getActivePlanFor(1L)).thenReturn(SubscriptionPlan.PREMIUM);
+            when(pjp.proceed()).thenReturn("ok");
 
-            Object result = aspect.checkPlan(pjp, method.getAnnotation(RequiresPlan.class));
+            Object result = aspect.checkPlan(pjp, requiresPlan("premiumOnly"));
 
             assertThat(result).isEqualTo("ok");
             verify(subscriptionService).getActivePlanFor(1L);
@@ -79,99 +76,63 @@ class RequiresPlanAspectTest {
         }
 
         @Test
-        void shouldThrowWhenPlanIsNotAllowed() throws Throwable {
-            Method method = TestService.class.getMethod("premiumOnly", Long.class);
-            MethodSignature signature = mockSignature(method);
-            when(pjp.getSignature()).thenReturn(signature);
-            when(pjp.getArgs()).thenReturn(new Object[]{2L});
+        void shouldDenyWhenCurrentUserPlanDoesNotMatch() throws Throwable {
+            givenCurrentUser(2L);
             when(subscriptionService.getActivePlanFor(2L)).thenReturn(SubscriptionPlan.FREE);
 
-            assertThatThrownBy(() -> aspect.checkPlan(pjp, method.getAnnotation(RequiresPlan.class)))
+            assertThatThrownBy(() -> aspect.checkPlan(pjp, requiresPlan("premiumOnly")))
                     .isInstanceOf(PlanRequiredException.class)
                     .hasMessageContaining("FREE");
 
+            verify(pjp, never()).proceed();
             assertLogged(Level.WARN, "Acceso denegado para usuario 2");
         }
 
         @Test
         void shouldLogVerificationInfo() throws Throwable {
-            Method method = TestService.class.getMethod("premiumOrTrial", Long.class);
-            MethodSignature signature = mockSignature(method);
-            when(pjp.getSignature()).thenReturn(signature);
-            when(pjp.getArgs()).thenReturn(new Object[]{3L});
-            when(pjp.proceed()).thenReturn("ok");
+            givenCurrentUser(3L);
             when(subscriptionService.getActivePlanFor(3L)).thenReturn(SubscriptionPlan.PREMIUM_TRIAL);
+            when(pjp.proceed()).thenReturn("ok");
 
-            aspect.checkPlan(pjp, method.getAnnotation(RequiresPlan.class));
+            aspect.checkPlan(pjp, requiresPlan("premiumOrTrial"));
 
             assertLogged(Level.INFO, "Verificando plan para usuario 3");
         }
 
-    }
-
-    @Nested
-    class SubjectResolutionTest {
-
         @Test
-        void shouldResolveUserIdFromLongParam() throws Throwable {
-            Method method = TestService.class.getMethod("premiumOnly", Long.class);
-            MethodSignature signature = mockSignature(method);
-            when(pjp.getSignature()).thenReturn(signature);
-            when(pjp.getArgs()).thenReturn(new Object[]{42L});
-            when(subscriptionService.getActivePlanFor(42L)).thenReturn(SubscriptionPlan.PREMIUM);
+        void shouldAllowAnyPlanListedInTheAnnotation() throws Throwable {
+            givenCurrentUser(42L);
+            when(subscriptionService.getActivePlanFor(42L)).thenReturn(SubscriptionPlan.PREMIUM_TRIAL);
             when(pjp.proceed()).thenReturn("ok");
 
-            aspect.checkPlan(pjp, method.getAnnotation(RequiresPlan.class));
+            aspect.checkPlan(pjp, requiresPlan("premiumOrTrial"));
 
             verify(subscriptionService).getActivePlanFor(42L);
+            verify(pjp).proceed();
         }
 
         @Test
-        void shouldResolveUserIdFromUserParam() throws Throwable {
-            User user = new User();
-            user.setId(99L);
-            Method method = TestService.class.getMethod("withUserSubject", User.class);
-            MethodSignature signature = mockSignature(method);
-            when(pjp.getSignature()).thenReturn(signature);
-            when(pjp.getArgs()).thenReturn(new Object[]{user});
+        void shouldResolveSubjectFromSecurityContextRegardlessOfMethodParams() throws Throwable {
+            givenCurrentUser(99L);
             when(subscriptionService.getActivePlanFor(99L)).thenReturn(SubscriptionPlan.PREMIUM);
             when(pjp.proceed()).thenReturn("ok");
 
-            aspect.checkPlan(pjp, method.getAnnotation(RequiresPlan.class));
+            aspect.checkPlan(pjp, requiresPlan("withoutParams"));
 
             verify(subscriptionService).getActivePlanFor(99L);
+            verify(securityService).getCurrentUser();
         }
-
-        @Test
-        void shouldThrowWhenNoPlanSubjectParam() throws Exception {
-            Method method = TestService.class.getMethod("withoutSubject");
-            MethodSignature signature = mockSignature(method);
-            when(pjp.getSignature()).thenReturn(signature);
-            when(pjp.getArgs()).thenReturn(new Object[]{});
-
-            assertThatThrownBy(() -> aspect.checkPlan(pjp, method.getAnnotation(RequiresPlan.class)))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("ningun parametro @PlanSubject");
-        }
-
-        @Test
-        void shouldThrowWhenBadSubjectType() throws Exception {
-            Method method = TestService.class.getMethod("withBadSubject", String.class);
-            MethodSignature signature = mockSignature(method);
-            when(pjp.getSignature()).thenReturn(signature);
-            when(pjp.getArgs()).thenReturn(new Object[]{"bad"});
-
-            assertThatThrownBy(() -> aspect.checkPlan(pjp, method.getAnnotation(RequiresPlan.class)))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("debe ser de tipo User o Long");
-        }
-
     }
 
-    private static MethodSignature mockSignature(Method method) {
-        MethodSignature signature = mock(MethodSignature.class);
-        when(signature.getMethod()).thenReturn(method);
-        return signature;
+    private void givenCurrentUser(Long id) {
+        User user = new User();
+        user.setId(id);
+        when(securityService.getCurrentUser()).thenReturn(user);
+    }
+
+    private RequiresPlan requiresPlan(String methodName) throws NoSuchMethodException {
+        Method method = TestService.class.getMethod(methodName);
+        return method.getAnnotation(RequiresPlan.class);
     }
 
     private void assertLogged(Level level, String message) {
@@ -184,19 +145,13 @@ class RequiresPlanAspectTest {
     private static class TestService {
 
         @RequiresPlan(SubscriptionPlan.PREMIUM)
-        public void premiumOnly(@PlanSubject Long userId) {}
+        public void premiumOnly() {}
 
         @RequiresPlan({SubscriptionPlan.PREMIUM, SubscriptionPlan.PREMIUM_TRIAL})
-        public void premiumOrTrial(@PlanSubject Long userId) {}
+        public void premiumOrTrial() {}
 
         @RequiresPlan(SubscriptionPlan.PREMIUM)
-        public void withUserSubject(@PlanSubject User user) {}
-
-        @RequiresPlan(SubscriptionPlan.PREMIUM)
-        public void withoutSubject() {}
-
-        @RequiresPlan(SubscriptionPlan.PREMIUM)
-        public void withBadSubject(@PlanSubject String name) {}
+        public void withoutParams() {}
 
     }
 

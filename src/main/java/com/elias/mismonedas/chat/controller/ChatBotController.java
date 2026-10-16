@@ -2,9 +2,10 @@ package com.elias.mismonedas.chat.controller;
 
 import com.elias.mismonedas.chat.dto.ai.ChatMessageResponse;
 import com.elias.mismonedas.chat.dto.ai.ChatSessionResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.chat.dto.ai.SendMessageRequest;
 import com.elias.mismonedas.chat.service.ChatBotService;
-import com.elias.mismonedas.identity.security.SecurityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -12,19 +13,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/users/me/chat")
+@RequestMapping("/api/v1/chat")
 @RequiredArgsConstructor
 @Tag(name = "ChatBot", description = "Chatbot financiero conversacional de Mis Monedas")
 public class ChatBotController {
 
     private final ChatBotService chatBotService;
-    private final SecurityService securityService;
 
     @Operation(
             summary = "Iniciar sesion de chat",
@@ -36,7 +38,7 @@ public class ChatBotController {
     })
     @PostMapping("/sessions")
     public ResponseEntity<ChatSessionResponse> startSession() {
-        return ResponseEntity.ok(chatBotService.startSession(securityService.getCurrentUser().getId()));
+        return ResponseEntity.ok(chatBotService.startSession());
     }
 
     @Operation(
@@ -51,7 +53,7 @@ public class ChatBotController {
     public ResponseEntity<ChatSessionResponse> closeSession(
             @Parameter(description = "ID de la sesion", example = "1", required = true)
             @PathVariable Long sessionId) {
-        return ResponseEntity.ok(chatBotService.closeSession(sessionId, securityService.getCurrentUser().getId()));
+        return ResponseEntity.ok(chatBotService.closeSession(sessionId));
     }
 
     @Operation(
@@ -66,7 +68,7 @@ public class ChatBotController {
     public ResponseEntity<ChatSessionResponse> findSessionById(
             @Parameter(description = "ID de la sesion", example = "1", required = true)
             @PathVariable Long sessionId) {
-        return ResponseEntity.ok(chatBotService.findSessionById(sessionId, securityService.getCurrentUser().getId()));
+        return ResponseEntity.ok(chatBotService.findSessionById(sessionId));
     }
 
     @Operation(
@@ -86,15 +88,18 @@ public class ChatBotController {
 
     @Operation(
             summary = "Listar sesiones del usuario",
-            description = "Retorna todas las sesiones de chat del usuario."
+            description = "Retorna sesiones de chat paginadas; admite page, size y sort estándar.",
+            operationId = "listChatSessions"
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lista obtenida exitosamente"),
             @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
     })
     @GetMapping("/sessions")
-    public ResponseEntity<List<ChatSessionResponse>> findAllSessionsByUser() {
-        return ResponseEntity.ok(chatBotService.findAllSessionsByUser(securityService.getCurrentUser().getId()));
+    public ResponseEntity<PageResponse<ChatSessionResponse>> listChatSessions(
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(chatBotService.listSessionsByUser(pageable));
     }
 
     @Operation(
@@ -118,6 +123,6 @@ public class ChatBotController {
             @PathVariable Long sessionId,
             @Valid @RequestBody SendMessageRequest request) {
         return ResponseEntity.ok(chatBotService.sendMessage(
-                sessionId, securityService.getCurrentUser().getId(), request.getMessage()));
+                sessionId, request.getMessage()));
     }
 }

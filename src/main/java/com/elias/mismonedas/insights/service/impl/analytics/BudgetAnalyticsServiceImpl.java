@@ -14,13 +14,21 @@ import com.elias.mismonedas.planning.domain.enums.BudgetState;
 import com.elias.mismonedas.planning.dto.budget.BudgetExecutionResponse;
 import com.elias.mismonedas.planning.mapper.BudgetMapper;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
+import com.elias.mismonedas.planning.repository.BudgetSpecifications;
 import com.elias.mismonedas.shared.domain.vo.Money;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.dto.date.PeriodRequest;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -36,7 +44,6 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
     protected final TransactionRepository tRepository;
     protected final BudgetMapper budgetMapper;
     protected final CurrencyConverter currencyConverter;
-    protected final SecurityService securityService;
 
     public BudgetAnalyticsServiceImpl(DateMapper dateMapper,
                                       UserRepository userRepository,
@@ -46,23 +53,24 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
                                       CurrencyConverter currencyConverter,
                                       SecurityService securityService
     ) {
-        super(dateMapper, userRepository);
+        super(dateMapper, userRepository, securityService);
         this.bRepository = bRepository;
         this.tRepository = tRepository;
         this.budgetMapper = budgetMapper;
         this.currencyConverter = currencyConverter;
-        this.securityService = securityService;
     }
 
     private List<Budget> findBudgets(PeriodRequest request, Long userId) {
         ZoneId zoneId = this.getUser(userId).getTimeZone().toZoneId();
-        return bRepository.findAllByUser_IdAndActiveAndCreatedAtBetweenAndState(
+        DateRange range = new DateRange(request.getStart(), request.getEnd());
+        return bRepository.findAll(BudgetSpecifications.list(
                 userId,
                 true,
-                request.getStart().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
-                request.getEnd().atStartOfDay().atZone(zoneId).toOffsetDateTime(),
-                BudgetState.ACTIVE
-        );
+                BudgetState.ACTIVE,
+                null,
+                range.startInclusive(zoneId),
+                range.endExclusive(zoneId)
+        ));
     }
 
 
@@ -171,7 +179,21 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
 
     @Transactional(readOnly = true)
     @Override
-    public List<BudgetExecutionResponse> getBudgetsExecutions(PeriodRequest request, Long userId) {
-        return this.findBudgets(request, userId).stream().map(this::mapToExecution).toList();
+    public PageResponse<BudgetExecutionResponse> getBudgetsExecutions(
+            java.time.LocalDate from, java.time.LocalDate to, Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        ZoneId zoneId = getUser(userId).getTimeZone().toZoneId();
+        DateRange range = new DateRange(from, to);
+        Pageable stablePage = PaginationDefaults.stablePage(
+                pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Budget> page = bRepository.findAll(BudgetSpecifications.list(
+                        userId,
+                        true,
+                        BudgetState.ACTIVE,
+                        null,
+                        range.startInclusive(zoneId),
+                        range.endExclusive(zoneId)),
+                stablePage);
+        return PageResponseFactory.from(page, this::mapToExecution);
     }
 }

@@ -12,6 +12,7 @@ import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.identity.service.UserDataContextService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
@@ -58,6 +59,7 @@ class TransactionServiceImplTest {
     @Mock private SavingGoalRepository sgRepository;
     @Mock private UserDataContextService userDataContextService;
     @Mock private CurrencyConverter currencyConverter;
+    @Mock private SecurityService securityService;
 
     @Captor private ArgumentCaptor<Receipt> receiptCaptor;
 
@@ -77,7 +79,7 @@ class TransactionServiceImplTest {
         service = new TransactionServiceImpl(
                 transactionRepository, walletRepository, categoryRepository, userRepository,
                 receiptRepository, transactionMapper, reasonResolver, budgetService,
-                savingGoalService, sgRepository, userDataContextService, currencyConverter);
+                savingGoalService, sgRepository, userDataContextService, currencyConverter, securityService);
 
         user = new User();
         user.setId(1L);

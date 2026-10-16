@@ -3,12 +3,13 @@ package com.elias.mismonedas.billing.repository;
 import com.elias.mismonedas.billing.domain.entity.Subscription;
 import com.elias.mismonedas.billing.domain.enums.SubscriptionState;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
+public interface SubscriptionRepository extends JpaRepository<Subscription, Long>, JpaSpecificationExecutor<Subscription> {
 
     List<Subscription> findAllByUser_Id(Long userId);
 

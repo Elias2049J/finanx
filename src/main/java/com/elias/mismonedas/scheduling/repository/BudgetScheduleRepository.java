@@ -3,6 +3,7 @@ package com.elias.mismonedas.scheduling.repository;
 import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,6 +15,10 @@ public interface BudgetScheduleRepository extends JpaRepository<BudgetSchedule, 
     List<BudgetSchedule> findAllByActiveTrueAndState(ScheduleState scheduleState);
 
     List<BudgetSchedule> findAllByUser_IdAndActiveAndState(Long userId, boolean active, ScheduleState scheduleState);
+
+    Page<BudgetSchedule> findAllByUser_IdAndActiveTrue(Long userId, Pageable pageable);
+
+    Page<BudgetSchedule> findAllByUser_IdAndActiveAndState(Long userId, boolean active, ScheduleState state, Pageable pageable);
 
     List<BudgetSchedule> findByActiveTrueAndStateAndIdGreaterThan(ScheduleState scheduleState, Long id, Pageable pageable);
 

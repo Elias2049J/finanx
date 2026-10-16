@@ -1,7 +1,6 @@
 package com.elias.mismonedas.chat.service.impl;
 
 import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
-import com.elias.mismonedas.billing.plan.PlanSubject;
 import com.elias.mismonedas.billing.plan.RequiresPlan;
 import com.elias.mismonedas.chat.domain.entity.ChatMessage;
 import com.elias.mismonedas.chat.domain.entity.ChatSession;
@@ -17,11 +16,13 @@ import com.elias.mismonedas.chat.mapper.ChatSessionMapper;
 import com.elias.mismonedas.chat.port.ChatPort;
 import com.elias.mismonedas.chat.repository.ChatMessageRepository;
 import com.elias.mismonedas.chat.repository.ChatSessionRepository;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.chat.service.ChatBotService;
 import com.elias.mismonedas.chat.util.AiUtils;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.entity.UserDataContext;
-import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.identity.service.UserDataContextService;
 import com.elias.mismonedas.shared.config.AiProperties;
@@ -30,6 +31,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
@@ -54,7 +58,6 @@ public class ChatBotServiceImpl implements ChatBotService {
     private final ChatPort chatPort;
     private final ChatSessionRepository chatSessionRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final UserRepository userRepository;
     private final UserDataContextService userDataContextService;
     private final ChatSessionMapper chatSessionMapper;
     private final ChatMessageMapper chatMessageMapper;
@@ -64,8 +67,9 @@ public class ChatBotServiceImpl implements ChatBotService {
     @Transactional
     @Override
     @RequiresPlan(SubscriptionPlan.PREMIUM)
-    public ChatSessionResponse startSession(@PlanSubject Long userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+    public ChatSessionResponse startSession() {
+        User user = securityService.getCurrentUser();
+        Long userId = user.getId();
         UserDataContext dataContext = userDataContextService.getUserDataContext(userId);
 
         ChatSession session = new ChatSession();
@@ -79,7 +83,8 @@ public class ChatBotServiceImpl implements ChatBotService {
 
     @Transactional
     @Override
-    public ChatSessionResponse closeSession(Long sessionId, Long userId) {
+    public ChatSessionResponse closeSession(Long sessionId) {
+        Long userId = securityService.getCurrentUser().getId();
         ChatSession session = getSessionEntity(sessionId, userId);
         session.closeSession();
         return chatSessionMapper.toResponse(chatSessionRepository.save(session));
@@ -87,7 +92,8 @@ public class ChatBotServiceImpl implements ChatBotService {
 
     @Transactional(readOnly = true)
     @Override
-    public ChatSessionResponse findSessionById(Long sessionId, Long userId) {
+    public ChatSessionResponse findSessionById(Long sessionId) {
+        Long userId = securityService.getCurrentUser().getId();
         return chatSessionMapper.toResponse(getSessionEntity(sessionId, userId));
     }
 
@@ -111,6 +117,15 @@ public class ChatBotServiceImpl implements ChatBotService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ChatSessionResponse> listSessionsByUser(Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<ChatSession> page = chatSessionRepository.findAllByUser_Id(userId, stablePage);
+        return PageResponseFactory.from(page, chatSessionMapper::toResponse);
+    }
+
+    @Override
     public boolean isSessionActive(Long sessionId, Long userId) {
         return getSessionEntity(sessionId, userId).getState() == ChatSessionState.ACTIVE;
     }
@@ -128,9 +143,10 @@ public class ChatBotServiceImpl implements ChatBotService {
     @Transactional
     @Override
     @RequiresPlan(SubscriptionPlan.PREMIUM)
-    public ChatMessageResponse sendMessage(Long sessionId, @PlanSubject Long userId, String rawUserPrompt) {
+    public ChatMessageResponse sendMessage(Long sessionId, String rawUserPrompt) {
+        User user = securityService.getCurrentUser();
+        Long userId = user.getId();
         ChatSession session = getSessionEntity(sessionId, userId);
-        User user = userRepository.findById(userId).orElseThrow();
         ZoneId userZoneId = user.getTimeZone().toZoneId();
 
         if (session.getState() != ChatSessionState.ACTIVE) {

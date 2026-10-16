@@ -7,15 +7,22 @@ import com.elias.mismonedas.billing.dto.subscription.SubscriptionRequest;
 import com.elias.mismonedas.billing.dto.subscription.SubscriptionResponse;
 import com.elias.mismonedas.billing.mapper.SubscriptionMapper;
 import com.elias.mismonedas.billing.repository.SubscriptionRepository;
+import com.elias.mismonedas.billing.repository.SubscriptionSpecifications;
 import com.elias.mismonedas.billing.service.BillingService;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.shared.exception.SubscriptionNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
@@ -75,6 +82,27 @@ public class BillingServiceImpl implements BillingService {
         return subscriptionRepository.findAllByUser_Id(userId).stream()
                 .map(subscriptionMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<SubscriptionResponse> list(SubscriptionState state, Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Subscription> page = subscriptionRepository.findAll(
+                SubscriptionSpecifications.list(userId, state), stablePage);
+        return PageResponseFactory.from(page, subscriptionMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SubscriptionResponse getCurrentSubscription() {
+        Long userId = securityService.getCurrentUser().getId();
+        return subscriptionRepository
+                .findFirstByUser_IdAndStateOrderByCreatedAtDesc(userId, SubscriptionState.ACTIVE)
+                .map(subscriptionMapper::toResponse)
+                .orElseThrow(() -> new SubscriptionNotFoundException(
+                        "No active subscription for current user"));
     }
 
     @Override

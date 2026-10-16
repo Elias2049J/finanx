@@ -2,26 +2,32 @@ package com.elias.mismonedas.billing.controller;
 
 import com.elias.mismonedas.billing.dto.payment.PaymentRequest;
 import com.elias.mismonedas.billing.dto.payment.PaymentResponse;
+import com.elias.mismonedas.billing.domain.enums.PaymentState;
 import com.elias.mismonedas.billing.service.PaymentService;
-import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
+import java.time.LocalDate;
 
 @RestController
-@RequestMapping("/payments")
+@RequestMapping("/api/v1/payments")
 @RequiredArgsConstructor
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final SecurityService securityService;
 
     @Operation(
             summary = "Create payment",
@@ -37,7 +43,7 @@ public class PaymentController {
     public ResponseEntity<PaymentResponse> create(
             @Parameter(description = "Payment data") @Valid @RequestBody PaymentRequest request) {
         PaymentResponse saved = paymentService.create(request);
-        return ResponseEntity.created(URI.create("/payments/" + saved.getId())).body(saved);
+        return ResponseEntity.created(URI.create("/api/v1/payments/" + saved.getId())).body(saved);
     }
 
     @Operation(
@@ -58,32 +64,23 @@ public class PaymentController {
 
     @Operation(
             summary = "List payments by user",
-            description = "Gets all payments made by the authenticated user.",
-            operationId = "findAllPaymentsByUser",
+            description = "Lists payments of the authenticated user with optional state, subscriptionId and from/to filters, plus pagination and sort.",
+            operationId = "listPayments",
             tags = {"Payments"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "List retrieved"),
                     @ApiResponse(responseCode = "404", description = "User not found")
             }
     )
-    @GetMapping("/me")
-    public ResponseEntity<List<PaymentResponse>> findAllByUser() {
-        return ResponseEntity.ok(paymentService.findAllByUser(securityService.getCurrentUser().getId()));
-    }
-
-    @Operation(
-            summary = "List payments by subscription",
-            description = "Gets all payments linked to a subscription.",
-            operationId = "findAllPaymentsBySubscription",
-            tags = {"Payments"},
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "List retrieved")
-            }
-    )
-    @GetMapping("/subscription/{subscriptionId}")
-    public ResponseEntity<List<PaymentResponse>> findAllBySubscription(
-            @Parameter(description = "Subscription id") @PathVariable Long subscriptionId) {
-        return ResponseEntity.ok(paymentService.findAllBySubscription(subscriptionId));
+    @GetMapping
+    public ResponseEntity<PageResponse<PaymentResponse>> listPayments(
+            @RequestParam(required = false) PaymentState state,
+            @RequestParam(required = false) Long subscriptionId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(paymentService.list(state, subscriptionId, from, to, pageable));
     }
 
     @Operation(

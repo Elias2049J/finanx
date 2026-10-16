@@ -5,11 +5,11 @@ import com.elias.mismonedas.document.dto.scan.ReceiptScanResultMessage;
 
 public interface ReceiptScanService {
 
-    ReceiptResponse startScan(Long userId, byte[] imageBytes, String filename, String mediaType);
+    ReceiptResponse startScan(byte[] imageBytes, String filename, String mediaType);
 
-    ReceiptResponse getScanResult(Long userId, Long receiptId);
+    ReceiptResponse getScanResult(Long receiptId);
 
-    ReceiptResponse improveWithAi(Long receiptId, Long userId);
+    ReceiptResponse improveWithAi(Long receiptId);
 
     void applyScanResult(ReceiptScanResultMessage message);
 

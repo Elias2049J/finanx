@@ -4,6 +4,7 @@ import com.elias.mismonedas.notifications.domain.entity.Notification;
 import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface NotificationRepository extends JpaRepository<Notification, Long> {
+public interface NotificationRepository extends JpaRepository<Notification, Long>, JpaSpecificationExecutor<Notification> {
     Optional<Notification> findByIdAndUser_Id(Long id, Long userId);
 
     List<Notification> findAllByUser_IdAndStateAndScheduledAtBefore(Long userId, NotificationState state, OffsetDateTime scheduledAtBefore);

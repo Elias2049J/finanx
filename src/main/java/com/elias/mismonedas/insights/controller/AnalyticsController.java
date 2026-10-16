@@ -1,30 +1,40 @@
 package com.elias.mismonedas.insights.controller;
 
-import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.insights.dto.analytics.dashboard.BudgetsDashboard;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.DashboardResponse;
+import com.elias.mismonedas.insights.dto.analytics.dashboard.TransactionsDashboard;
 import com.elias.mismonedas.insights.service.analytics.BudgetAnalyticsService;
 import com.elias.mismonedas.insights.service.analytics.TransactionAnalyticsService;
 import com.elias.mismonedas.planning.dto.budget.BudgetExecutionResponse;
 import com.elias.mismonedas.shared.dto.date.PeriodRequest;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.apache.http.HttpException;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/analytics")
+@RequestMapping("/api/v1/analytics")
 @RequiredArgsConstructor
 public class AnalyticsController {
     private final BudgetAnalyticsService bas;
     private final TransactionAnalyticsService tas;
-    private final SecurityService securityService;
 
     @Operation(
             summary = "Dashboard de balance",
@@ -32,7 +42,8 @@ public class AnalyticsController {
             operationId = "getBalanceDashboard",
             tags = {"Analytics"},
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Dashboard generado"),
+                    @ApiResponse(responseCode = "200", description = "Dashboard generado",
+                            content = @Content(schema = @Schema(implementation = TransactionsDashboard.class))),
                     @ApiResponse(responseCode = "400", description = "Request invalido")
             }
     )
@@ -40,7 +51,7 @@ public class AnalyticsController {
     public ResponseEntity<DashboardResponse> balance(
             @Parameter(description = "Periodo") @Valid @RequestBody PeriodRequest request)
             throws HttpException, IOException {
-        return ResponseEntity.ok(tas.buildDashboard(request, securityService.getCurrentUser().getId()));
+        return ResponseEntity.ok(tas.buildDashboard(request));
     }
 
     @Operation(
@@ -49,7 +60,8 @@ public class AnalyticsController {
             operationId = "getBudgetsDashboard",
             tags = {"Analytics"},
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Dashboard generado"),
+                    @ApiResponse(responseCode = "200", description = "Dashboard generado",
+                            content = @Content(schema = @Schema(implementation = BudgetsDashboard.class))),
                     @ApiResponse(responseCode = "400", description = "Request invalido")
             }
     )
@@ -57,7 +69,7 @@ public class AnalyticsController {
     public ResponseEntity<DashboardResponse> budgets(
             @Valid @RequestBody PeriodRequest request)
             throws HttpException, IOException {
-        return ResponseEntity.ok(bas.buildDashboard(request, securityService.getCurrentUser().getId()));
+        return ResponseEntity.ok(bas.buildDashboard(request));
     }
 
     @Operation(
@@ -78,7 +90,7 @@ public class AnalyticsController {
 
     @Operation(
             summary = "Ejecuciones por periodo",
-            description = "Obtiene ejecuciones de presupuestos por periodo.",
+            description = "Obtiene ejecuciones de presupuestos paginadas por un rango de fechas del usuario.",
             operationId = "getBudgetsExecutionsByPeriod",
             tags = {"Analytics"},
             responses = {
@@ -86,10 +98,13 @@ public class AnalyticsController {
                     @ApiResponse(responseCode = "400", description = "Request invalido")
             }
     )
-    @PostMapping("/budgets/executions")
-    public ResponseEntity<List<BudgetExecutionResponse>> getExecutionsByPeriod(
-            @Valid @RequestBody PeriodRequest request) {
-        return ResponseEntity.ok(bas.getBudgetsExecutions(request, securityService.getCurrentUser().getId()));
+    @GetMapping("/budgets/executions")
+    public ResponseEntity<PageResponse<BudgetExecutionResponse>> getExecutionsByPeriod(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(bas.getBudgetsExecutions(from, to, pageable));
     }
 
     /*

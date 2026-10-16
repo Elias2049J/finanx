@@ -3,6 +3,8 @@ package com.elias.mismonedas.notifications.service;
 import com.elias.mismonedas.notifications.domain.entity.Notification;
 import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,13 +18,15 @@ public interface NotificationService {
 
     List<NotificationDTO> findAllByUser(Long userId);
 
+    PageResponse<NotificationDTO> list(NotificationState state, String search, Pageable pageable);
+
     List<NotificationDTO> findAllByUserAndState(Long userId, NotificationState state);
 
     void markAsRead(Long id);
 
     void discard(Long id);
 
-    void purgeOlderThan(LocalDateTime threshold, long userId);
+    void purgeOlderThan(LocalDateTime threshold);
 
     List<NotificationDTO> findAllScheduledByUser(long userId);
 }

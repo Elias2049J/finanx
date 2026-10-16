@@ -1,13 +1,13 @@
 package com.elias.mismonedas.planning.service;
 
-import com.elias.mismonedas.insights.dto.analytics.component.TimeBoundList;
 import com.elias.mismonedas.planning.domain.enums.BudgetHealth;
 import com.elias.mismonedas.planning.domain.enums.BudgetState;
 import com.elias.mismonedas.planning.dto.budget.BudgetRequest;
 import com.elias.mismonedas.planning.dto.budget.BudgetResponse;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
-import org.springframework.transaction.annotation.Transactional;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface BudgetService {
@@ -23,7 +23,12 @@ public interface BudgetService {
 
     void checkAllBudgets(Long userId);
 
-    @Transactional(readOnly = true)
-    TimeBoundList<BudgetResponse> getBudgetsByHealth(PeriodRequest request, BudgetHealth health);
+    PageResponse<BudgetResponse> list(
+            Boolean active,
+            BudgetState state,
+            BudgetHealth health,
+            LocalDate from,
+            LocalDate to,
+            Pageable pageable);
 }
 

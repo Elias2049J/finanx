@@ -1,6 +1,5 @@
 package com.elias.mismonedas.billing.plan;
 
-import com.elias.mismonedas.identity.domain.entity.User;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -8,7 +7,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,15 +41,6 @@ public class PlanGatingStartupValidator implements SmartInitializingSingleton {
                 if (annotation.value() == null || annotation.value().length == 0) {
                     errors.add(describe(method) + ": @RequiresPlan sin ningun plan en value()");
                 }
-
-                long subjectCount = countPlanSubjectParams(method);
-                if (subjectCount == 0) {
-                    errors.add(describe(method) + ": falta @PlanSubject en algun parametro");
-                } else if (subjectCount > 1) {
-                    errors.add(describe(method) + ": tiene mas de un parametro @PlanSubject (ambiguo)");
-                } else {
-                    validateSubjectType(method, errors);
-                }
             });
         }
 
@@ -59,25 +48,6 @@ public class PlanGatingStartupValidator implements SmartInitializingSingleton {
             throw new IllegalStateException(
                     "Configuracion invalida de @RequiresPlan detectada en arranque:\n  - "
                     + String.join("\n  - ", errors));
-        }
-    }
-
-    private long countPlanSubjectParams(Method method) {
-        long count = 0;
-        for (Parameter p : method.getParameters()) {
-            if (p.isAnnotationPresent(PlanSubject.class)) count++;
-        }
-        return count;
-    }
-
-    private void validateSubjectType(Method method, List<String> errors) {
-        for (Parameter p : method.getParameters()) {
-            if (p.isAnnotationPresent(PlanSubject.class)) {
-                Class<?> type = p.getType();
-                if (!type.equals(User.class) && !type.equals(Long.class)) {
-                    errors.add(describe(method) + ": @PlanSubject debe ser User o Long, es " + type.getSimpleName());
-                }
-            }
         }
     }
 

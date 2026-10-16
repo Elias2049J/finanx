@@ -4,7 +4,6 @@ import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.shared.dto.date.PeriodRequest;
 import com.elias.mismonedas.shared.dto.date.PeriodResponse;
-import com.elias.mismonedas.shared.util.PeriodForQuery;
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -57,46 +56,6 @@ public interface DateMapper {
                 .ofPattern("d 'de' MMMM 'de' yyyy", Locale.of("es", "ES"));
         return date.format(formatter);
     }
-
-    @Named("ToPeriodQuery")
-    default PeriodForQuery toSmartMonthlyPeriod(LocalDate start, LocalDate end, ZoneId zoneId, Long userId) {
-        LocalDate adjustedStart = YearMonth.from(start).atDay(1);
-
-        LocalDate adjustedEnd = YearMonth.from(end).atEndOfMonth();
-
-        OffsetDateTime startOffset = adjustedStart.atStartOfDay(zoneId).toOffsetDateTime();
-        OffsetDateTime endOffset   = adjustedEnd.atTime(23,59,59).atZone(zoneId).toOffsetDateTime();
-
-        return new PeriodForQuery(startOffset, endOffset, userId);
-    }
-/*
-
-    @Named("ToPeriodQuery")
-    default PeriodForQuery toSmartMonthlyPeriod(LocalDate start, LocalDate end, ZoneId zoneId, Long userId) {
-        LocalDate adjustedStart = YearMonth.from(start).atDay(1);
-
-        LocalDate lastDayPrevMonth = YearMonth.from(end.minusMonths(1)).atEndOfMonth();
-        LocalDate lastDayCurrent   = YearMonth.from(end).atEndOfMonth();
-        LocalDate lastDayNext      = YearMonth.from(end.plusMonths(1)).atEndOfMonth();
-
-        long distPrev = Math.abs(ChronoUnit.DAYS.between(end, lastDayPrevMonth));
-        long distCurr = Math.abs(ChronoUnit.DAYS.between(end, lastDayCurrent));
-        long distNext = Math.abs(ChronoUnit.DAYS.between(end, lastDayNext));
-
-        LocalDate adjustedEnd;
-        if (distPrev <= distCurr && distPrev <= distNext) {
-            adjustedEnd = lastDayPrevMonth;
-        } else if (distCurr <= distNext) {
-            adjustedEnd = lastDayCurrent;
-        } else {
-            adjustedEnd = lastDayNext;
-        }
-
-        OffsetDateTime startOffset = adjustedStart.atStartOfDay(zoneId).toOffsetDateTime();
-        OffsetDateTime endOffset   = adjustedEnd.atTime(23,59,59).atZone(zoneId).toOffsetDateTime();
-
-        return new PeriodForQuery(startOffset, endOffset, userId);
-    }*/
 
     @Named("OffsetToStringES")
     default String toStringES(OffsetDateTime dateTime, ZoneId zoneId) {

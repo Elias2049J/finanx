@@ -3,6 +3,7 @@ package com.elias.mismonedas.ledger.repository;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
@@ -10,7 +11,7 @@ import java.util.List;
 
 
 @Repository
-public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+public interface TransactionRepository extends JpaRepository<Transaction, Long>, JpaSpecificationExecutor<Transaction> {
     List<Transaction> findAllByWallet_User_Id(Long userId);
 
     List<Transaction> findAllByWallet_User_IdAndActiveTrue(Long userId);

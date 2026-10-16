@@ -8,6 +8,7 @@ import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.repository.ReasonRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.dto.analytics.component.*;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.DashboardResponse;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.TransactionsDashboard;
@@ -17,11 +18,12 @@ import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
+import com.elias.mismonedas.ledger.repository.TransactionSpecifications;
 import com.elias.mismonedas.scheduling.domain.enums.RecurrenceType;
 import com.elias.mismonedas.shared.dto.date.PeriodRequest;
 import com.elias.mismonedas.shared.dto.date.PeriodResponse;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.mapper.DateMapper;
-import com.elias.mismonedas.shared.util.PeriodForQuery;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -48,9 +50,10 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
             UserRepository userRepository,
             TransactionRepository transactionRepository,
             CategoryRepository categoryRepository,
-            ReasonRepository reasonRepository, TransactionMapper tMapper, ReasonMapper reasonMapper, CategoryMapper categoryMapper
+            ReasonRepository reasonRepository, TransactionMapper tMapper, ReasonMapper reasonMapper, CategoryMapper categoryMapper,
+            SecurityService securityService
     ) {
-        super(dateMapper, userRepository);
+        super(dateMapper, userRepository, securityService);
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.reasonRepository = reasonRepository;
@@ -71,16 +74,13 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
 
         User u = this.getUser(userId);
         ZoneId zoneId = u.getTimeZone().toZoneId();
-        PeriodForQuery pq = dateMapper.toSmartMonthlyPeriod(request.getStart(), request.getEnd(), zoneId, userId);
+        DateRange period = new DateRange(request.getStart(), request.getEnd()).coveringMonths();
+        var periodStart = period.startInclusive(zoneId);
+        var periodEnd = period.endExclusive(zoneId);
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
 
-        List<TransactionResponse> all = transactionRepository
-                .findAllByWallet_User_IdAndCreatedAtBetweenAndActive(
-                        userId,
-                        pq.getStart(),
-                        pq.getEnd(),
-                        true
-                )
+        List<TransactionResponse> all = transactionRepository.findAll(TransactionSpecifications.list(
+                        userId, true, null, null, null, periodStart, periodEnd))
                 .stream()
                 .map(tMapper::toResponse)
                 .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())

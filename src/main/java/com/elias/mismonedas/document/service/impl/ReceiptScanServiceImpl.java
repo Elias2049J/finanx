@@ -1,7 +1,6 @@
 package com.elias.mismonedas.document.service.impl;
 
 import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
-import com.elias.mismonedas.billing.plan.PlanSubject;
 import com.elias.mismonedas.billing.plan.RequiresPlan;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
@@ -19,7 +18,7 @@ import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.document.service.ImageService;
 import com.elias.mismonedas.document.service.ReceiptScanService;
 import com.elias.mismonedas.identity.domain.entity.User;
-import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.shared.exception.OcrProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -39,7 +38,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
     private final ReceiptParserPort geminiParser;
     private final ReceiptRepository receiptRepository;
     private final ImageService imageService;
-    private final UserRepository userRepository;
+    private final SecurityService securityService;
     private final CategoryRepository categoryRepository;
     private final ReceiptScanOutboxRepository outboxRepository;
 
@@ -47,14 +46,14 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
                                   @Qualifier("gemini") ReceiptParserPort geminiParser,
                                   ReceiptRepository receiptRepository,
                                   ImageService imageService,
-                                  UserRepository userRepository,
+                                  SecurityService securityService,
                                   CategoryRepository categoryRepository,
                                   ReceiptScanOutboxRepository outboxRepository) {
         this.regexParser = regexParser;
         this.geminiParser = geminiParser;
         this.receiptRepository = receiptRepository;
         this.imageService = imageService;
-        this.userRepository = userRepository;
+        this.securityService = securityService;
         this.categoryRepository = categoryRepository;
         this.outboxRepository = outboxRepository;
     }
@@ -62,9 +61,9 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
     @Override
     @RequiresPlan(SubscriptionPlan.PREMIUM)
     @Transactional
-    public ReceiptResponse startScan(@PlanSubject Long userId, byte[] imageBytes, String filename, String mediaType) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
+    public ReceiptResponse startScan(byte[] imageBytes, String filename, String mediaType) {
+        User user = securityService.getCurrentUser();
+        Long userId = user.getId();
 
         Image image = imageService.save(user, filename, mediaType, imageBytes);
 
@@ -160,7 +159,8 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
 
     @Override
     @Transactional(readOnly = true)
-    public ReceiptResponse getScanResult(Long userId, Long receiptId) {
+    public ReceiptResponse getScanResult(Long receiptId) {
+        Long userId = securityService.getCurrentUser().getId();
         Receipt receipt = receiptRepository.findByIdAndUser_Id(receiptId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
         return toResponse(receipt);
@@ -168,7 +168,8 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
 
     @Override
     @Transactional
-    public ReceiptResponse improveWithAi(Long receiptId, Long userId) {
+    public ReceiptResponse improveWithAi(Long receiptId) {
+        Long userId = securityService.getCurrentUser().getId();
         Receipt receipt = receiptRepository.findByIdAndUser_Id(receiptId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
 

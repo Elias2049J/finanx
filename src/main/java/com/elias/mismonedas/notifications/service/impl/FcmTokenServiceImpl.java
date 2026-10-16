@@ -1,15 +1,20 @@
 package com.elias.mismonedas.notifications.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.User;
-import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.notifications.domain.entity.FcmToken;
 import com.elias.mismonedas.notifications.dto.fcm.FcmTokenResponse;
 import com.elias.mismonedas.notifications.dto.fcm.RegisterFcmTokenRequest;
 import com.elias.mismonedas.notifications.repository.FcmTokenRepository;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.notifications.service.FcmTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -21,13 +26,13 @@ import java.util.List;
 public class FcmTokenServiceImpl implements FcmTokenService {
 
     private final FcmTokenRepository fcmTokenRepository;
-    private final UserRepository userRepository;
+    private final SecurityService securityService;
 
     @Override
     @Transactional
-    public FcmTokenResponse register(Long userId, RegisterFcmTokenRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userId));
+    public FcmTokenResponse register(RegisterFcmTokenRequest request) {
+        User user = securityService.getCurrentUser();
+        Long userId = user.getId();
 
         // findFirstByUser_IdAndToken evita IncorrectResultSizeDataAccessException
         // cuando existen duplicados legacy (antes del UNIQUE constraint)
@@ -70,7 +75,8 @@ public class FcmTokenServiceImpl implements FcmTokenService {
 
     @Override
     @Transactional
-    public void remove(Long userId, Long tokenId) {
+    public void remove(Long tokenId) {
+        Long userId = securityService.getCurrentUser().getId();
         FcmToken token = fcmTokenRepository.findById(tokenId)
                 .orElseThrow(() -> new RuntimeException("Token FCM no encontrado: " + tokenId));
         if (!token.getUser().getId().equals(userId)) {
@@ -89,6 +95,14 @@ public class FcmTokenServiceImpl implements FcmTokenService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<FcmTokenResponse> list(Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return PageResponseFactory.from(fcmTokenRepository.findAllByUser_Id(userId, stablePage), this::toResponse);
     }
 
     @Override

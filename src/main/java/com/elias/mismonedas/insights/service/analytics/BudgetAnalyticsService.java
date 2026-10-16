@@ -2,14 +2,14 @@ package com.elias.mismonedas.insights.service.analytics;
 
 import com.elias.mismonedas.insights.service.analytics.AnalyticsService;
 import com.elias.mismonedas.planning.dto.budget.BudgetExecutionResponse;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
-import org.springframework.transaction.annotation.Transactional;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
+import java.time.LocalDate;
 
 public interface BudgetAnalyticsService extends AnalyticsService{
     BudgetExecutionResponse getBudgetExecution(Long id);
 
-    @Transactional(readOnly = true)
-    List<BudgetExecutionResponse> getBudgetsExecutions(PeriodRequest request, Long userId);
+    PageResponse<BudgetExecutionResponse> getBudgetsExecutions(
+            LocalDate from, LocalDate to, Pageable pageable);
 }

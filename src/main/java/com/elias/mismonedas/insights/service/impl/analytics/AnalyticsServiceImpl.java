@@ -2,6 +2,7 @@ package com.elias.mismonedas.insights.service.impl.analytics;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.dto.analytics.component.*;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.DashboardResponse;
 import com.elias.mismonedas.insights.service.analytics.AnalyticsService;
@@ -29,10 +30,18 @@ import static java.math.RoundingMode.HALF_UP;
 public abstract class AnalyticsServiceImpl implements AnalyticsService {
     protected final DateMapper dateMapper;
     protected final UserRepository userRepository;
+    protected final SecurityService securityService;
 
-    public AnalyticsServiceImpl(DateMapper dateMapper, UserRepository userRepository) {
+    public AnalyticsServiceImpl(DateMapper dateMapper, UserRepository userRepository, SecurityService securityService) {
         this.dateMapper = dateMapper;
         this.userRepository = userRepository;
+        this.securityService = securityService;
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public DashboardResponse buildDashboard(PeriodRequest request) throws HttpException, IOException {
+        return buildDashboard(request, securityService.getCurrentUser().getId());
     }
 
     @Transactional(readOnly = true)

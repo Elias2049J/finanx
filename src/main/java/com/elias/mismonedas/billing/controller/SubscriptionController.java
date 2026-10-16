@@ -2,26 +2,30 @@ package com.elias.mismonedas.billing.controller;
 
 import com.elias.mismonedas.billing.dto.subscription.SubscriptionRequest;
 import com.elias.mismonedas.billing.dto.subscription.SubscriptionResponse;
+import com.elias.mismonedas.billing.domain.enums.SubscriptionState;
 import com.elias.mismonedas.billing.service.BillingService;
-import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
 
 @RestController
-@RequestMapping("/subscriptions")
+@RequestMapping("/api/v1/subscriptions")
 @RequiredArgsConstructor
 public class SubscriptionController {
 
     private final BillingService billingService;
-    private final SecurityService securityService;
 
     @Operation(
             summary = "Create subscription",
@@ -37,7 +41,7 @@ public class SubscriptionController {
     public ResponseEntity<SubscriptionResponse> subscribe(
             @Parameter(description = "Subscription data") @Valid @RequestBody SubscriptionRequest request) {
         SubscriptionResponse saved = billingService.subscribe(request);
-        return ResponseEntity.created(URI.create("/subscriptions/" + saved.getId())).body(saved);
+        return ResponseEntity.created(URI.create("/api/v1/subscriptions/" + saved.getId())).body(saved);
     }
 
     @Operation(
@@ -58,17 +62,35 @@ public class SubscriptionController {
 
     @Operation(
             summary = "List subscriptions by user",
-            description = "Gets all subscriptions belonging to the authenticated user.",
-            operationId = "findAllSubscriptionsByUser",
+            description = "Lists subscriptions of the authenticated user with optional state and pagination/sort parameters.",
+            operationId = "listSubscriptions",
             tags = {"Subscriptions"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "List retrieved"),
                     @ApiResponse(responseCode = "404", description = "User not found")
             }
     )
-    @GetMapping("/me")
-    public ResponseEntity<List<SubscriptionResponse>> findAllByUser() {
-        return ResponseEntity.ok(billingService.findAllByUser(securityService.getCurrentUser().getId()));
+    @GetMapping
+    public ResponseEntity<PageResponse<SubscriptionResponse>> listSubscriptions(
+            @RequestParam(required = false) SubscriptionState state,
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(billingService.list(state, pageable));
+    }
+
+    @Operation(
+            summary = "Get current subscription",
+            description = "Returns the active subscription of the authenticated user.",
+            operationId = "getCurrentSubscription",
+            tags = {"Subscriptions"},
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Active subscription found"),
+                    @ApiResponse(responseCode = "404", description = "No active subscription")
+            }
+    )
+    @GetMapping("/current")
+    public ResponseEntity<SubscriptionResponse> getCurrentSubscription() {
+        return ResponseEntity.ok(billingService.getCurrentSubscription());
     }
 
     @Operation(

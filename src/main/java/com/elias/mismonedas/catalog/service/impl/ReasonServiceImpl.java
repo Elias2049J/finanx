@@ -5,10 +5,17 @@ import com.elias.mismonedas.catalog.dto.reason.ReasonRequest;
 import com.elias.mismonedas.catalog.dto.reason.ReasonResponse;
 import com.elias.mismonedas.catalog.mapper.ReasonMapper;
 import com.elias.mismonedas.catalog.repository.ReasonRepository;
+import com.elias.mismonedas.catalog.repository.ReasonSpecifications;
 import com.elias.mismonedas.catalog.service.ReasonService;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +59,15 @@ public class ReasonServiceImpl implements ReasonService {
                 .stream()
                 .map(reasonMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ReasonResponse> list(Boolean active, String search, Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.ASC, "description"));
+        Page<Reason> page = rRepository.findAll(ReasonSpecifications.list(userId, active, search), stablePage);
+        return PageResponseFactory.from(page, reasonMapper::toResponse);
     }
 
     @Transactional

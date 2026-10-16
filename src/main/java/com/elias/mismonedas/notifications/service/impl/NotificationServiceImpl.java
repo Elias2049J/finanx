@@ -11,13 +11,20 @@ import com.elias.mismonedas.notifications.outbox.NotificationOutbox;
 import com.elias.mismonedas.notifications.outbox.OutboxState;
 import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxRepository;
 import com.elias.mismonedas.notifications.repository.NotificationRepository;
+import com.elias.mismonedas.notifications.repository.NotificationSpecifications;
 import com.elias.mismonedas.notifications.service.NotificationService;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -84,6 +91,16 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResponse<NotificationDTO> list(NotificationState state, String search, Pageable pageable) {
+        Long userId = securityService.getCurrentUser().getId();
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Notification> page = notificationRepository.findAll(
+                NotificationSpecifications.list(userId, state, search), stablePage);
+        return PageResponseFactory.from(page, notificationMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<NotificationDTO> findAllByUserAndState(Long userId, NotificationState state) {
         return notificationRepository.findAllByUser_IdAndState(userId, state)
                 .stream()
@@ -120,8 +137,9 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public void purgeOlderThan(LocalDateTime threshold, long userId) {
-        User u = userRepository.findById(userId).orElseThrow();
+    public void purgeOlderThan(LocalDateTime threshold) {
+        User u = securityService.getCurrentUser();
+        Long userId = u.getId();
         List<Notification> nList = notificationRepository.findAllByUser_IdAndStateAndSentAtBefore(userId, NotificationState.SENT, OffsetDateTime.now(u.getTimeZone().toZoneId()));
         nList.forEach(this::disable);
         notificationRepository.saveAll(nList);

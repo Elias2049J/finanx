@@ -1,40 +1,33 @@
 package com.elias.mismonedas.ledger.controller;
 
-import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
+import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.service.TransactionService;
+import com.elias.mismonedas.shared.dto.pagination.PageResponse;
+import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.apache.http.HttpException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.net.URI;
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
-@RequestMapping("/transactions")
+@RequestMapping("/api/v1/transactions")
 @RequiredArgsConstructor
 public class TransactionController {
 
     private final TransactionService transactionService;
-    private final SecurityService securityService;
-
-    @Operation(
-            summary = "Listar transacciones activas",
-            description = "Obtiene todas las transacciones activas del usuario autenticado.",
-            operationId = "findAllActiveTransactions",
-            tags = {"Transactions"}
-    )
-    @GetMapping("/me/active")
-    public ResponseEntity<List<TransactionResponse>> findAllActiveByUser() {
-        return ResponseEntity.ok(transactionService.findAllActiveByUser(securityService.getCurrentUser().getId()));
-    }
 
     @Operation(
             summary = "Buscar transaccion",
@@ -49,27 +42,22 @@ public class TransactionController {
 
     @Operation(
             summary = "Listar transacciones del usuario",
-            description = "Obtiene todas las transacciones del usuario autenticado.",
-            operationId = "findAllTransactions",
+            description = "Lista paginada del usuario autenticado. Admite filtros por active, type, walletId, categoryId y rango from/to; el orden usa sort estándar.",
+            operationId = "listTransactions",
             tags = {"Transactions"}
     )
-    @GetMapping("/me")
-    public ResponseEntity<List<TransactionResponse>> findAllByUser() {
-        return ResponseEntity.ok(transactionService.findAllByUser(securityService.getCurrentUser().getId()));
-    }
-
-    @Operation(
-            summary = "Listar transacciones por rango",
-            description = "Obtiene transacciones en un rango de fechas.",
-            operationId = "findAllTransactionsBetween",
-            tags = {"Transactions"}
-    )
-    @GetMapping("/me/between")
-    public ResponseEntity<List<TransactionResponse>> findAllByUserBetween(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(transactionService.findAllByUserAndIssueDateBetween(
-                securityService.getCurrentUser().getId(), from, to));
+    @GetMapping
+    public ResponseEntity<PageResponse<TransactionResponse>> listTransactions(
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) TransactionType type,
+            @RequestParam(required = false) Long walletId,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(transactionService.list(
+                active, type, walletId, categoryId, from, to, pageable));
     }
 
     @Operation(
@@ -81,7 +69,7 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<TransactionResponse> create(@Valid @RequestBody TransactionRequest request) throws HttpException, IOException {
         TransactionResponse saved = transactionService.create(request);
-        return ResponseEntity.created(URI.create("/transactions/" + saved.getId())).body(saved);
+        return ResponseEntity.created(URI.create("/api/v1/transactions/" + saved.getId())).body(saved);
     }
 
     @Operation(
@@ -109,18 +97,4 @@ public class TransactionController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(
-            summary = "Filtrar por categoria y fecha",
-            description = "Obtiene transacciones por categoria y rango de fechas.",
-            operationId = "findAllTransactionsByCategoryAndDateBetween",
-            tags = {"Transactions"}
-    )
-    @GetMapping("/me/category/{categoryId}/between")
-    public ResponseEntity<List<TransactionResponse>> findAllByCategoryAndDateBetween(
-            @PathVariable Long categoryId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(transactionService.findAllActiveByCategoryAndDateBetween(
-                securityService.getCurrentUser().getId(), categoryId, from, to));
-    }
 }
