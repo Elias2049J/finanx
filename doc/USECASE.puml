@@ -4,92 +4,179 @@ actor "Admin" as adm
 
 left to right direction
 
-package "Transactions" {
-usecase "Register Transaction" as regt
-usecase "Register Category" as regc
-usecase "See Analytics" as sum
-usecase "Balance Report" as bar
-usecase "List Transactions" as  list
-usecase "Delete" as delt
-usecase "See Insights" as insi
-usecase "Cancel" as cancel
-}
-
-package "Schedule" {
-    usecase "List Scheduled" as lists
-    usecase "Schedule Transactions" as regst
-    usecase "Cancel" as cancelT
-    usecase "Delete" as deleteT
-}
-
-package "Budget" {
-    usecase "Add Budget" as addB
-    usecase "Delete" as deleteB
-    usecase "List Budgets" as listB
-}
-
-package "Savings" {
-    usecase "List Savings" as listG
-    usecase "Add Saving Goal" as addG
-    usecase "Delete" as deleteG
-    usecase "Update" as updateG
-}
-
 package "Users" {
 usecase "Register" as regu
+usecase "Update Profile" as updu
+usecase "Delete Account" as delu
+usecase "Reset Data" as resetu
+usecase "Search Users" as searchu
 usecase "Block Account" as block
 usecase "Enable Account" as enable
 usecase "Disable Account" as disa
 }
 
-
-package "Notifications" {
-usecase "See Notifications" as seen
-usecase "Discard" as disc
-usecase "Clean before..." as clean
-}
-
-
 package "Security" {
 usecase "Login" as login
     usecase "Login with Google" as loging
     usecase "Login with Email" as logini
-} 
+}
 
+package "Wallets" {
+usecase "List Wallets" as listW
+usecase "Add Wallet" as addW
+usecase "Update Wallet" as upW
+usecase "Delete" as delW
+usecase "Multiple Wallets" as multiW
+}
 
-usr --> regt
-usr --> regc
-        regt .. regst
-usr --> bar
-usr --> regu
-usr --> login
-usr --> sum
-        sum .. insi
-usr --> seen
-usr --> disa
+package "Transactions" {
+usecase "Register Transaction" as regt
+usecase "Update Transaction" as upT
+usecase "List Transactions" as  list
+usecase "Delete" as delt
+usecase "Filter by Category/Date" as filtT
+usecase "Register Category" as regc
+usecase "Register Reason" as regr
+}
+
+package "Analytics" {
+usecase "See Analytics" as sum
+usecase "Balance Dashboard" as bar
+usecase "Budget Dashboard" as budash
+usecase "See Insights" as insi
+}
+
+package "Budget" {
+usecase "Add Budget" as addB
+usecase "Update" as upB
+usecase "List Budgets" as listB
+usecase "Cancel" as cancelB
+usecase "Delete" as deleteB
+usecase "Filter by Health" as healthB
+}
+
+package "Savings" {
+usecase "List Savings" as listG
+usecase "Add Saving Goal" as addG
+usecase "Update" as updateG
+usecase "Cancel" as cancelG
+usecase "Delete" as deleteG
+}
+
+package "Schedule" {
+    usecase "List Scheduled" as lists
+    usecase "Schedule Transactions" as regst
+    usecase "Schedule Budgets" as regsb
+    usecase "Pause" as pauseS
+    usecase "Resume" as resumeS
+    usecase "Cancel" as cancelT
+    usecase "Delete" as deleteT
+}
+
+package "Notifications" {
+usecase "See Notifications" as seen
+usecase "Mark as Read" as readN
+usecase "Discard" as disc
+usecase "Clean before..." as clean
+}
+
+package "ChatBot" {
+usecase "Start Session" as startC
+usecase "Send Message" as sendC
+usecase "Close Session" as closeC
+usecase "List Sessions" as listC
+}
+
+package "Receipts" {
+usecase "Scan Receipt (OCR)" as scanR
+usecase "Improve with AI" as improveR
+}
+
+package "Subscriptions" {
+usecase "View Subscription" as viewS
+usecase "Make Payment" as payS
+usecase "Cancel Subscription" as cancelS
+}
+
+package "Preferences" {
+usecase "Manage Preferences" as pref
+usecase "Register FCM Token" as fcmR
+usecase "Remove FCM Token" as fcmD
+}
+
+usr ---> regu
+usr ---> updu
+usr ---> delu
+usr ---> resetu
+usr ---> pref
+usr ----> login
+        login .. loging
+        login .. logini
+
+usr ----> listW
+usr ----> addW
+usr ----> upW
+usr ----> delW
+        addW .. multiW: <<extend>>
+
+usr ---> regt
+usr ---> upT
+usr ---> regc
+usr ---> regr
+        regt .. regc
+        regt .. regr
 usr --> list
         list .. delt: <<extend>>
-        list .. cancel
-        list .. lists
-                lists .. deleteT: <<extend>>
-                lists .. cancelT
+        list .. filtT: <<extend>>
+
+usr ----> sum
+usr ---> bar
+usr ---> budash
+        sum .. insi
 
 usr --> addB
 usr --> listB
         listB .. deleteB
+        listB .. cancelB
+        listB .. upB
+        listB .. healthB
 
-usr --> addG
-usr --> listG
+usr ---> addG
+usr ---> listG
         listG .. deleteG
         listG .. updateG
-         
+        listG .. cancelG
 
-seen .. disc
-seen .. clean
-       
-login .. loging
-login .. logini
+usr --> lists
+        lists .. regst
+        lists .. regsb
+        lists .. deleteT: <<extend>>
+        lists .. cancelT
+        lists .. pauseS
+        lists .. resumeS
 
-adm -> block
-adm -> enable
+usr ---> seen
+        seen .. disc
+        seen .. clean
+        seen .. readN
+
+usr ---> startC
+        startC .. sendC
+        startC .. closeC
+        startC .. listC
+
+usr ---> scanR
+        scanR .. improveR
+
+usr ----> viewS
+usr ----> payS
+        viewS .. cancelS
+
+usr ----> fcmR
+usr ----> fcmD
+
+adm --> block
+adm --> enable
+adm --> disa
+adm --> searchu
 @enduml
