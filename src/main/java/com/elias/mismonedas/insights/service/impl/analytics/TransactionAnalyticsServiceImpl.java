@@ -97,7 +97,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         if (primaryWallet != null) {
             Long walletId = primaryWallet.getId();
             all = transactionRepository.findAll(TransactionSpecifications.list(
-                            userId, true, null, walletId, null, periodStart, periodEnd))
+                            userId, true, null, walletId, null, periodStart, periodEnd, null))
                     .stream()
                     .map(tMapper::toResponse)
                     .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())

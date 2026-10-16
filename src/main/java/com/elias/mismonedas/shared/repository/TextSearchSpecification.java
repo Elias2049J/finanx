@@ -1,11 +1,27 @@
 package com.elias.mismonedas.shared.repository;
 
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.From;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Arrays;
 import java.util.Locale;
 
+/**
+ * Specification reutilizable de busqueda de texto libre, case-insensitive.
+ * Construye un {@code lower(path) LIKE %term%} sobre una o mas propiedades
+ * (OR entre ellas) escapando {@code \}, {@code %} y {@code _} del termino para
+ * que se traten como literales. Un termino nulo o en blanco no filtra
+ * (conjunction).
+ * <p>
+ * Las propiedades pueden ser rutas anidadas separadas por punto (por ejemplo
+ * {@code "reason.description"}); los tramos intermedios se resuelven con
+ * {@code LEFT JOIN} para no descartar filas cuyo asociado sea nulo.
+ */
 public final class TextSearchSpecification {
 
     private static final char ESCAPE = '\\';
@@ -21,10 +37,19 @@ public final class TextSearchSpecification {
         String pattern = "%" + escape(term.trim().toLowerCase(Locale.ROOT)) + "%";
         return (root, query, cb) -> {
             Predicate[] matches = Arrays.stream(properties)
-                    .map(property -> cb.like(cb.lower(root.get(property)), pattern, ESCAPE))
+                    .map(property -> cb.like(cb.lower(resolve(root, property)), pattern, ESCAPE))
                     .toArray(Predicate[]::new);
             return cb.or(matches);
         };
+    }
+
+    private static <T> Expression<String> resolve(Root<T> root, String property) {
+        String[] segments = property.split("\\.");
+        Path<?> path = root;
+        for (int i = 0; i < segments.length - 1; i++) {
+            path = ((From<?, ?>) path).join(segments[i], JoinType.LEFT);
+        }
+        return path.get(segments[segments.length - 1]).as(String.class);
     }
 
     private static String escape(String value) {

@@ -239,7 +239,7 @@ public class TransactionServiceImpl implements TransactionService {
         return transactionRepository.findAll(TransactionSpecifications.list(
                         userId, true, null, null, null,
                         range.startInclusive(user.getTimeZone().toZoneId()),
-                        range.endExclusive(user.getTimeZone().toZoneId())))
+                        range.endExclusive(user.getTimeZone().toZoneId()), null))
                 .stream()
                 .map(transactionMapper::toResponse)
                 .toList();
@@ -254,6 +254,7 @@ public class TransactionServiceImpl implements TransactionService {
             Long categoryId,
             LocalDate from,
             LocalDate to,
+            String search,
             Pageable pageable) {
         User user = securityService.getCurrentUser();
         Long userId = user.getId();
@@ -264,7 +265,7 @@ public class TransactionServiceImpl implements TransactionService {
         Pageable stablePage = PaginationDefaults.stablePage(
                 pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Transaction> page = transactionRepository.findAll(
-                TransactionSpecifications.list(userId, active, type, walletId, categoryId, start, end),
+                TransactionSpecifications.list(userId, active, type, walletId, categoryId, start, end, search),
                 stablePage);
         return PageResponseFactory.from(page, transactionMapper::toResponse);
     }
@@ -304,7 +305,7 @@ public class TransactionServiceImpl implements TransactionService {
         return transactionRepository.findAll(TransactionSpecifications.list(
                         userId, true, null, null, categoryId,
                         range.startInclusive(user.getTimeZone().toZoneId()),
-                        range.endExclusive(user.getTimeZone().toZoneId())))
+                        range.endExclusive(user.getTimeZone().toZoneId()), null))
                 .stream()
                 .map(transactionMapper::toResponse)
                 .toList();

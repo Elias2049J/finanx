@@ -42,7 +42,7 @@ public class TransactionController {
 
     @Operation(
             summary = "Listar transacciones del usuario",
-            description = "Lista paginada del usuario autenticado. Admite filtros por active, type, walletId, categoryId y rango from/to; el orden usa sort estándar.",
+            description = "Lista paginada del usuario autenticado. Admite filtros por active, type, walletId, categoryId, rango from/to y busqueda de texto libre sobre el motivo y la categoria; el orden usa sort estándar.",
             operationId = "listTransactions",
             tags = {"Transactions"}
     )
@@ -54,10 +54,11 @@ public class TransactionController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String search,
             @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
         return ResponseEntity.ok(transactionService.list(
-                active, type, walletId, categoryId, from, to, pageable));
+                active, type, walletId, categoryId, from, to, search, pageable));
     }
 
     @Operation(

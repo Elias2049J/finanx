@@ -80,7 +80,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
 
         List<TransactionResponse> all = transactionRepository.findAll(TransactionSpecifications.list(
-                        userId, true, null, null, null, periodStart, periodEnd))
+                        userId, true, null, null, null, periodStart, periodEnd, null))
                 .stream()
                 .map(tMapper::toResponse)
                 .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())

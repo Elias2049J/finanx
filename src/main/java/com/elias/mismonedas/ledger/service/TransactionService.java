@@ -25,6 +25,7 @@ public interface TransactionService {
             Long categoryId,
             LocalDate from,
             LocalDate to,
+            String search,
             Pageable pageable);
     void disable(Long id) throws HttpException, IOException;
     BigDecimal sumAmountByCategory(Long userId, Long categoryId, LocalDate from, LocalDate to);
