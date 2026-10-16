@@ -126,7 +126,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Transactional(readOnly = true)
     public PageResponse<SavingGoalResponse> list(Boolean active, SavingGoalState state, Pageable pageable) {
         Long userId = securityService.getCurrentUser().getId();
-        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.ASC, "deadline"));
         Page<SavingGoal> page = state == null
                 ? sgRepository.findAllByUser_IdAndActive(userId, active, stablePage)
                 : sgRepository.findAllByUser_IdAndActiveAndState(userId, active, state, stablePage);

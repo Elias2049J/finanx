@@ -46,7 +46,7 @@ public class BudgetController {
             @RequestParam(required = false) BudgetHealth health,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "end", direction = Sort.Direction.ASC)
             Pageable pageable) {
         return ResponseEntity.ok(budgetService.list(
                 active, state, health, from, to, pageable));

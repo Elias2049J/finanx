@@ -128,7 +128,7 @@ public class BudgetServiceImpl implements BudgetService {
         OffsetDateTime start = dateRange.map(range -> range.startInclusive(zoneId)).orElse(null);
         OffsetDateTime end = dateRange.map(range -> range.endExclusive(zoneId)).orElse(null);
         Pageable stablePage = PaginationDefaults.stablePage(
-                pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
+                pageable, Sort.by(Sort.Direction.ASC, "end"));
         Page<Budget> page = budgetRepository.findAll(
                 BudgetSpecifications.list(userId, active, state, health, start, end),
                 stablePage);

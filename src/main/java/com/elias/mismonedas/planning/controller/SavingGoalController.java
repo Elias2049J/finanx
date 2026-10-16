@@ -42,7 +42,7 @@ public class SavingGoalController {
     public ResponseEntity<PageResponse<SavingGoalResponse>> listSavingGoals(
             @RequestParam(defaultValue = "true") Boolean active,
             @RequestParam(required = false) SavingGoalState state,
-            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "createdAt", direction = Sort.Direction.DESC)
+            @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "deadline", direction = Sort.Direction.ASC)
             Pageable pageable) {
         return ResponseEntity.ok(savingGoalService.list(
                 active, state, pageable));
