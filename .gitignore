@@ -38,6 +38,7 @@ src/main/resources/application.yml
 application.yml
 /claude/
 /out/
+/tasks/
 opencode.json
 /doc/
 /snippets/
