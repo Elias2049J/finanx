@@ -131,6 +131,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
+    @Transactional
     public UserResponse disable(Long id) {
         User user = getEntityById(id);
         ZoneId zoneId = user.getTimeZone().toZoneId();
@@ -140,6 +141,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
+    @Transactional
     public UserResponse enable(Long id) {
         User user = getEntityById(id);
         user.setState(UserState.ENABLED);
@@ -147,6 +149,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
+    @Transactional
     public UserResponse block(Long id) {
         User user = getEntityById(id);
         user.block();
@@ -164,6 +167,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserResponse> searchByName(String q) {
         return userRepository.findAllByNameContainingIgnoreCase(q)
                 .stream()
