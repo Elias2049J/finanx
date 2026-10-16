@@ -72,3 +72,6 @@ gmail:
   from: ${GMAIL_FROM:eo@gmail.com}
   username: ${GMAIL_USERNAME:eo@gmail.com}
   app-password: ${GMAIL_APP_PASSWORD:eo}
+
+springdoc:
+  api-docs.version: openapi_3_0
