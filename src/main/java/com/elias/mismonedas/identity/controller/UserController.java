@@ -27,7 +27,7 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "Listar usuarios", description = "Lista paginada con búsqueda opcional por nombre, apellido, email o username.", operationId = "listUsers", tags = {"Users"})
+    @Operation(summary = "Listar usuarios", description = "Lista paginada con búsqueda opcional por nombre, apellido o email.", operationId = "listUsers", tags = {"Users"})
     @GetMapping
     public ResponseEntity<PageResponse<UserResponse>> listUsers(
             @RequestParam(required = false) String search,

@@ -81,7 +81,6 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
         if (existing != null) {
             existing.setName(payload.givenName());
             existing.setLastname(payload.familyName());
-            existing.setUsername(email);
 
             User saved = userRepository.save(existing);
 
@@ -91,7 +90,6 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
         UserRequest request = new UserRequest();
         request.setEmail(email);
-        request.setUsername(email);
         request.setName(payload.givenName());
         request.setLastname(payload.familyName());
         request.setPassword(randomSecret());

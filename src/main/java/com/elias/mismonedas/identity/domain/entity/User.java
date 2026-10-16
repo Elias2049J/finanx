@@ -24,7 +24,6 @@ import java.util.List;
 @Table(
     name = "usuarios",
     indexes = {
-        @Index(name = "idx_usuario_nombre_usuario", columnList = "nombre_usuario"),
         @Index(name = "idx_usuario_email", columnList = "email")
     }
 )
@@ -49,9 +48,6 @@ public class User implements UserDetails {
 
     @Column(name = "email", unique = true, nullable = false)
     private String email;
-
-    @Column(name = "nombre_usuario", unique = true, nullable = false)
-    private String username;
 
     @Column(name = "clave", nullable = false)
     private String password;
@@ -92,6 +88,11 @@ public class User implements UserDetails {
             return List.of();
         }
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
     }
 
     @PrePersist

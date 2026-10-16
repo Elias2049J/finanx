@@ -10,6 +10,6 @@ public final class UserSpecifications {
     }
 
     public static Specification<User> list(String search) {
-        return TextSearchSpecification.containsIgnoreCase(search, "name", "lastname", "email", "username");
+        return TextSearchSpecification.containsIgnoreCase(search, "name", "lastname", "email");
     }
 }

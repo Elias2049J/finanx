@@ -28,9 +28,6 @@ public class UserResponse {
     @Schema(description = "Correo electronico del usuario", example = "jorge.valdivia@example.com")
     private String email;
 
-    @Schema(description = "Nombre de usuario unico", example = "UsuarioFin2026")
-    private String username;
-
     @Schema(description = "Rol asignado al usuario", implementation = Role.class, example = "USER")
     private Role role;
 

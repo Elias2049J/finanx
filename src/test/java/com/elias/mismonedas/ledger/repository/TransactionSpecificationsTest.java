@@ -111,7 +111,6 @@ class TransactionSpecificationsTest {
         String suffix = UUID.randomUUID().toString();
         User user = new User();
         user.setEmail("page-" + suffix + "@example.test");
-        user.setUsername("page-" + suffix);
         user.setPassword("test-password");
         return userRepository.save(user);
     }

@@ -27,10 +27,6 @@ public class UserRequest {
     private String email;
 
     @NotBlank
-    @Schema(description = "Nombre de usuario unico", example = "UsuarioFin2026")
-    private String username;
-
-    @NotBlank
     @Schema(description = "Contrasena del usuario", example = "StrongPassword123!")
     private String password;
 
