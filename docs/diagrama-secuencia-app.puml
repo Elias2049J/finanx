@@ -1,0 +1,245 @@
+@startuml Finanx - Diagrama de Secuencia (Flujo Completo)
+
+title Finanx - Arquitectura y Flujos Principales
+caption Diagrama de secuencia general de la aplicación (Android + Spring Boot + Python + RabbitMQ + SeaweedFS + PostgreSQL + Gemini + FCM)
+
+actor "Usuario (App Android)" as User
+participant "Android App\n(Finance_UI + MVVM)" as Mobile
+participant "Retrofit/OkHttp\n(Auth Interceptor JWT)" as ApiClient
+participant "Spring Boot API\n(MisMonedasApplication)" as Backend
+participant "AuthController\n/api/v1/auth" as AuthCtrl
+participant "ReceiptController\n/api/v1/receipts" as ReceiptCtrl
+participant "ImageController\n/api/v1/images" as ImgCtrl
+participant "SecurityService" as Security
+participant "ReceiptScanService\n(startScan)" as ScanSvc
+participant "ImageService" as ImgSvc
+participant "ReceiptRepository" as ReceiptRepo
+participant "OutboxRepository\n(ReceiptScanOutbox)" as OutboxRepo
+participant "ReceiptScanJobDispatcher\n(@Transactional afterCommit)" as JobDisp
+participant "ReceiptScanRabbitPublisher" as RabbitPub
+participant "RabbitMQ\n(receipt.scan.*)" as Rabbit
+participant "Python Doc-Processing\n(app/main.py)" as DocProc
+participant "StorageClient (S3)\nSeaweedFS" as Seaweed
+participant "OCR (RapidOCR)" as OCR
+participant "ReceiptScanResultConsumer" as ResCons
+participant "ReceiptScanService\n(applyScanResult)" as ResSvc
+participant "RegexParser + GeminiParser" as Parsers
+participant "NotificationOutboxPublisher" as NotifPub
+participant "RabbitMQ\n(notifications.*)" as NotifRabbit
+participant "NotificationConsumer" as NotifCons
+participant "FCM Adapter\nFCMNotificationAdapter" as FCM
+database "PostgreSQL" as DB
+
+' === 1. AUTENTICACIÓN ===
+== 1. Autenticación (Login/Registro/Google) ==
+
+User -> Mobile : Inicia sesión (email/pass o Google)
+Mobile -> ApiClient : POST /api/v1/auth/login\no POST /api/v1/auth/register\no POST /api/v1/auth/google
+ApiClient -> AuthCtrl : Solicitud con credenciales
+AuthCtrl -> Backend : Valida vía AuthService/UserService/GoogleAuthService
+Backend -> DB : Verifica/crea usuario, genera JWT
+DB --> Backend : Usuario + permisos
+Backend --> AuthCtrl : LoginResponse (JWT, usuario)
+AuthCtrl --> ApiClient : 200 OK (JWT)
+ApiClient --> Mobile : Token JWT
+Mobile -> Mobile : Almacena token (TokenStore)\nAgrega Authorization: Bearer en requests
+
+' === 2. ESCANEO DE RECIBOS (FLUJO ASÍNCRONO) ===
+== 2. Escaneo de Recibos - Subida y Encolado (Async OCR) ==
+
+User -> Mobile : Captura/selecciona imagen de recibo
+Mobile -> ApiClient : POST /api/v1/receipts/scan (MultipartFile: image)\nContent-Type: multipart/form-data
+ApiClient -> ReceiptCtrl : scan(image)
+ReceiptCtrl -> ReceiptCtrl : Valida (no vacío, <= 5MB)
+ReceiptCtrl -> ScanSvc : startScan(imageBytes, filename, mediaType)
+ScanSvc -> Security : getCurrentUser() (JWT)
+Security -> DB : Obtiene usuario autenticado
+DB --> Security : User
+Security --> ScanSvc : User
+
+ScanSvc -> ImgSvc : save(user, filename, mediaType, imageBytes)
+ImgSvc -> Seaweed : S3 PUT (bucket/objectKey)\n(SigV4 via SeaweedFS S3 API)
+Seaweed --> ImgSvc : OK
+ImgSvc -> DB : Guarda Image (bucketName, objectKey, tamaño, mime)
+DB --> ImgSvc : Image
+ImgSvc --> ScanSvc : Image
+
+ScanSvc -> ReceiptRepo : save(Receipt PENDING, user, image)
+ReceiptRepo -> DB : INSERT recibo (estado=PENDING)
+DB --> ReceiptRepo : Receipt
+ReceiptRepo --> ScanSvc : Receipt
+
+ScanSvc -> OutboxRepo : save(ReceiptScanOutbox PENDING, receiptId, bucket, objectKey)
+OutboxRepo -> DB : INSERT outbox (estado=PENDING, createdAt)
+DB --> OutboxRepo : Outbox
+OutboxRepo --> ScanSvc : Outbox
+
+ScanSvc -> JobDisp : publishScanJobAfterCommit(outboxId)\n(registra TransactionSynchronization.afterCommit)
+note right of JobDisp: Evita espera del scheduler (30s). Scheduler fallback cada 5s\n(reintentos si falla confirmación RabbitMQ)
+
+ScanSvc --> ReceiptCtrl : ReceiptResponse (receiptId, status=PENDING, imageId, ...)
+ReceiptCtrl -> ReceiptCtrl : Construye Location: /api/v1/receipts/{receiptId}
+ReceiptCtrl --> ApiClient : 202 Accepted\nLocation + body
+ApiClient --> Mobile : 202 Accepted (respuesta)
+
+alt Navegación inmediata + polling (Frontend fix)
+  Mobile -> Mobile : ReceiptViewModel navega a ResultScreen\ninmediatamente (no bloquea UI)
+  Mobile -> Mobile : Inicia polling en background\n(getScanResult cada ~poll interval)\nMAX_ATTEMPTS 120
+end
+
+JobDisp -> JobDisp : afterCommit() ejecutado
+JobDisp -> RabbitPub : dispatch(outboxId)
+RabbitPub -> OutboxRepo : findById(outboxId)
+OutboxRepo -> DB : SELECT outbox
+DB --> OutboxRepo : Outbox (PENDING)
+RabbitPub -> Rabbit : basicPublish\nexchange=receipt.scan, routingKey=receipt.scan.job\nmessage {receiptId, bucket, objectKey}\n(publisher confirms, mandatory=true)
+Rabbit --> RabbitPub : ack/confirm (correlated)
+RabbitPub -> OutboxRepo : marcar outbox PUBLISHED + publishedAt
+OutboxRepo -> DB : UPDATE estado=PUBLISHED
+DB --> OutboxRepo : OK
+RabbitPub --> JobDisp : OK
+
+Rabbit -> DocProc : Entrega mensaje a queue receipt.scan.job\n(QoS prefetch)
+DocProc -> DocProc : _on_message() parsea JSON
+DocProc -> Seaweed : S3 GET (download bucket/objectKey)\nboto3 s3v4 path-style
+Seaweed --> DocProc : image bytes
+DocProc -> OCR : RapidOCR.recognize(bytes)\n(convierte a RGB, extrae txts/scores)
+OCR --> DocProc : OcrResult(raw_text, confidence, duration_ms)
+DocProc -> DocProc : _process() → status DONE/FAILED + rawText + engine + confidence
+DocProc -> Rabbit : basicPublish\nexchange=receipt.scan.result, routingKey=receipt.scan.result\npayload JSON (ReceiptScanResultMessage)\ndurable, persistent
+Rabbit --> DocProc : ACK mensaje job (basic_ack)
+
+' === 3. RESULTADO ASÍNCRONO VUELVE AL BACKEND ===
+== 3. Procesamiento de Resultado OCR (Backend Consumer) ==
+
+Rabbit -> ResCons : Entrega a queue receipt.scan.result\n(containerFactory con retry 2x, backoff)
+ResCons -> ResCons : Deserializa ReceiptScanResultMessage
+ResCons -> ResSvc : applyScanResult(message)
+ResSvc -> ReceiptRepo : findByIdForUpdate(receiptId)
+ReceiptRepo -> DB : SELECT FOR UPDATE receipt
+DB --> ReceiptRepo : Receipt
+ReceiptRepo --> ResSvc : Receipt
+
+alt status != "DONE" o terminal
+  ResSvc -> ReceiptRepo : markFailed(reason)
+  ReceiptRepo -> DB : UPDATE status=FAILED, errorMessage
+  DB --> ReceiptRepo : OK
+else status == "DONE" y no terminal
+  ResSvc -> Parsers : RegexParser.parse(rawText)
+  Parsers --> ResSvc : ReceiptData (confidence regex)
+  
+  alt confidence regex < 0.55
+    ResSvc -> Parsers : GeminiParser.parse(rawText) (fallback)
+    Parsers --> ResSvc : ReceiptData mejorado (o excepción)
+    alt mejoró confianza
+      ResSvc -> ResSvc : usar datos Gemini, engine=GEMINI
+    else fallback falló
+      ResSvc -> ResSvc : log warn, mantener REGEX
+    end
+  end
+  
+  alt amount == null
+    ResSvc -> ReceiptRepo : fail("No se detectó monto")
+    ReceiptRepo -> DB : UPDATE status=FAILED
+  else datos válidos
+    ResSvc -> DB : Buscar categoría por userId/texto (CategoryRepository)
+    DB --> ResSvc : detectedCategoryId (opcional)
+    ResSvc -> ReceiptRepo : save(receipt)\nset status=DONE, campos detectados,\nparserEngineUsed, confidenceScore, ocrDurationMs
+    ReceiptRepo -> DB : UPDATE receipt COMPLETADO
+    DB --> ReceiptRepo : OK
+    ResSvc -> ResSvc : log scan_completed
+  end
+end
+
+ResCons -> ResCons : log scan_result_processed
+Rabbit -> ResCons : ACK
+
+' === 4. POLLING DEL RESULTADO DESDE APP ===
+== 4. Consulta de Resultado por Polling (App Android) ==
+
+loop Polling reactivo (background, cancelable)
+  Mobile -> ApiClient : GET /api/v1/receipts/{receiptId}
+  ApiClient -> ReceiptCtrl : getScanResult(receiptId)
+  ReceiptCtrl -> ScanSvc : getScanResult(receiptId)
+  ScanSvc -> Security : getCurrentUser()
+  Security -> DB : userId
+  ScanSvc -> ReceiptRepo : findByIdAndUser_Id(receiptId, userId)
+  ReceiptRepo -> DB : SELECT receipt por id+userId
+  DB --> ReceiptRepo : Receipt
+  ReceiptRepo --> ScanSvc : Receipt
+  ScanSvc --> ReceiptCtrl : ReceiptResponse (status: PENDING/PROCESSING/DONE/FAILED)
+  ReceiptCtrl --> ApiClient : 200 OK
+  ApiClient --> Mobile : ReceiptResponse
+  
+  alt status == DONE
+    Mobile -> Mobile : Detiene polling, navega/muestra resultado\ncon datos detectados (monto, fecha, categoría...)
+  else status == FAILED
+    Mobile -> Mobile : Detiene polling, muestra error
+  else PENDING/PROCESSING
+    Mobile -> Mobile : Continúa polling (hasta MAX_ATTEMPTS)
+  end
+end
+
+note over Mobile: Botón "Actualizar estado" permite refresh manual\n(isPollingResult + refreshScanResult())
+
+' === 5. OBTENCIÓN DE IMAGEN (REDIRECT 302 A SEAWEEDFS PRESIGNADO) ===
+== 5. Descarga de Imagen (302 + Presigned URL) ==
+
+User -> Mobile : Ver imagen del recibo/resultado
+Mobile -> ApiClient : GET /api/v1/images/{imageId}\n(con Authorization Bearer JWT)
+ApiClient -> ImgCtrl : download(imageId)
+ImgCtrl -> ImgSvc : getPresignedDownloadUrl(imageId)
+ImgSvc -> Security : getCurrentUser()
+Security -> DB : userId
+ImgSvc -> DB : find Image by id + validar ownership (pertenece a user)
+DB --> ImgSvc : Image (bucket, objectKey) o null
+alt no encontrado o no pertenece
+  ImgSvc --> ImgCtrl : Optional.empty()
+  ImgCtrl --> ApiClient : 404 Not Found
+  ApiClient --> Mobile : Error imagen no encontrada
+else válido
+  ImgSvc -> Seaweed : Genera presigned URL (GET, TTL corto)\nfirmada con credenciales S3 (SigV4)\nhost público configurado (túnel/ngrok o dominio prod)
+  Seaweed --> ImgSvc : URL presignada (temporal)
+  ImgSvc --> ImgCtrl : Optional.of(presignedUrl)
+  ImgCtrl --> ApiClient : 302 Found\nLocation: <presignedUrl>\nCache-Control: no-store
+  ApiClient --> Mobile : 302 Redirect (OkHttp sigue redirect por defecto)
+  ApiClient -> Seaweed : GET <presignedUrl> (sin Authorization)
+  Seaweed --> ApiClient : 200 OK image/jpeg (bytes)
+  ApiClient --> Mobile : bytes de imagen
+  Mobile -> Mobile : Muestra imagen en UI
+end
+
+note right of Seaweed: Redirect cruza host (móvil accede a storage público).\nCabecera Authorization NO se reenvía a storage.\nSigV4 en URL; TTL corto (5m).
+
+' === 6. NOTIFICACIONES (FCM) - OPCIONAL ===
+== 6. Notificaciones Asíncronas (FCM/Gmail) ==
+
+Backend -> NotifPub : Publica evento de notificación (outbox)\n(NotificationOutboxRabbitPublisher)
+NotifPub -> NotifRabbit : exchange=notifications, routingKey=notifications.send\nmensaje NotificationOutboxMessage
+NotifRabbit -> NotifCons : Consume queue notifications.send\n(retry + DLQ)
+NotifCons -> NotifCons : deliveryService.prepare → obtiene DTO
+NotifCons -> FCM : Envia notificación vía FCMNotificationAdapter\n(tokens registrados por usuario)
+FCM --> NotifCons : Resultado envío
+NotifCons -> NotifCons : complete() marca outbox procesado
+
+' === 7. WEBHOOKS DE PAGO (EXTERNO) ===
+== 7. Webhooks de Pago (Asíncronos) ==
+
+ExternalSystem -> Backend : POST /webhooks/payment\n(WebhookController)
+Backend -> PaymentWebhookRabbitPublisher : Publica a exchange payment.webhooks
+Rabbit -> PaymentWebhookConsumer : Consume y procesa webhook\n(actualiza suscripción/pago)
+PaymentWebhookConsumer -> DB : Actualiza estado de pago/suscripción
+DB --> PaymentWebhookConsumer : OK
+
+' === 8. FLUJO COMPLETO RESUMIDO (TIEMPOS CLAVE) ===
+== Notas de Implementación (Fixes aplicados) ==
+
+note over JobDisp, ScanSvc: **Fix Bug 1 (scan "procesando" largo):**\n- Immediate publish via afterCommit (REQUIRES_NEW dispatcher)\n- Scheduler fallback 5s (antes 30s), lock times reducidos\n- Resultado: outbox→publish ~0.04s vs 15–29s
+
+note over ResSvc: **Fallback Gemini:** solo si regex < 0.55\nEngine final: REGEX o GEMINI\nSi monto no detectado → FAILED
+
+note over NotifCons, FCM: **Fix Bug 2 (DELETE FCM 500):**\n- Repositorio usa deleteByIdAndUserId (bulk @Modifying)\n- Service remove() idempotente (204 incluso si no existe)\n- Evita StaleState/ObjectOptimisticLocking en deletes concurrentes
+
+note over Mobile, ApiClient: **Polling no bloqueante:** navegación inmediata a resultado\npolling reactivo en background, cancelable, 120 intentos
+
+@enduml
