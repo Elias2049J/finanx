@@ -6,6 +6,7 @@ import com.elias.mismonedas.document.domain.entity.Receipt;
 import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
 import com.elias.mismonedas.document.dto.ReceiptResponse;
 import com.elias.mismonedas.document.dto.scan.ReceiptScanResultMessage;
+import com.elias.mismonedas.document.outbox.ReceiptScanJobDispatcher;
 import com.elias.mismonedas.document.outbox.ReceiptScanOutbox;
 import com.elias.mismonedas.document.outbox.ReceiptScanOutboxState;
 import com.elias.mismonedas.document.outbox.persistence.ReceiptScanOutboxRepository;
@@ -46,6 +47,7 @@ class ReceiptScanServiceImplTest {
     @Mock private SecurityService securityService;
     @Mock private CategoryRepository categoryRepository;
     @Mock private ReceiptScanOutboxRepository outboxRepository;
+    @Mock private ReceiptScanJobDispatcher jobDispatcher;
 
     private ReceiptScanServiceImpl service;
 
@@ -53,7 +55,7 @@ class ReceiptScanServiceImplTest {
     void setUp() {
         service = new ReceiptScanServiceImpl(
                 regexParser, geminiParser, receiptRepository, imageService,
-                securityService, categoryRepository, outboxRepository);
+                securityService, categoryRepository, outboxRepository, jobDispatcher);
     }
 
     @Nested

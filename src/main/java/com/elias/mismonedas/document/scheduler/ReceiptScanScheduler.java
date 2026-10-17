@@ -25,8 +25,8 @@ public class ReceiptScanScheduler {
     private final ReceiptScanOutboxRepository outboxRepository;
     private final ReceiptScanJobPublisher outboxPublisher;
 
-    @Scheduled(fixedDelay = 30_000)
-    @SchedulerLock(name = "receiptScanScheduler.processOutbox", lockAtMostFor = "PT5M", lockAtLeastFor = "PT15S")
+    @Scheduled(fixedDelay = 5_000)
+    @SchedulerLock(name = "receiptScanScheduler.processOutbox", lockAtMostFor = "PT2M", lockAtLeastFor = "PT2S")
     public void processOutbox() {
         List<ReceiptScanOutbox> pending = outboxRepository.findTop50ByStateOrderByIdAsc(ReceiptScanOutboxState.PENDING);
         for (ReceiptScanOutbox entry : pending) {

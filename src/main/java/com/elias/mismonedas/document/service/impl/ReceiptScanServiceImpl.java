@@ -9,6 +9,7 @@ import com.elias.mismonedas.document.domain.entity.Receipt;
 import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
 import com.elias.mismonedas.document.dto.ReceiptResponse;
 import com.elias.mismonedas.document.dto.scan.ReceiptScanResultMessage;
+import com.elias.mismonedas.document.outbox.ReceiptScanJobDispatcher;
 import com.elias.mismonedas.document.outbox.ReceiptScanOutbox;
 import com.elias.mismonedas.document.outbox.ReceiptScanOutboxState;
 import com.elias.mismonedas.document.outbox.persistence.ReceiptScanOutboxRepository;
@@ -24,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -41,6 +44,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
     private final SecurityService securityService;
     private final CategoryRepository categoryRepository;
     private final ReceiptScanOutboxRepository outboxRepository;
+    private final ReceiptScanJobDispatcher jobDispatcher;
 
     public ReceiptScanServiceImpl(@Qualifier("regex") ReceiptParserPort regexParser,
                                   @Qualifier("gemini") ReceiptParserPort geminiParser,
@@ -48,7 +52,8 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
                                   ImageService imageService,
                                   SecurityService securityService,
                                   CategoryRepository categoryRepository,
-                                  ReceiptScanOutboxRepository outboxRepository) {
+                                  ReceiptScanOutboxRepository outboxRepository,
+                                  ReceiptScanJobDispatcher jobDispatcher) {
         this.regexParser = regexParser;
         this.geminiParser = geminiParser;
         this.receiptRepository = receiptRepository;
@@ -56,6 +61,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
         this.securityService = securityService;
         this.categoryRepository = categoryRepository;
         this.outboxRepository = outboxRepository;
+        this.jobDispatcher = jobDispatcher;
     }
 
     @Override
@@ -83,9 +89,36 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
                 .build();
         outboxRepository.save(outbox);
 
+        // Publica de inmediato en cuanto la transacción confirma, en vez de
+        // esperar (hasta 30 s) a que pase el scheduler del outbox. El scheduler
+        // queda como red de seguridad para reintentos si el broker no confirma.
+        publishScanJobAfterCommit(outbox.getId());
+
         log.info("scan_enqueued receipt_id={} userId={} bucket={} objectKey={}",
                 receipt.getId(), userId, image.getBucketName(), image.getObjectKey());
         return toResponse(receipt);
+    }
+
+    private void publishScanJobAfterCommit(Long outboxId) {
+        Runnable publish = () -> {
+            try {
+                jobDispatcher.dispatch(outboxId);
+            } catch (RuntimeException ex) {
+                log.warn("scan_job_immediate_publish_failed outbox_id={}; el scheduler lo reintentará",
+                        outboxId, ex);
+            }
+        };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publish.run();
+                }
+            });
+        } else {
+            publish.run();
+        }
     }
 
     @Override
