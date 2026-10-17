@@ -38,6 +38,7 @@ build/
 
 src/main/resources/application.yml
 application.yml
+application-dev.yml
 /claude/
 /out/
 /tasks/
