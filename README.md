@@ -32,7 +32,7 @@ Aplicación de finanzas personales con soporte multi-moneda, programación recur
 | **Múltiples Billeteras** | Crear más de una billetera en distintas monedas | Sin límite de cantidad. Cada billetera puede tener una moneda ISO 4217 distinta. Solo una puede ser principal. |
 | **ChatBot Financiero** | Asistente de IA con contexto financiero del usuario | Sesiones con historial. Skills: ADVISOR (consejos contextuales) y CHITCHAT. Usa Google Gemini. |
 | **Insights Financieros** | Generación automática de análisis y recomendaciones basadas en IA sobre los datos del usuario | — |
-| **Escaneo de Recibos (OCR)** | Escaneo de recibos con Tesseract OCR + extracción estructurada vía regex con fallback Gemini. Los datos detectados se precargan en el formulario de transacción para verificación del usuario. | Sin almacenamiento de imagen. Límite de 30 escaneos/día. |
+| **Escaneo de Recibos (OCR)** | Escaneo de recibos vía el microservicio `doc-processing` (RapidOCR / PP-OCRv6, modelos en español) que publica el resultado por RabbitMQ + extracción estructurada con parser regex y fallback Gemini. Los datos detectados se precargan en el formulario de transacción para verificación del usuario. | La imagen se sube a SeaweedFS. Límite de 30 escaneos/día. |
 
 ### Suscripción y Plans
 
@@ -61,3 +61,50 @@ El gating se implementa mediante **AOP** con la anotación `@RequiresPlan` y un 
 - Firebase Cloud Messaging (push)
 - Gmail SMTP (email)
 - Stripe / Mercado Pago (pagos)
+
+---
+
+## Almacenamiento de imágenes (SeaweedFS)
+
+Las imágenes de los recibos se guardan en **SeaweedFS** (S3-compatible). La app
+las obtiene con `GET /api/v1/images/{imageId}`, que responde **302** hacia una
+**URL prefirmada** de SeaweedFS.
+
+El host de esa URL se toma de `app.storage.seaweedfs.public-endpoint`
+(env `SEAWEEDFS_PUBLIC_ENDPOINT`, por defecto `http://localhost:8333`). **Ese
+endpoint debe ser alcanzable desde el cliente (el móvil)**, no solo desde el
+backend, porque el redirect lo sigue el dispositivo.
+
+La firma SigV4 incluye el **host**, así que el túnel/proxy que pongas delante
+debe reenviar el `Host` original y no reescribir la ruta (ngrok y cloudflared lo
+hacen; en nginx es `proxy_set_header Host $host;`).
+
+### Desarrollo (ngrok) — la opción recomendada
+
+Son **dos hosts distintos**, uno para la API y otro para el storage (así la app
+no manda el JWT al storage, porque OkHttp lo elimina en redirects entre hosts):
+
+```bash
+docker compose up -d --build
+ngrok http 8080      # -> https://<api>.ngrok-free.app      (API)
+ngrok http 8333      # -> https://<storage>.ngrok-free.app  (storage)
+```
+
+Luego rellena:
+
+- `SEAWEEDFS_PUBLIC_ENDPOINT=https://<storage>.ngrok-free.app` en `.env` (backend).
+- `API_BASE_URL=https://<api>.ngrok-free.app/` en `local.properties` (app, con barra final).
+
+Alternativas sin túnel: en emulador `adb reverse tcp:8333 tcp:8333` y dejar
+`http://localhost:8333`; en móvil físico en la misma LAN, `http://<IP-DEL-PC>:8333`.
+
+### Producción (Cloudflare)
+
+Mismo esquema, con hosts fijos en lugar de túneles: `api.tudominio.com` para el
+backend y `storage.tudominio.com` para SeaweedFS (Cloudflare Tunnel puede ir
+directo a cada servicio, o delante de nginx con el bloque `storage` de
+`nginx.conf`). Solo cambias `SEAWEEDFS_PUBLIC_ENDPOINT` y `API_BASE_URL`; ni el
+backend ni la app se tocan.
+
+Ver `.env.example` para el detalle de cada variable.
+

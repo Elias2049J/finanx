@@ -25,6 +25,9 @@ services:
       SPRING_RABBITMQ_PUBLISHER_RETURNS: "true"
       SPRING_RABBITMQ_TEMPLATE_MANDATORY: "true"
       APP_STORAGE_SEAWEEDFS_INTERNAL_ENDPOINT: http://seaweedfs:8333
+      # Host PÚBLICO del storage: es el que se firma en las URLs prefirmadas y
+      # el que debe poder abrir el móvil. Configúralo en .env
+      # (SEAWEEDFS_PUBLIC_ENDPOINT); en dev, el host del túnel al 8333.
       APP_STORAGE_SEAWEEDFS_PUBLIC_ENDPOINT: ${SEAWEEDFS_PUBLIC_ENDPOINT:-http://localhost:8333}
       APP_STORAGE_SEAWEEDFS_BUCKET: ${SEAWEEDFS_BUCKET:-finanx-images}
       APP_STORAGE_SEAWEEDFS_ACCESS_KEY: ${SEAWEEDFS_ACCESS_KEY:-finanx-storage}
@@ -47,6 +50,8 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_USER:-finanx}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-finanx-dev}
+      SCAN_EXCHANGE: receipt.scan
+      SCAN_ROUTING_KEY: receipt.scan.job
       SCAN_QUEUE: receipt.scan.job
       SCAN_RESULT_EXCHANGE: receipt.scan.result
       SCAN_RESULT_ROUTING_KEY: receipt.scan.result
@@ -126,6 +131,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - mismonedas
+      - seaweedfs
     networks:
       - springnet
     restart: unless-stopped
