@@ -55,6 +55,7 @@ class ReceiptScanWorker:
 
     def _declare_topology(self, channel) -> None:
         rabbit = self._settings.rabbit
+        channel.exchange_declare(exchange=rabbit.scan_exchange, exchange_type="direct", durable=True)
         channel.exchange_declare(exchange=rabbit.result_exchange, exchange_type="direct", durable=True)
         channel.queue_declare(
             queue=rabbit.scan_queue,
@@ -63,6 +64,11 @@ class ReceiptScanWorker:
                 "x-dead-letter-exchange": "receipt.scan.dlx",
                 "x-dead-letter-routing-key": "receipt.scan.dead",
             },
+        )
+        channel.queue_bind(
+            queue=rabbit.scan_queue,
+            exchange=rabbit.scan_exchange,
+            routing_key=rabbit.scan_routing_key,
         )
 
     def _on_message(self, channel, method, properties, body) -> None:

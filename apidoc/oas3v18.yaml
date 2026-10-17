@@ -1242,9 +1242,10 @@ paths:
     post:
       tags:
         - Receipts
-      summary: Escanear recibo con OCR
-      description: "Procesa una imagen de recibo, extrae texto via Tesseract y parsea\
-        \ los datos (monto, fecha, comercio). Requiere plan PREMIUM."
+      summary: Encolar escaneo OCR de recibo
+      description: "Sube la imagen, crea el recibo en estado PENDING y encola el OCR\
+        \ en el microservicio doc-processing. Responde 202 con la Location para consultar\
+        \ el resultado. Requiere plan PREMIUM."
       operationId: scanReceipt
       parameters:
         - name: userId
