@@ -2,6 +2,7 @@ package com.elias.mismonedas.notifications.repository;
 
 import com.elias.mismonedas.notifications.domain.entity.FcmToken;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
@@ -27,4 +28,14 @@ public interface FcmTokenRepository extends JpaRepository<FcmToken, Long> {
 
     @Query("SELECT f FROM FcmToken f WHERE f.user.id = :userId AND f.token = :token ORDER BY f.id ASC")
     List<FcmToken> findAllByUser_IdAndToken(@Param("userId") Long userId, @Param("token") String token);
+
+    /**
+     * Borrado por lotes del token que pertenece al usuario indicado. Devuelve el
+     * numero de filas afectadas (0 si ya no existia o es de otro usuario). A
+     * diferencia de {@code deleteById}, NO falla cuando la fila ya no esta, por
+     * lo que es idempotente ante DELETEs concurrentes del mismo token.
+     */
+    @Modifying
+    @Query("delete from FcmToken f where f.id = :id and f.user.id = :userId")
+    int deleteByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
 }

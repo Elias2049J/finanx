@@ -77,15 +77,26 @@ public class FcmTokenServiceImpl implements FcmTokenService {
     @Transactional
     public void remove(Long tokenId) {
         Long userId = securityService.getCurrentUser().getId();
-        FcmToken token = fcmTokenRepository.findById(tokenId)
-                .orElseThrow(() -> new RuntimeException("Token FCM no encontrado: " + tokenId));
-        if (!token.getUser().getId().equals(userId)) {
-            log.warn("Intento de eliminar token ajeno: userId={}, tokenId={}, propietario={}",
-                    userId, tokenId, token.getUser().getId());
+
+        // Borrado por lotes en lugar de findById + deleteById: aquel fallaba con
+        // ObjectOptimisticLockingFailureException ("expected row count 1 but was 0")
+        // cuando dos DELETEs del mismo token corrian en paralelo (el segundo ya no
+        // encontraba la fila al confirmar). El borrado por lotes no valida el
+        // conteo de filas, asi que es idempotente ante reintentos/duplicados.
+        int deleted = fcmTokenRepository.deleteByIdAndUserId(tokenId, userId);
+        if (deleted > 0) {
+            log.info("Token FCM eliminado con id={}", tokenId);
+            return;
+        }
+
+        boolean belongsToAnotherUser = fcmTokenRepository.findById(tokenId)
+                .map(token -> !token.getUser().getId().equals(userId))
+                .orElse(false);
+        if (belongsToAnotherUser) {
+            log.warn("Intento de eliminar token ajeno: userId={}, tokenId={}", userId, tokenId);
             throw new RuntimeException("El token FCM no pertenece al usuario " + userId);
         }
-        fcmTokenRepository.deleteById(tokenId);
-        log.info("Token FCM eliminado con id={}", tokenId);
+        log.info("Token FCM inexistente, eliminacion idempotente id={}", tokenId);
     }
 
     @Override
