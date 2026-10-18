@@ -109,7 +109,9 @@ public class WalletServiceImpl implements WalletService {
         walletRepository.save(wallet);
     }
 
-    private Wallet getOwned(Long id) {
+    @Override
+    @Transactional(readOnly = true)
+    public Wallet getOwned(Long id) {
         Long userId = securityService.getCurrentUser().getId();
         return walletRepository.findByIdAndUser_Id(id, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Wallet not found: " + id));

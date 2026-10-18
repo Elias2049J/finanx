@@ -9,7 +9,7 @@ import com.elias.mismonedas.catalog.repository.ReasonRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
 import com.elias.mismonedas.shared.domain.vo.DateRange;

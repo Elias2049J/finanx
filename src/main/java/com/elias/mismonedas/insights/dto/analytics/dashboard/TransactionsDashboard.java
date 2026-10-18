@@ -4,7 +4,7 @@ import com.elias.mismonedas.catalog.dto.category.CategorySummary;
 import com.elias.mismonedas.catalog.dto.reason.ReasonSummary;
 import com.elias.mismonedas.insights.dto.analytics.component.Ranking;
 import com.elias.mismonedas.insights.dto.analytics.component.TimeLine;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import io.swagger.v3.oas.annotations.media.Schema;

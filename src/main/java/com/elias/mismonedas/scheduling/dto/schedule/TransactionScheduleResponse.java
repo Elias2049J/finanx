@@ -1,6 +1,6 @@
 package com.elias.mismonedas.scheduling.dto.schedule;
 
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;

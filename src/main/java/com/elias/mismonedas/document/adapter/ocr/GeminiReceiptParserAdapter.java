@@ -2,7 +2,7 @@ package com.elias.mismonedas.document.adapter.ocr;
 
 import com.elias.mismonedas.document.port.ReceiptData;
 import com.elias.mismonedas.document.port.ReceiptParserPort;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.shared.adapter.ai.gemini.InteractionClient;
 import com.elias.mismonedas.shared.adapter.ai.gemini.dto.InteractionRequest;

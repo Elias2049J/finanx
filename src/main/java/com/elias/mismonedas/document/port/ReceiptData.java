@@ -1,6 +1,6 @@
 package com.elias.mismonedas.document.port;
 
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 
 import java.math.BigDecimal;

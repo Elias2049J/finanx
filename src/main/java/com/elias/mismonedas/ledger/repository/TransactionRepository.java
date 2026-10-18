@@ -18,15 +18,18 @@ import java.util.Optional;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long>, JpaSpecificationExecutor<Transaction> {
-    List<Transaction> findAllByWallet_User_Id(Long userId);
+    List<Transaction> findAllByUser_Id(Long userId);
 
     java.util.Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
 
-    List<Transaction> findAllByWallet_User_IdAndActiveTrue(Long userId);
+    /** F8: todo acceso por id en el camino de request va acotado al usuario. */
+    java.util.Optional<Transaction> findByIdAndUser_Id(Long id, Long userId);
 
-    List<Transaction> findAllByWallet_User_IdAndCreatedAtBetweenAndActive(Long userId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, boolean active);
+    List<Transaction> findAllByUser_IdAndActiveTrue(Long userId);
 
-    List<Transaction> findAllByWallet_User_IdAndActive(Long userId, Boolean active);
+    List<Transaction> findAllByUser_IdAndCreatedAtBetweenAndActive(Long userId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, boolean active);
+
+    List<Transaction> findAllByUser_IdAndActive(Long userId, Boolean active);
 
     List<Transaction> findAllByCategory_IdAndCreatedAtBetweenAndActive(Long categoryId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active);
 
@@ -58,22 +61,25 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
                    SUM(t.amount) AS total,
                    COUNT(t) AS transactionsCount
             FROM Transaction t
-            WHERE t.savingGoal.id IN :goalIds AND t.active = true
+            WHERE t.user.id = :userId AND t.savingGoal.id IN :goalIds AND t.active = true
             GROUP BY t.savingGoal.id, t.savingGoal.currencyCode, t.wallet.currencyCode
             """)
-    List<SavingGoalAggregate> sumAmountsByCurrencyForSavingGoals(@Param("goalIds") Collection<Long> goalIds);
+    List<SavingGoalAggregate> sumAmountsByCurrencyForSavingGoals(
+            @Param("userId") Long userId, @Param("goalIds") Collection<Long> goalIds);
 
     /**
      * F6 (opcion B): gastado de un presupuesto agregado en la base, acotado al periodo.
+     * F8: todo filtro en caliente lleva {@code user_id} — ninguna query cruza usuarios.
      */
     @Query("""
             SELECT t.wallet.currencyCode AS currencyCode, SUM(t.amount) AS total
             FROM Transaction t
-            WHERE t.category.id = :categoryId AND t.type = :type AND t.active = true
+            WHERE t.user.id = :userId AND t.category.id = :categoryId AND t.type = :type AND t.active = true
               AND t.createdAt >= :from AND t.createdAt <= :to
             GROUP BY t.wallet.currencyCode
             """)
     List<AmountByCurrency> sumAmountsByCurrencyForCategory(
+            @Param("userId") Long userId,
             @Param("categoryId") Long categoryId,
             @Param("type") TransactionType type,
             @Param("from") OffsetDateTime from,

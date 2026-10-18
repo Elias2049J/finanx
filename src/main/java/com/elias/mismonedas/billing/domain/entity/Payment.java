@@ -3,7 +3,7 @@ package com.elias.mismonedas.billing.domain.entity;
 import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
 import com.elias.mismonedas.billing.domain.enums.PaymentState;
 import com.elias.mismonedas.identity.domain.entity.User;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
 

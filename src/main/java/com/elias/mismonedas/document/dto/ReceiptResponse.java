@@ -1,7 +1,7 @@
 package com.elias.mismonedas.document.dto;
 
 import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;

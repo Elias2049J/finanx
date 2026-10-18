@@ -15,7 +15,7 @@ import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.service.UserDataContextService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.domain.event.TransactionChangedEvent;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
@@ -122,6 +122,10 @@ class TransactionServiceImplTest {
 
         response = new TransactionResponse();
         response.setId(999L);
+
+        // F8: create() resuelve el usuario autenticado al inicio; todos los tests de este
+        // nested class pasan por ahi.
+        when(securityService.getCurrentUser()).thenReturn(user);
     }
 
     @Nested
@@ -130,7 +134,7 @@ class TransactionServiceImplTest {
         @Test
         void shouldCreateTransactionWithoutReceipt() throws Exception {
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findById(10L)).thenReturn(Optional.of(wallet));
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
             when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
@@ -158,7 +162,7 @@ class TransactionServiceImplTest {
                     .build();
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findById(10L)).thenReturn(Optional.of(wallet));
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
             when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
@@ -179,6 +183,7 @@ class TransactionServiceImplTest {
             Transaction existing = new Transaction();
             existing.setId(999L);
             existing.setWallet(wallet);
+            existing.setUser(user);
             TransactionResponse existingResponse = new TransactionResponse();
             existingResponse.setId(999L);
 
@@ -203,6 +208,7 @@ class TransactionServiceImplTest {
             Transaction existing = new Transaction();
             existing.setId(888L);
             existing.setWallet(otherWallet);
+            existing.setUser(other);
 
             when(transactionRepository.findByIdempotencyKey("key-1")).thenReturn(Optional.of(existing));
             when(securityService.getCurrentUser()).thenReturn(user);
@@ -218,12 +224,13 @@ class TransactionServiceImplTest {
             Transaction existing = new Transaction();
             existing.setId(777L);
             existing.setWallet(wallet);
+            existing.setUser(user);
             TransactionResponse existingResponse = new TransactionResponse();
             existingResponse.setId(777L);
 
             when(securityService.getCurrentUser()).thenReturn(user);
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findById(10L)).thenReturn(Optional.of(wallet));
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
             when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.findByIdempotencyKey("key-1"))
@@ -243,7 +250,7 @@ class TransactionServiceImplTest {
             request.setReceiptId(999L);
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findById(10L)).thenReturn(Optional.of(wallet));
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
             when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
@@ -266,7 +273,7 @@ class TransactionServiceImplTest {
                     .build();
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findById(10L)).thenReturn(Optional.of(wallet));
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
             when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.save(any())).thenReturn(savedTransaction);

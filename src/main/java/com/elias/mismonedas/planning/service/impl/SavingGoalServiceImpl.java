@@ -79,14 +79,14 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         ZoneId userZone = existing.getUser().getTimeZone().toZoneId();
         existing.setDeadline(request.getDeadline().atStartOfDay().atZone(userZone).toOffsetDateTime());
 
-        return sgMapper.toResponse(sgRepository.save(existing), totalsOf(List.of(existing)).get(existing.getId()));
+        return sgMapper.toResponse(sgRepository.save(existing), totalsOf(existing.getUser().getId(), List.of(existing)).get(existing.getId()));
     }
 
     @Transactional
     @Override
     public void cancel(Long id) {
         SavingGoal existing = getOwned(id);
-        BigDecimal converted = totalsOf(List.of(existing)).get(existing.getId()).accumulated();
+        BigDecimal converted = totalsOf(existing.getUser().getId(), List.of(existing)).get(existing.getId()).accumulated();
         existing.setFrozenAccumulated(converted);
         existing.setState(SavingGoalState.CANCELLED);
         sgRepository.save(existing);
@@ -95,9 +95,10 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     /**
      * F6 (opcion B): UNA query agrupada {@code (meta, moneda)} para toda la coleccion — convierte
      * un monto por moneda, no por transaccion, y la base hace el barrido del historial.
+     * F8: la query siempre lleva {@code user_id}; ninguna query en caliente cruza usuarios.
      * Las metas sin aportaciones quedan en {@link SavingGoalTotals#empty()}.
      */
-    private Map<Long, SavingGoalTotals> totalsOf(Collection<SavingGoal> goals) {
+    private Map<Long, SavingGoalTotals> totalsOf(Long userId, Collection<SavingGoal> goals) {
         Map<Long, SavingGoalTotals> totals = new HashMap<>();
         for (SavingGoal goal : goals) {
             totals.put(goal.getId(), SavingGoalTotals.empty());
@@ -105,7 +106,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         if (goals.isEmpty()) {
             return totals;
         }
-        for (SavingGoalAggregate row : transactionRepository.sumAmountsByCurrencyForSavingGoals(totals.keySet())) {
+        for (SavingGoalAggregate row : transactionRepository.sumAmountsByCurrencyForSavingGoals(userId, totals.keySet())) {
             BigDecimal converted = currencyConverter
                     .convert(Money.of(row.getTotal(), row.getCurrencyCode()), row.getGoalCurrencyCode())
                     .amount();
@@ -131,7 +132,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Transactional(readOnly = true)
     public List<SavingGoalResponse> findAllActiveByUser(Long userId) {
         List<SavingGoal> goals = sgRepository.findAllByUser_IdAndActive(userId, true);
-        Map<Long, SavingGoalTotals> totals = totalsOf(goals);
+        Map<Long, SavingGoalTotals> totals = totalsOf(userId, goals);
         return goals.stream()
                 .map(g -> sgMapper.toResponse(g, totals.get(g.getId())))
                 .toList();
@@ -145,7 +146,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         Page<SavingGoal> page = state == null
                 ? sgRepository.findAllByUser_IdAndActive(userId, active, stablePage)
                 : sgRepository.findAllByUser_IdAndActiveAndState(userId, active, state, stablePage);
-        Map<Long, SavingGoalTotals> totals = totalsOf(page.getContent());
+        Map<Long, SavingGoalTotals> totals = totalsOf(userId, page.getContent());
         return PageResponseFactory.from(page, g -> sgMapper.toResponse(g, totals.get(g.getId())));
     }
 
@@ -153,7 +154,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Transactional(readOnly = true)
     public SavingGoalResponse findById(Long id) {
         SavingGoal entity = getOwned(id);
-        return sgMapper.toResponse(entity, totalsOf(List.of(entity)).get(entity.getId()));
+        return sgMapper.toResponse(entity, totalsOf(entity.getUser().getId(), List.of(entity)).get(entity.getId()));
     }
 
     private SavingGoal getOwned(Long id) {
@@ -166,7 +167,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Override
     public void checkAllSavingGoals(Long userId) {
         List<SavingGoal> all = sgRepository.findAllByUser_IdAndActiveAndState(userId, true, SavingGoalState.RUNNING);
-        Map<Long, SavingGoalTotals> totals = totalsOf(all);
+        Map<Long, SavingGoalTotals> totals = totalsOf(userId, all);
         for (SavingGoal sa: all) {
             User u = sa.getUser();
             SavingGoalTotals goalTotals = totals.get(sa.getId());

@@ -65,7 +65,10 @@ public class BudgetServiceImpl implements BudgetService {
     public BudgetResponse create(BudgetRequest request) {
         User user = securityService.getCurrentUser();
         Budget b = budgetMapper.toEntity(request);
-        b.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
+        // F8: la categoria debe pertenecer al usuario — con getReferenceById un usuario podia
+        // crear un presupuesto sobre la categoria (y el gasto) de otro usuario.
+        b.setCategory(categoryRepository.findByIdAndUser_Id(request.getCategoryId(), user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to the user")));
         b.setUser(user);
         b.setCurrencyCode(user.getPreferences().getCurrencyCode());
         applyRequestDateTimes(request, b);
@@ -82,7 +85,8 @@ public class BudgetServiceImpl implements BudgetService {
         applyRequestDateTimes(request, existing);
         existing.setStart(currentStart);
 
-        existing.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
+        existing.setCategory(categoryRepository.findByIdAndUser_Id(request.getCategoryId(), existing.getUser().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to the user")));
 
         return budgetMapper.toResponse(budgetRepository.save(existing));
     }
@@ -181,7 +185,7 @@ public class BudgetServiceImpl implements BudgetService {
                     String budgetCurrency = b.getCurrencyCode();
                     BigDecimal finalSpent = ConvertedAmounts.sumConverted(
                             transactionRepository.sumAmountsByCurrencyForCategory(
-                                    c.getId(), TransactionType.SPENT, periodStart, b.getEnd()),
+                                    userId, c.getId(), TransactionType.SPENT, periodStart, b.getEnd()),
                             budgetCurrency, currencyConverter);
                     b.setFrozenSpent(finalSpent);
                     b.setState(BudgetState.FINALIZED);
@@ -194,7 +198,7 @@ public class BudgetServiceImpl implements BudgetService {
             // F6 (opcion B): SUM agregado en la base por moneda, no N conversiones en memoria.
             BigDecimal spent = ConvertedAmounts.sumConverted(
                     transactionRepository.sumAmountsByCurrencyForCategory(
-                            c.getId(), TransactionType.SPENT, periodStart, now),
+                            userId, c.getId(), TransactionType.SPENT, periodStart, now),
                     budgetCurrency, currencyConverter);
 
             BudgetHealth previousHealth = b.getHealth();

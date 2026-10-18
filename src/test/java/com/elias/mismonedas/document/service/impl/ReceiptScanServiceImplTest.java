@@ -17,7 +17,7 @@ import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.document.service.ImageService;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.shared.exception.OcrProcessingException;
 import org.junit.jupiter.api.BeforeEach;

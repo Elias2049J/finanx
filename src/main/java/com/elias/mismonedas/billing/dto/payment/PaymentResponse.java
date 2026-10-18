@@ -2,7 +2,7 @@ package com.elias.mismonedas.billing.dto.payment;
 
 import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
 import com.elias.mismonedas.billing.domain.enums.PaymentState;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

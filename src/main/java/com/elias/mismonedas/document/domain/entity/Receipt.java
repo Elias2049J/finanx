@@ -3,7 +3,7 @@ package com.elias.mismonedas.document.domain.entity;
 import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;

@@ -88,9 +88,12 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional
     public ScheduleResponse create(ScheduleRequest request) {
         Schedule s = tsMapper.toEntityDispatch(request);
-        Category c = categoryRepository.findById(request.getCategoryId()).orElseThrow();
-
         Long userId = securityService.getCurrentUser().getId();
+        // F8: categoria y billetera deben pertenecer al usuario — sin esto un schedule podia
+        // ejecutar transacciones (y tocar saldo) en la billetera de otro usuario.
+        Category c = categoryRepository.findByIdAndUser_Id(request.getCategoryId(), userId)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to the user"));
+
         s.setUser(securityService.getCurrentUser());
         s.setCategory(c);
 
@@ -98,6 +101,10 @@ public class ScheduleServiceImpl implements ScheduleService {
                 && s instanceof TransactionSchedule ts) {
             if (tr.getTransactionType() != c.getType()) {
                 throw new IllegalArgumentException("The category transactionType must be the same as transactionSchedule");
+            }
+            if (tr.getWalletId() != null) {
+                ts.setWallet(walletRepository.findByIdAndUser_Id(tr.getWalletId(), userId)
+                        .orElseThrow(() -> new IllegalArgumentException("Wallet not found or does not belong to the user")));
             }
             ts.setReason(
                     reasonResolver
@@ -118,12 +125,18 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional
     public ScheduleResponse update(Long id, ScheduleRequest request) {
         Schedule existing = getOwned(id);
+        Long ownerId = existing.getUser().getId();
 
         tsMapper.updateFromDtoDispatch(request, existing);
-        existing.setCategory(categoryRepository.getReferenceById(request.getCategoryId()));
+        existing.setCategory(categoryRepository.findByIdAndUser_Id(request.getCategoryId(), ownerId)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to the user")));
 
         if (request instanceof TransactionScheduleRequest tr
                 && existing instanceof TransactionSchedule ts) {
+            if (tr.getWalletId() != null) {
+                ts.setWallet(walletRepository.findByIdAndUser_Id(tr.getWalletId(), ownerId)
+                        .orElseThrow(() -> new IllegalArgumentException("Wallet not found or does not belong to the user")));
+            }
             ts.setReason(
                     reasonResolver
                             .resolveOrCreate(securityService.getCurrentUser().getId(),
@@ -359,6 +372,8 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         Transaction tx = tsMapper.toTransaction(st);
         tx.setIdempotencyKey(occurrenceKey);
+        // F8: el dueño denormalizado de la transaccion es el del schedule.
+        tx.setUser(st.getUser());
         Wallet wallet = st.getWallet();
 
         if (wallet == null) {

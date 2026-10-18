@@ -2,7 +2,7 @@ package com.elias.mismonedas.document.adapter.ocr;
 
 import com.elias.mismonedas.document.adapter.ocr.RegexReceiptParserAdapter;
 import com.elias.mismonedas.document.port.ReceiptData;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -27,7 +27,8 @@ public final class TransactionSpecifications {
                 : DateRangeSpecification.between("createdAt", from, to);
 
         return Specification.allOf(
-                (root, query, cb) -> cb.equal(root.get("wallet").get("user").get("id"), userId),
+                // F8: scope por la columna de particion, sin join por billetera.
+                (root, query, cb) -> cb.equal(root.get("user").get("id"), userId),
                 (root, query, cb) -> active == null ? cb.conjunction() : cb.equal(root.get("active"), active),
                 (root, query, cb) -> type == null ? cb.conjunction() : cb.equal(root.get("type"), type),
                 (root, query, cb) -> walletId == null ? cb.conjunction() : cb.equal(root.get("wallet").get("id"), walletId),

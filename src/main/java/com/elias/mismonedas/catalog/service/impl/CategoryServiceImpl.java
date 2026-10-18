@@ -100,7 +100,9 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryMapper.toResponse(categoryRepository.save(existing));
     }
 
-    private Category getOwned(Long id) {
+    @Override
+    @Transactional(readOnly = true)
+    public Category getOwned(Long id) {
         Long userId = securityService.getCurrentUser().getId();
         return categoryRepository.findByIdAndUser_Id(id, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found: " + id));

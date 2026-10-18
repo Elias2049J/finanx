@@ -1,4 +1,4 @@
-package com.elias.mismonedas.ledger.domain.enums;
+package com.elias.mismonedas.shared.domain.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

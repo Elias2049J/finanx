@@ -68,15 +68,16 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TransactionResponse create(TransactionRequest request, String idempotencyKey) throws HttpException, IOException {
+        Long currentUserId = securityService.getCurrentUser().getId();
+
         // C1: replay del mismo request. La clave es del cliente; ademas se acota al usuario
         // autenticado para que una clave ajena no filtre ni devuelva otra transaccion.
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             var existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
                 Transaction replayed = existing.get();
-                Long owner = replayed.getWallet() != null ? replayed.getWallet().getUser().getId() : null;
-                Long current = securityService.getCurrentUser().getId();
-                if (!current.equals(owner)) {
+                Long owner = replayed.getUser() != null ? replayed.getUser().getId() : null;
+                if (!currentUserId.equals(owner)) {
                     throw new IllegalArgumentException("Idempotency-Key already used by another user");
                 }
                 log.info("Transaction replay ignored: idempotencyKey={} maps to transaction id={}",
@@ -86,9 +87,12 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         Transaction transaction = transactionMapper.toEntity(request);
-        Wallet wallet = walletRepository.findById(request.getWalletId()).orElseThrow();
+        // F8: la billetera debe pertenecer al usuario autenticado — no basta con validar la
+        // categoria contra la billetera (eso permitia escribir en la billetera de otro usuario).
+        Wallet wallet = walletRepository.findByIdAndUser_Id(request.getWalletId(), currentUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Wallet not found or does not belong to the user"));
         Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow();
-        Long userId = wallet.getUser().getId();
+        Long userId = currentUserId;
 
         if (transaction.getType() != category.getType()) {
             throw new IllegalArgumentException("The category transactionType must be the same as transaction");
@@ -97,6 +101,7 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("Category does not belong to the user's wallet");
         }
         transaction.setWallet(wallet);
+        transaction.setUser(wallet.getUser());
         transaction.setCategory(category);
 
         if (request.getSavingGoalId() != null) {
@@ -127,8 +132,8 @@ public class TransactionServiceImpl implements TransactionService {
             // clave_idempotencia escogio al segundo. Se devuelve la transaccion ya registrada.
             Transaction existing = transactionRepository.findByIdempotencyKey(transaction.getIdempotencyKey())
                     .orElseThrow(() -> race);
-            Long owner = existing.getWallet() != null ? existing.getWallet().getUser().getId() : null;
-            if (!securityService.getCurrentUser().getId().equals(owner)) {
+            if (!securityService.getCurrentUser().getId().equals(
+                    existing.getUser() != null ? existing.getUser().getId() : null)) {
                 throw new IllegalArgumentException("Idempotency-Key already used by another user");
             }
             log.info("Transaction replay on race: idempotencyKey={} maps to transaction id={}",
@@ -173,16 +178,18 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     @Override
     public TransactionResponse update(Long id, TransactionRequest request) {
-        Transaction existing = transactionRepository.findById(id).orElseThrow();
+        // F8: id acotado al usuario autenticado — no se actualiza ni se lee transaccion ajena.
+        Long currentUserId = securityService.getCurrentUser().getId();
+        Transaction existing = transactionRepository.findByIdAndUser_Id(id, currentUserId).orElseThrow();
         Wallet oldWallet = existing.getWallet();
         BigDecimal oldAmount = existing.getAmount();
         TransactionType oldType = existing.getType();
 
         transactionMapper.updateFromDto(request, existing);
 
-        Wallet newWallet = walletRepository.findById(request.getWalletId()).orElseThrow();
+        Wallet newWallet = walletRepository.findByIdAndUser_Id(request.getWalletId(), currentUserId).orElseThrow();
         Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow();
-        Long userId = newWallet.getUser().getId();
+        Long userId = currentUserId;
 
         if (request.getType() != category.getType()) {
             throw new IllegalArgumentException("The category transactionType must be the same as transaction");
@@ -192,6 +199,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         existing.setWallet(newWallet);
+        existing.setUser(newWallet.getUser());
         existing.setCategory(category);
 
         if (request.getSavingGoalId() != null) {
@@ -242,13 +250,14 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(readOnly = true)
     @Override
     public TransactionResponse findById(Long id) {
-        return transactionMapper.toResponse(transactionRepository.findById(id).orElseThrow());
+        return transactionMapper.toResponse(
+                transactionRepository.findByIdAndUser_Id(id, securityService.getCurrentUser().getId()).orElseThrow());
     }
 
     @Transactional(readOnly = true)
     @Override
     public List<TransactionResponse> findAllByUser(Long userId) {
-        return transactionRepository.findAllByWallet_User_Id(userId)
+        return transactionRepository.findAllByUser_Id(userId)
                 .stream()
                 .map(transactionMapper::toResponse)
                 .toList();
@@ -257,7 +266,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(readOnly = true)
     @Override
     public List<TransactionResponse> findAllActiveByUser(Long userId) {
-        return transactionRepository.findAllByWallet_User_IdAndActive(userId, true)
+        return transactionRepository.findAllByUser_IdAndActive(userId, true)
                 .stream()
                 .map(transactionMapper::toResponse)
                 .toList();
@@ -305,10 +314,13 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public void disable(Long id) throws HttpException, IOException {
-        Transaction transaction = transactionRepository.findById(id).orElseThrow();
+        // F8: solo el dueño desactiva su transaccion (antes cualquier usuario podia ajustar
+        // el saldo de una billetera ajena desactivando su movimiento).
+        Transaction transaction = transactionRepository
+                .findByIdAndUser_Id(id, securityService.getCurrentUser().getId()).orElseThrow();
         Wallet wallet = transaction.getWallet();
-        Long userId = wallet.getUser().getId();
-        ZoneId zoneId = wallet.getUser().getTimeZone().toZoneId();
+        Long userId = transaction.getUser().getId();
+        ZoneId zoneId = transaction.getUser().getTimeZone().toZoneId();
         transaction.setActive(false);
         transaction.setDisabledAt(OffsetDateTime.now(zoneId));
         transactionRepository.save(transaction);

@@ -4,7 +4,8 @@ import com.elias.mismonedas.accounts.domain.entity.Wallet;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.domain.entity.Reason;
 import com.elias.mismonedas.document.domain.entity.Receipt;
-import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
+import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
@@ -20,7 +21,7 @@ import java.time.OffsetDateTime;
 import static java.math.RoundingMode.HALF_UP;
 
 @Entity
-@Table(name = "movimientos")
+@Table(name = "movimientos", indexes = @Index(name = "idx_movimientos_usuario", columnList = "id_usuario"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -53,6 +54,16 @@ public class Transaction {
     @JoinColumn(name = "id_billetera", nullable = false)
     private Wallet wallet;
 
+    /**
+     * F8: dueño denormalizado — la clave de particion por usuario. Se deriva de
+     * {@code wallet.user} (unico dueño del dinero) y se mantiene sincronizado en
+     * {@code @PrePersist}/{@code @PreUpdate}; los filtros en caliente usan esta columna
+     * sin cruzar por {@code billeteras}.
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_usuario", nullable = false)
+    private User user;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_categoria")
     private Category category;
@@ -79,6 +90,9 @@ public class Transaction {
 
     @PrePersist
     private void onCreate() {
+        if (user == null && wallet != null) {
+            user = wallet.getUser();
+        }
         if (createdAt == null) {
             createdAt = OffsetDateTime.now(wallet.getUser().getTimeZone().toZoneId());
         }
@@ -92,5 +106,13 @@ public class Transaction {
             amount = BigDecimal.ZERO.setScale(2, HALF_UP);
         }
         if (active == null) active = true;
+    }
+
+    /** F8: si la transaccion cambia de billetera, el dueño denormalizado la sigue. */
+    @PreUpdate
+    private void onUpdate() {
+        if (wallet != null) {
+            user = wallet.getUser();
+        }
     }
 }
