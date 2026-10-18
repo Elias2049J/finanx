@@ -13,7 +13,7 @@ import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
-import com.elias.mismonedas.identity.service.UserDataContextService;
+import com.elias.mismonedas.insights.service.UserDataContextService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;

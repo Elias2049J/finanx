@@ -11,7 +11,7 @@ import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
-import com.elias.mismonedas.identity.service.UserDataContextService;
+import com.elias.mismonedas.insights.service.UserDataContextService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
