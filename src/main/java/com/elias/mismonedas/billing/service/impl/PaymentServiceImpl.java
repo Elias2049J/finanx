@@ -80,7 +80,18 @@ public class PaymentServiceImpl implements PaymentService {
         String externalReference = paymentPort.createPaymentIntent(payment);
         payment.setExternalReference(externalReference);
 
-        Payment saved = paymentRepository.save(payment);
+        Payment saved;
+        try {
+            saved = paymentRepository.save(payment);
+        } catch (DataIntegrityViolationException race) {
+            // C4: dos creates simultaneos con la misma clave pasaron el SELECT y el unique
+            // escogio al segundo. Se devuelve el pago ya registrado.
+            Payment existing = paymentRepository.findByIdempotencyKey(payment.getIdempotencyKey())
+                    .orElseThrow(() -> race);
+            log.info("Payment replay on race: idempotencyKey={} maps to payment id={}",
+                    payment.getIdempotencyKey(), existing.getId());
+            return paymentMapper.toResponse(existing);
+        }
         log.info("Payment created id={} provider={} state={}", saved.getId(), saved.getProvider(), saved.getState());
         return paymentMapper.toResponse(saved);
     }
