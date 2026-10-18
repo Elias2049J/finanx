@@ -52,8 +52,6 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody UserRequest request) {
         LoginResponse saved = userService.register(request);
-        // F12: la respuesta ya no lleva el usuario, por lo que tampoco puede construirse el
-        // header Location a partir de su id. Quien necesite el id lo obtiene del claim `sub`.
         return ResponseEntity.ok(saved);
     }
 

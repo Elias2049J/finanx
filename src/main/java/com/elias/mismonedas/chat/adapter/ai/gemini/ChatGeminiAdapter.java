@@ -23,17 +23,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/**
- * Adapter de infraestructura para Google Gemini — Interactions API (sin SDK).
- *
- * <p>Responsabilidades:
- * <ul>
- *   <li>Construccion del {@link InteractionRequest} segun la skill activa.</li>
- *   <li>Orquestacion primario → fallback con timeout controlado.</li>
- *   <li>Actualizacion del {@code interactionId} en la sesion tras cada turno.</li>
- *   <li>Mapeo de {@link InteractionResponse} a entidad {@link ChatMessage}.</li>
- * </ul>
- */
+
+
+
+
+
+
+
+
+
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -57,10 +56,9 @@ public class ChatGeminiAdapter implements ChatPort {
 
         ChatMessage result = tryModel(primaryModel, request, session);
         if (result != null) return result;
-/*
-        log.warn("[GEMINI] Primario fallo, usando fallback: {}", fallbackModel);
-        result = tryModel(fallbackModel, request, session);
-        if (result != null) return result;*/
+
+
+
 
         log.error("[GEMINI] Ambos modelos fallaron, retornando mensaje de emergencia");
         return fallbackMessage();
@@ -221,10 +219,9 @@ public class ChatGeminiAdapter implements ChatPort {
         return msg;
     }
 
-    /**
-     * Extrae la {@link ChatSession} desde el request.
-     * El servicio de negocio la inyecta con el {@code interactionId} vigente.
-     */
+
+
+
     private ChatSession resolveSession(ChatMessageRequest request) {
         if (request.getSession() != null) return request.getSession();
         ChatSession empty = new ChatSession();

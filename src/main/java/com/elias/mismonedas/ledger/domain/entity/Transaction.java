@@ -54,12 +54,11 @@ public class Transaction {
     @JoinColumn(name = "id_billetera", nullable = false)
     private Wallet wallet;
 
-    /**
-     * F8: dueño denormalizado — la clave de particion por usuario. Se deriva de
-     * {@code wallet.user} (unico dueño del dinero) y se mantiene sincronizado en
-     * {@code @PrePersist}/{@code @PreUpdate}; los filtros en caliente usan esta columna
-     * sin cruzar por {@code billeteras}.
-     */
+
+
+
+
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)
     private User user;
@@ -108,7 +107,6 @@ public class Transaction {
         if (active == null) active = true;
     }
 
-    /** F8: si la transaccion cambia de billetera, el dueño denormalizado la sigue. */
     @PreUpdate
     private void onUpdate() {
         if (wallet != null) {

@@ -54,7 +54,6 @@ class BillingServiceImplTest {
 
     @Test
     void renewShouldBeNoOpWhileCurrentPeriodIsStillOpen() {
-        // C2: doble llamada a renew no debe regalar un segundo periodo.
         Subscription subscription = subscriptionWithPeriodEnd(OffsetDateTime.now().plusDays(10));
         SubscriptionResponse response = new SubscriptionResponse();
 

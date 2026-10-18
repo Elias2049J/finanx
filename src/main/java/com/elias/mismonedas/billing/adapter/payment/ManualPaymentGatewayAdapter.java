@@ -6,13 +6,12 @@ import com.elias.mismonedas.billing.port.PaymentPort;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-/**
- * Placeholder {@link PaymentPort} implementation kept as the only bean so
- * the app compiles and runs out of the box. Add dedicated adapters
- * (MercadoPago, Culqi, Stripe) implementing this
- * same port as those integrations are built, and route between them by
- * provider once more than one exists.
- */
+
+
+
+
+
+
 @Slf4j
 @Component
 public class ManualPaymentGatewayAdapter implements PaymentPort {

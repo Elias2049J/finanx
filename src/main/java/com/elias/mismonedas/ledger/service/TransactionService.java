@@ -12,16 +12,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface TransactionService {
-    /**
-     * C1: {@code idempotencyKey} viene del header {@code Idempotency-Key}; si una transaccion
-     * con esa clave ya existe se devuelve sin crear otra (el reintento no duplica el gasto).
-     */
+
     TransactionResponse create(TransactionRequest request, String idempotencyKey) throws HttpException, IOException;
-    TransactionResponse update(Long id, TransactionRequest request);
     TransactionResponse findById(Long id);
     List<TransactionResponse> findAllByUser(Long userId);
-    List<TransactionResponse> findAllActiveByUser(Long userId);
-    List<TransactionResponse> findAllByUserAndIssueDateBetween(Long userId, LocalDate from, LocalDate to);
     PageResponse<TransactionResponse> list(
             Boolean active,
             com.elias.mismonedas.ledger.domain.enums.TransactionType type,
@@ -32,6 +26,4 @@ public interface TransactionService {
             String search,
             Pageable pageable);
     void disable(Long id) throws HttpException, IOException;
-    BigDecimal sumAmountByCategory(Long userId, Long categoryId, LocalDate from, LocalDate to);
-    List<TransactionResponse> findAllActiveByCategoryAndDateBetween(Long userId, Long categoryId, LocalDate from, LocalDate to);
 }

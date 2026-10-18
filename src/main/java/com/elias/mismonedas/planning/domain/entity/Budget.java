@@ -58,7 +58,6 @@ public class Budget {
     @Column(name = "fecha_creacion")
     private OffsetDateTime createdAt;
 
-    /** C3: clave de negocio de la ocurrencia de schedule que genero este presupuesto. */
     @Column(name = "clave_idempotencia", unique = true)
     private String idempotencyKey;
 

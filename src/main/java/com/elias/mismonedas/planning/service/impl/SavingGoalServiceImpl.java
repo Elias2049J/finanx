@@ -64,7 +64,6 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         sg.setCreatedAt(OffsetDateTime.now(userZone));
         sg.setActive(true);
 
-        // Meta nueva: sin aportaciones, sin query.
         return sgMapper.toResponse(sgRepository.save(sg), SavingGoalTotals.empty());
     }
 
@@ -92,12 +91,11 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         sgRepository.save(existing);
     }
 
-    /**
-     * F6 (opcion B): UNA query agrupada {@code (meta, moneda)} para toda la coleccion — convierte
-     * un monto por moneda, no por transaccion, y la base hace el barrido del historial.
-     * F8: la query siempre lleva {@code user_id}; ninguna query en caliente cruza usuarios.
-     * Las metas sin aportaciones quedan en {@link SavingGoalTotals#empty()}.
-     */
+
+
+
+
+
     private Map<Long, SavingGoalTotals> totalsOf(Long userId, Collection<SavingGoal> goals) {
         Map<Long, SavingGoalTotals> totals = new HashMap<>();
         for (SavingGoal goal : goals) {
@@ -175,7 +173,6 @@ public class SavingGoalServiceImpl implements SavingGoalService {
             boolean completed = sa.hasReachedTarget(goalTotals.accumulated());
 
             if (completed) {
-                // El evento solo necesita la ULTIMA aportacion como payload — no el historial.
                 Transaction last = transactionRepository
                         .findFirstBySavingGoal_IdAndActiveTrueOrderByCreatedAtDesc(sa.getId())
                         .orElseThrow(() -> {

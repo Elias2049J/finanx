@@ -10,10 +10,9 @@ import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-/**
- * F6: los valores derivados (acumulado, conteo, progreso...) no se auto-computan en la entidad
- * — llegan como {@link SavingGoalTotals} calculado en la base. Olvidarlos no compila.
- */
+
+
+
 @Mapper(componentModel = "spring", uses = DateMapper.class)
 public interface SavingGoalMapper {
     @Mapping(source = "entity.user.id", target = "userId")

@@ -17,20 +17,19 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.WebApplicationContext;
 
-/**
- * Resolves and caches the JWT-authenticated user once per HTTP request.
- *
- * <p>F11 (token self-sufficient): el usuario se reconstruye desde los claims del token ya
- * verificado, por lo que <b>no consulta {@code UserRepository}</b>. Antes cada request
- * autenticado hacia un {@code findByEmail} contra {@code usuarios}.
- *
- * <p><b>Importante:</b> la instancia devuelta esta <b>desconectada</b>. Sirve para leer
- * {@code id/email/role/state} y para fijar la FK en entidades hijas ({@code setUser(...)}),
- * pero nunca para persistir el propio {@code User}. Lleva ademas una
- * {@code UserPreferences} tambien desconectada y <b>solo</b> con {@code timeZone} y
- * {@code currencyCode}, que son los dos datos que {@code User.getTimeZone()} y
- * {@code getPreferences().getCurrencyCode()} leen a traves de esa asociacion.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
 @Component
 @Scope(value = WebApplicationContext.SCOPE_REQUEST, proxyMode = ScopedProxyMode.TARGET_CLASS)
 @RequiredArgsConstructor
@@ -82,10 +81,9 @@ public class SecurityServiceImpl implements SecurityService {
         return user;
     }
 
-    /**
-     * Un token con subject que no sea numerico es un token viejo (F11 ponia el email en
-     * {@code sub}) o uno emitido por otro emisor: se rechaza en vez de fallar despues.
-     */
+
+
+
     private static Long parseId(String subject) {
         try {
             return Long.valueOf(subject);

@@ -76,19 +76,6 @@ public class TransactionController {
     }
 
     @Operation(
-            summary = "Actualizar transaccion",
-            description = "Actualiza una transaccion.",
-            operationId = "updateTransaction",
-            tags = {"Transactions"}
-    )
-    @PutMapping("/{id}")
-    public ResponseEntity<TransactionResponse> update(
-            @PathVariable Long id,
-            @Valid @RequestBody TransactionRequest request) {
-        return ResponseEntity.ok(transactionService.update(id, request));
-    }
-
-    @Operation(
             summary = "Eliminar transaccion",
             description = "Deshabilita una transaccion.",
             operationId = "transactionDelete",

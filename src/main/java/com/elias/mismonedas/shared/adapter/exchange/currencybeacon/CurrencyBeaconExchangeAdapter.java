@@ -10,14 +10,13 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Adapter de {@link ExchangePort} que envuelve a {@link CurrencyBeaconClient}
- * con caché ({@code @Cacheable}) y fallback explícito a tasas en caché.
- *
- * <p>La resiliencia (circuit breaker / reintentos) vive en el cliente; aquí solo
- * se traduce un fallo remoto en un valor servido desde caché para no romper el
- * flujo de negocio.</p>
- */
+
+
+
+
+
+
+
 @Slf4j
 public class CurrencyBeaconExchangeAdapter implements ExchangePort {
 

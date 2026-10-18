@@ -10,18 +10,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 
-/**
- * Publica un trabajo de escaneo del outbox de inmediato y lo marca como
- * PUBLISHED dentro de su propia transacción.
- *
- * <p>Se invoca desde el hook {@code afterCommit} de {@code startScan}: en ese
- * punto la transacción original ya confirmó pero sus recursos siguen ligados al
- * hilo, por lo que una llamada normal al repositorio se uniría a una transacción
- * terminada (falla con "No active transaction"). Al ejecutarse como bean aparte
- * con {@link Propagation#REQUIRES_NEW} se suspende esa transacción muerta y se
- * abre una nueva. El scheduler del outbox queda como red de seguridad para
- * reintentos si el broker no confirma.
- */
+
+
+
+
+
+
+
+
+
+
+
 @Component
 @RequiredArgsConstructor
 @Slf4j

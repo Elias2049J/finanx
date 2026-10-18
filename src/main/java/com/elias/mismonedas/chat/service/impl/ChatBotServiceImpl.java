@@ -40,16 +40,15 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 
-/**
- * Servicio de negocio del chatbot financiero.
- * <ul>
- *   <li>Gestion del ciclo de vida de sesiones de chat.</li>
- *   <li>Sanitizacion y deteccion de skill del mensaje entrante.</li>
- *   <li>Inyeccion del contexto financiero cuando la skill es ADVISOR.</li>
- *   <li>Persistencia de mensajes usuario + asistente.</li>
- *   <li>Delegacion de la llamada al modelo vía {@link ChatPort}.</li>
- * </ul>
- */
+
+
+
+
+
+
+
+
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -130,16 +129,15 @@ public class ChatBotServiceImpl implements ChatBotService {
         return getSessionEntity(sessionId, userId).getState() == ChatSessionState.ACTIVE;
     }
 
-    /**
-     * Procesa un mensaje del usuario dentro de una sesion activa:
-     * <ol>
-     *   <li>Sanitiza el prompt.</li>
-     *   <li>Detecta la skill (ADVISOR / CHITCHAT).</li>
-     *   <li>Persiste el mensaje del usuario.</li>
-     *   <li>Construye el request con historial y contexto financiero.</li>
-     *   <li>Llama al adapter de IA y persiste la respuesta.</li>
-     * </ol>
-     */
+
+
+
+
+
+
+
+
+
     @Transactional
     @Override
     @RequiresPlan(SubscriptionPlan.PREMIUM)
@@ -192,10 +190,9 @@ public class ChatBotServiceImpl implements ChatBotService {
         return chatMessageMapper.toResponse(assistantMessage, user);
     }
 
-    /**
-     * Formatea el contexto financiero de dos periodos para inyeccion
-     * en el system instruction de la skill ADVISOR.
-     */
+
+
+
     private String buildSessionContext(UserDataContext ctx) {
         if (ctx == null) return null;
 

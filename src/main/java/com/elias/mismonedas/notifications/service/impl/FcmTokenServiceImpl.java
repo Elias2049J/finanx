@@ -34,8 +34,6 @@ public class FcmTokenServiceImpl implements FcmTokenService {
         User user = securityService.getCurrentUser();
         Long userId = user.getId();
 
-        // findFirstByUser_IdAndToken evita IncorrectResultSizeDataAccessException
-        // cuando existen duplicados legacy (antes del UNIQUE constraint)
         FcmToken existing = fcmTokenRepository.findFirstByUser_IdAndToken(userId, request.getToken())
                 .orElse(null);
 
@@ -46,7 +44,6 @@ public class FcmTokenServiceImpl implements FcmTokenService {
             }
             fcmTokenRepository.save(existing);
 
-            // Limpiar duplicados legacy si existen
             cleanDuplicates(userId, request.getToken(), existing.getId());
 
             return toResponse(existing);
@@ -78,11 +75,6 @@ public class FcmTokenServiceImpl implements FcmTokenService {
     public void remove(Long tokenId) {
         Long userId = securityService.getCurrentUser().getId();
 
-        // Borrado por lotes en lugar de findById + deleteById: aquel fallaba con
-        // ObjectOptimisticLockingFailureException ("expected row count 1 but was 0")
-        // cuando dos DELETEs del mismo token corrian en paralelo (el segundo ya no
-        // encontraba la fila al confirmar). El borrado por lotes no valida el
-        // conteo de filas, asi que es idempotente ante reintentos/duplicados.
         int deleted = fcmTokenRepository.deleteByIdAndUserId(tokenId, userId);
         if (deleted > 0) {
             log.info("Token FCM eliminado con id={}", tokenId);

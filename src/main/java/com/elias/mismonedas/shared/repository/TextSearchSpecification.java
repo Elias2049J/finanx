@@ -11,17 +11,16 @@ import org.springframework.data.jpa.domain.Specification;
 import java.util.Arrays;
 import java.util.Locale;
 
-/**
- * Specification reutilizable de busqueda de texto libre, case-insensitive.
- * Construye un {@code lower(path) LIKE %term%} sobre una o mas propiedades
- * (OR entre ellas) escapando {@code \}, {@code %} y {@code _} del termino para
- * que se traten como literales. Un termino nulo o en blanco no filtra
- * (conjunction).
- * <p>
- * Las propiedades pueden ser rutas anidadas separadas por punto (por ejemplo
- * {@code "reason.description"}); los tramos intermedios se resuelven con
- * {@code LEFT JOIN} para no descartar filas cuyo asociado sea nulo.
- */
+
+
+
+
+
+
+
+
+
+
 public final class TextSearchSpecification {
 
     private static final char ESCAPE = '\\';

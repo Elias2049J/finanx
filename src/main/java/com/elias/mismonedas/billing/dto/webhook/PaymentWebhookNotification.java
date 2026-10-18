@@ -9,11 +9,10 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
-/**
- * Normalized representation of a provider webhook payload, produced by a
- * {@link com.elias.mismonedas.billing.port.PaymentPort} adapter. Internal use only, not a
- * public request DTO: providers send their own raw payload, not this shape.
- */
+
+
+
+
 @Data
 @Builder
 @NoArgsConstructor

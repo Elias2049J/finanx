@@ -76,7 +76,7 @@ public class PaymentWebhookRabbitConfiguration {
             PaymentWebhookMessageRecoverer messageRecoverer
     ) {
         return RetryInterceptorBuilder.stateless()
-                .maxRetries(2) // Initial delivery + two retries = three total attempts.
+                .maxRetries(2)
                 .backOffOptions(1_000, 2.0, 4_000)
                 .recoverer(messageRecoverer)
                 .build();

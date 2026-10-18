@@ -9,18 +9,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
-/**
- * Lock distribuido (ShedLock) para todos los {@code @Scheduled} del proyecto.
- *
- * <p>Sin esto, cada instancia de la aplicación ejecutaría cada job por su cuenta:
- * en cuanto se escala a N réplicas detrás del balanceador, el trabajo se
- * multiplica por N. Con {@code @SchedulerLock}, cada método anotado adquiere una
- * fila en la tabla {@code shedlock} y solo la instancia que gana la carrera lo
- * ejecuta.</p>
- *
- * <p>Se usa {@code usingDbTime()} para tomar el reloj de la base de datos, de
- * modo que no haya desajustes de hora entre instancias.</p>
- */
+
+
+
+
+
+
+
+
+
+
+
 @Configuration
 @EnableSchedulerLock(defaultLockAtMostFor = "PT10M")
 public class SchedulerLockConfig {

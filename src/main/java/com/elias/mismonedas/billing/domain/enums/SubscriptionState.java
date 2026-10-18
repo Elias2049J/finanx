@@ -3,15 +3,14 @@ package com.elias.mismonedas.billing.domain.enums;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * State machine for {@link com.elias.mismonedas.billing.domain.entity.Subscription}.
- *
- * PENDING   -> ACTIVE, CANCELED
- * ACTIVE    -> PAST_DUE, CANCELED, EXPIRED
- * PAST_DUE  -> ACTIVE, CANCELED, EXPIRED
- * CANCELED  -> (final)
- * EXPIRED   -> (final)
- */
+
+
+
+
+
+
+
+
 public enum SubscriptionState {
     PENDING,
     ACTIVE,

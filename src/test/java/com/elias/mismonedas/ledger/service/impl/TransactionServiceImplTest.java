@@ -2,9 +2,10 @@ package com.elias.mismonedas.ledger.service.impl;
 
 import com.elias.mismonedas.accounts.domain.entity.Wallet;
 import com.elias.mismonedas.accounts.repository.WalletRepository;
+import com.elias.mismonedas.accounts.service.WalletService;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.domain.entity.Reason;
-import com.elias.mismonedas.catalog.repository.CategoryRepository;
+import com.elias.mismonedas.catalog.service.CategoryService;
 import com.elias.mismonedas.catalog.service.ReasonResolver;
 import com.elias.mismonedas.document.domain.entity.Receipt;
 import com.elias.mismonedas.document.repository.ReceiptRepository;
@@ -50,7 +51,8 @@ class TransactionServiceImplTest {
 
     @Mock private TransactionRepository transactionRepository;
     @Mock private WalletRepository walletRepository;
-    @Mock private CategoryRepository categoryRepository;
+    @Mock private WalletService walletService;
+    @Mock private CategoryService categoryService;
     @Mock private UserRepository userRepository;
     @Mock private ReceiptRepository receiptRepository;
     @Mock private TransactionMapper transactionMapper;
@@ -78,8 +80,8 @@ class TransactionServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new TransactionServiceImpl(
-                transactionRepository, walletRepository, categoryRepository, userRepository,
-                receiptRepository, transactionMapper, reasonResolver, sgRepository,
+                transactionRepository, walletRepository, walletService, categoryService,
+                userRepository, receiptRepository, transactionMapper, reasonResolver, sgRepository,
                 userDataContextService, currencyConverter, securityService, eventPublisher);
 
         user = new User();
@@ -123,8 +125,6 @@ class TransactionServiceImplTest {
         response = new TransactionResponse();
         response.setId(999L);
 
-        // F8: create() resuelve el usuario autenticado al inicio; todos los tests de este
-        // nested class pasan por ahi.
         when(securityService.getCurrentUser()).thenReturn(user);
     }
 
@@ -134,8 +134,8 @@ class TransactionServiceImplTest {
         @Test
         void shouldCreateTransactionWithoutReceipt() throws Exception {
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
-            when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
+            when(walletService.getOwned(10L)).thenReturn(wallet);
+            when(categoryService.getOwned(100L)).thenReturn(category);
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
             when(transactionMapper.toResponse(savedTransaction)).thenReturn(response);
@@ -162,8 +162,8 @@ class TransactionServiceImplTest {
                     .build();
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
-            when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
+            when(walletService.getOwned(10L)).thenReturn(wallet);
+            when(categoryService.getOwned(100L)).thenReturn(category);
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
             when(receiptRepository.findByIdAndUser_Id(777L, 1L)).thenReturn(Optional.of(receipt));
@@ -179,7 +179,6 @@ class TransactionServiceImplTest {
 
         @Test
         void shouldReturnExistingTransactionOnIdempotencyKeyReplay() throws Exception {
-            // C1: replay rapido - la clave ya existe y pertenece al usuario autenticado.
             Transaction existing = new Transaction();
             existing.setId(999L);
             existing.setWallet(wallet);
@@ -220,7 +219,6 @@ class TransactionServiceImplTest {
 
         @Test
         void shouldReturnExistingTransactionWhenRaceLosesOnUniqueConstraint() throws Exception {
-            // C1: dos reintentos simultaneos pasaron el SELECT; el unique escogio al otro.
             Transaction existing = new Transaction();
             existing.setId(777L);
             existing.setWallet(wallet);
@@ -230,8 +228,8 @@ class TransactionServiceImplTest {
 
             when(securityService.getCurrentUser()).thenReturn(user);
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
-            when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
+            when(walletService.getOwned(10L)).thenReturn(wallet);
+            when(categoryService.getOwned(100L)).thenReturn(category);
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.findByIdempotencyKey("key-1"))
                     .thenReturn(Optional.empty(), Optional.of(existing));
@@ -250,8 +248,8 @@ class TransactionServiceImplTest {
             request.setReceiptId(999L);
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
-            when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
+            when(walletService.getOwned(10L)).thenReturn(wallet);
+            when(categoryService.getOwned(100L)).thenReturn(category);
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
             when(receiptRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.empty());
@@ -273,8 +271,8 @@ class TransactionServiceImplTest {
                     .build();
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
-            when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
+            when(walletService.getOwned(10L)).thenReturn(wallet);
+            when(categoryService.getOwned(100L)).thenReturn(category);
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
             when(receiptRepository.findByIdAndUser_Id(777L, 1L)).thenReturn(Optional.of(linkedReceipt));

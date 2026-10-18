@@ -46,14 +46,13 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
         return Optional.of(candidate.toOffsetDateTime());
     }
 
-    /**
-     * Calcula el proximo disparo semanal.
-     * <p>
-     * - Sin dayOfWeek: avanza exactamente `interval` semanas desde base.
-     * - Con dayOfWeek: busca el proximo dia de la semana indicado a partir de base,
-     *   respetando el intervalo de semanas (salta a la semana base + interval si el
-     *   dia target ya paso o es hoy en la semana actual).
-     */
+
+
+
+
+
+
+
     private ZonedDateTime nextWeekly(ZonedDateTime base, RecurrenceRule rule, int interval) {
         DayOfWeek target = rule.getDayOfWeek();
 
@@ -75,7 +74,6 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
     private ZonedDateTime nextMonthly(ZonedDateTime base, int interval) {
         int desiredDay = base.getDayOfMonth();
         ZonedDateTime plus = base.plusMonths(interval);
-        // Clampea al último dia del mes si el mes destino es más corto
         int day = Math.min(desiredDay, plus.toLocalDate().lengthOfMonth());
         return plus.withDayOfMonth(day);
     }
@@ -84,7 +82,6 @@ public class RecurrenceCalculatorServiceImpl implements RecurrenceCalculatorServ
         int desiredDay   = base.getDayOfMonth();
         int desiredMonth = base.getMonthValue();
         ZonedDateTime plus = base.plusYears(interval);
-        // Clampea dia (e.g. 29-feb en año no bisiesto → 28-feb)
         int day = Math.min(desiredDay, LocalDate.of(plus.getYear(), desiredMonth, 1).lengthOfMonth());
         return plus.withMonth(desiredMonth).withDayOfMonth(day);
     }

@@ -89,9 +89,6 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
                 .build();
         outboxRepository.save(outbox);
 
-        // Publica de inmediato en cuanto la transacción confirma, en vez de
-        // esperar (hasta 30 s) a que pase el scheduler del outbox. El scheduler
-        // queda como red de seguridad para reintentos si el broker no confirma.
         publishScanJobAfterCommit(outbox.getId());
 
         log.info("scan_enqueued receipt_id={} userId={} bucket={} objectKey={}",

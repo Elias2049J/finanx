@@ -61,8 +61,6 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse create(PaymentRequest request) {
         User user = securityService.getCurrentUser();
 
-        // C4: replay de un create anterior. Si el cliente reenvia la misma Idempotency-Key,
-        // se devuelve el pago ya registrado en vez de chocar con el unique de clave_idempotencia.
         if (request.getIdempotencyKey() != null) {
             var existing = paymentRepository.findByIdempotencyKey(request.getIdempotencyKey());
             if (existing.isPresent()) {
@@ -84,8 +82,6 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             saved = paymentRepository.save(payment);
         } catch (DataIntegrityViolationException race) {
-            // C4: dos creates simultaneos con la misma clave pasaron el SELECT y el unique
-            // escogio al segundo. Se devuelve el pago ya registrado.
             Payment existing = paymentRepository.findByIdempotencyKey(payment.getIdempotencyKey())
                     .orElseThrow(() -> race);
             log.info("Payment replay on race: idempotencyKey={} maps to payment id={}",
@@ -259,13 +255,12 @@ public class PaymentServiceImpl implements PaymentService {
         event.setErrorMessage(abbreviate(errorMessage, 255));
     }
 
-    /**
-     * Applies a normalized notification to the matching payment and records the
-     * resulting webhook state. Idempotent: a payment that already sits in the
-     * target state, or a transition the state machine forbids, is a no-op rather
-     * than a failure. A notification for an unknown payment is stored as IGNORED
-     * for audit and is not automatically retried.
-     */
+
+
+
+
+
+
     private void applyWebhookEvent(WebhookEvent event, PaymentWebhookNotification notification) {
         paymentRepository.findByExternalReference(notification.getExternalReference())
                 .ifPresentOrElse(
@@ -300,7 +295,6 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             webhookPublisher.publish(event.getId());
         } catch (AmqpException ex) {
-            // The event is already durable in the database; the reconciliation job republishes it.
             log.warn("Webhook event persisted but broker publish failed id={}", event.getId(), ex);
         }
     }

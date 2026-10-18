@@ -12,15 +12,14 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
-/**
- * Cliente HTTP de bajo nivel contra la API de CurrencyBeacon.
- *
- * <p>Aísla la llamada remota del adapter de negocio
- * ({@link CurrencyBeaconExchangeAdapter}) para poder decorarla con resiliencia
- * ({@code @CircuitBreaker} + {@code @Retry}) sin mezclarla con la caché ni con
- * la lógica de fallback. Los métodos <b>lanzan</b> ante cualquier error remoto;
- * el adapter decide qué hacer (servir tasas en caché).</p>
- */
+
+
+
+
+
+
+
+
 @Slf4j
 @Component
 public class CurrencyBeaconClient {

@@ -15,14 +15,13 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * F3: el catalogo por defecto y su borrado dejan de vivir en {@code UserServiceImpl}.
- *
- * <p>Usa {@link org.springframework.context.event.EventListener} (sincrono, misma
- * transaccion) y no {@code @TransactionalEventListener}: el sembrado debe confirmarse con la
- * cuenta que lo dispara, y el borrado debe completarse <b>antes</b> de que se borre el
- * usuario, o chocarian las claves ajenas.
- */
+
+
+
+
+
+
+
 @Component
 @RequiredArgsConstructor
 @Slf4j

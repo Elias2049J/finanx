@@ -141,8 +141,6 @@ public class BillingServiceImpl implements BillingService {
         Subscription subscription = getOwned(subscriptionId);
         OffsetDateTime now = OffsetDateTime.now();
 
-        // C2: doble llamada no debe ser doble periodo. Si el periodo actual sigue vigente,
-        // la renovacion es un no-op: no se cobra un periodo y se entregan dos.
         if (subscription.getCurrentPeriodEnd() != null && now.isBefore(subscription.getCurrentPeriodEnd())) {
             log.info("Subscription id={} renewed no-op: current period still open until {}",
                     subscription.getId(), subscription.getCurrentPeriodEnd());

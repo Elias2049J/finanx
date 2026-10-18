@@ -119,7 +119,6 @@ class ScheduleServiceImplBatchTest {
 
         @Test
         void shouldSkipTransactionScheduleWhoseOccurrenceAlreadyExecuted() {
-            // C3: la clave (scheduleId, fecha) ya existe -> no se duplica la transaccion.
             User user = userWithLimaTz();
             OffsetDateTime occurrence = OffsetDateTime.now().minusHours(1);
             TransactionSchedule st = new TransactionSchedule();

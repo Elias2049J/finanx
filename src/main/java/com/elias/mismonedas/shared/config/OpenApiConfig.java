@@ -4,7 +4,6 @@ import io.swagger.v3.core.jackson.ModelResolver;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
 
-//TODO - verificar enums como referencia
 @Configuration
 public class OpenApiConfig {
 

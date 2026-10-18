@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-/** F3/F4: scheduling borra sus programaciones cuando se elimina una cuenta. */
 @Component
 @RequiredArgsConstructor
 @Slf4j

@@ -9,14 +9,13 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-/**
- * Centralizes currency conversion for the application.
- *
- * <p>Single home for the previously duplicated pattern:
- * "if the currency differs convert it, otherwise use the raw amount; if the
- * conversion fails fall back to the raw amount". The rounding of converted
- * values ({@code HALF_UP}, scale 2) also lives here.</p>
- */
+
+
+
+
+
+
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -26,12 +25,11 @@ public class CurrencyConverter {
 
     private final ExchangePort exchangePort;
 
-    /**
-     * Converts {@code amount} to {@code toCurrency}. Amounts already in the
-     * target currency (or with a null/unknown currency) are returned unchanged,
-     * preserving their original scale. On conversion failure the raw amount is
-     * kept, relabeled with the target currency, so a sum never breaks.
-     */
+
+
+
+
+
     public Money convert(Money amount, String toCurrency) {
         if (amount == null) {
             return null;

@@ -3,12 +3,11 @@ package com.elias.mismonedas.shared.domain.vo;
 import java.math.BigDecimal;
 import java.util.Objects;
 
-/**
- * Value object for a monetary amount tied to a currency code.
- *
- * <p>Negative amounts are allowed on purpose: wallets subtract balances and
- * budgets can run a deficit, so this VO must not forbid them.</p>
- */
+
+
+
+
+
 public record Money(BigDecimal amount, String currencyCode) {
 
     public Money {

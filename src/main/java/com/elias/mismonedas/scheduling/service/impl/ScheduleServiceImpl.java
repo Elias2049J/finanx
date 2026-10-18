@@ -61,7 +61,6 @@ import java.util.function.Function;
 @Slf4j
 public class ScheduleServiceImpl implements ScheduleService {
 
-    /** Tamaño de lote de los barridos para acotar memoria y duración de transacción. */
     private static final int BATCH_SIZE = 100;
 
     private final ScheduleRepository scheduleRepository;
@@ -82,15 +81,12 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final TransactionTemplate transactionTemplate;
     private final SecurityService securityService;
 
-    // ─── CRUD ────────────────────────────────────────────────────────────────────
 
     @Override
     @Transactional
     public ScheduleResponse create(ScheduleRequest request) {
         Schedule s = tsMapper.toEntityDispatch(request);
         Long userId = securityService.getCurrentUser().getId();
-        // F8: categoria y billetera deben pertenecer al usuario — sin esto un schedule podia
-        // ejecutar transacciones (y tocar saldo) en la billetera de otro usuario.
         Category c = categoryRepository.findByIdAndUser_Id(request.getCategoryId(), userId)
                 .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to the user"));
 
@@ -113,8 +109,6 @@ public class ScheduleServiceImpl implements ScheduleService {
             );
         }
 
-        // La recurrencia debe existir: de ella se obtiene start para inicializar nextRunAt.
-        // El usuario nunca ingresa nextRunAt — el primer disparo siempre es recurrenceRule.start.
         RecurrenceRule rr = resolveRecurrence(s, request.getRecurrenceRule());
         s.setNextRunAt(rr.getStart());
 
@@ -150,7 +144,6 @@ public class ScheduleServiceImpl implements ScheduleService {
                     ? recurrenceService.update(existing.getRecurrenceRule().getId(), request.getRecurrenceRule())
                     : resolveRecurrence(existing, request.getRecurrenceRule());
 
-            // Al cambiar la regla se resetea nextRunAt al nuevo start
             existing.setNextRunAt(rr.getStart());
         }
 
@@ -279,11 +272,10 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
     }
 
-    /**
-     * Procesa un único lote de {@link TransactionSchedule} dentro de su propia
-     * transacción. Devuelve el id del último schedule del lote (cursor) o
-     * {@code null} si el lote fue el último.
-     */
+
+
+
+
     private Long processTransactionBatch(long afterId) {
         List<TransactionSchedule> batch = tsRepository.findByActiveTrueAndStateAndIdGreaterThan(
                 ScheduleState.RUNNING, afterId, PageRequest.of(0, BATCH_SIZE, Sort.by("id")));
@@ -327,11 +319,10 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
     }
 
-    /**
-     * Procesa un único lote de {@link BudgetSchedule} dentro de su propia
-     * transacción. Devuelve el cursor al siguiente lote o {@code null} si se
-     * alcanzó el final.
-     */
+
+
+
+
     private Long processBudgetBatch(long afterId) {
         List<BudgetSchedule> batch = bsRepository.findByActiveTrueAndStateAndIdGreaterThan(
                 ScheduleState.RUNNING, afterId, PageRequest.of(0, BATCH_SIZE, Sort.by("id")));
@@ -359,8 +350,6 @@ public class ScheduleServiceImpl implements ScheduleService {
     private Transaction executeTransactionSchedule(TransactionSchedule st) {
         OffsetDateTime executedAt = st.getNextRunAt();
 
-        // C3: clave de negocio (scheduleId, fecha). Si la ocurrencia ya se ejecuto, no se
-        // duplica la transaccion ni se vuelve a tocar el saldo; solo se avanza el schedule.
         String occurrenceKey = occurrenceKey(st.getId(), executedAt);
         if (transactionRepository.findByIdempotencyKey(occurrenceKey).isPresent()) {
             log.warn("ScheduledTransaction occurrence already executed: key={} — skipping duplicate", occurrenceKey);
@@ -372,7 +361,6 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         Transaction tx = tsMapper.toTransaction(st);
         tx.setIdempotencyKey(occurrenceKey);
-        // F8: el dueño denormalizado de la transaccion es el del schedule.
         tx.setUser(st.getUser());
         Wallet wallet = st.getWallet();
 
@@ -410,7 +398,6 @@ public class ScheduleServiceImpl implements ScheduleService {
     private Budget executeBudgetSchedule(BudgetSchedule st) {
         OffsetDateTime executedAt = st.getNextRunAt();
 
-        // C3: clave de negocio (scheduleId, fecha); la ocurrencia ya ejecutada no se duplica.
         String occurrenceKey = occurrenceKey(st.getId(), executedAt);
         if (budgetRepository.findByIdempotencyKey(occurrenceKey).isPresent()) {
             log.warn("BudgetSchedule occurrence already executed: key={} — skipping duplicate", occurrenceKey);
@@ -447,7 +434,6 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .build();
     }
 
-    /** C3: clave de negocio de una ocurrencia de schedule — (scheduleId, fecha). */
     private String occurrenceKey(Long scheduleId, OffsetDateTime occurrenceDate) {
         return "schedule:" + scheduleId + ":" + occurrenceDate;
     }
@@ -474,7 +460,6 @@ public class ScheduleServiceImpl implements ScheduleService {
         for (S sc : dueList) {
             try {
                 Object result = executor.apply(sc);
-                // C3: null = ocurrencia ya ejecutada (replay); no se agrega a la lista de guardado.
                 if (result != null) {
                     created.add(result);
                 }
@@ -515,9 +500,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         return false;
     }
 
-    /**
-     * Persiste la RecurrenceRule vinculada al schedule.
-     */
+
+
     private RecurrenceRule resolveRecurrence(Schedule schedule, RecurrenceRuleRequest rrReq) {
         RecurrenceRuleRequest toCreate = new RecurrenceRuleRequest();
         toCreate.setRecurrenceType(rrReq.getRecurrenceType());

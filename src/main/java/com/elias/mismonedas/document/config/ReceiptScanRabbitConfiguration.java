@@ -16,10 +16,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Topología del microservicio doc-processing:
- * core -> worker (job de OCR) y worker -> core (resultado).
- */
+
+
+
 @Configuration
 @EnableRabbit
 public class ReceiptScanRabbitConfiguration {
@@ -117,7 +116,7 @@ public class ReceiptScanRabbitConfiguration {
     StatelessRetryOperationsInterceptor receiptScanResultRetryInterceptor(
             ReceiptScanMessageRecoverer messageRecoverer) {
         return RetryInterceptorBuilder.stateless()
-                .maxRetries(2) // Initial delivery + two retries = three total attempts.
+                .maxRetries(2)
                 .backOffOptions(1_000, 2.0, 4_000)
                 .recoverer(messageRecoverer)
                 .build();

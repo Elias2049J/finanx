@@ -40,8 +40,6 @@ public class JwtResourceServerConfig {
                 claims.put("sub", decoded.getSubject());
                 claims.put("iss", decoded.getIssuer());
                 claims.put(Constants.AUTHORITIES_CLAIM, jwtTokenService.extractAuthorities(decoded));
-                // F11: claims self-sufficient que SecurityServiceImpl reconstruye sin tocar la BD.
-                // Whitelist explicita; un claim que no entre aqui no llega a la peticion.
                 copyClaim(claims, decoded, Constants.EMAIL_CLAIM);
                 copyClaim(claims, decoded, Constants.ROLE_CLAIM);
                 copyClaim(claims, decoded, Constants.STATE_CLAIM);

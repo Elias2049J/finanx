@@ -3,16 +3,15 @@ package com.elias.mismonedas.billing.domain.enums;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * State machine for {@link com.elias.mismonedas.billing.domain.entity.Payment}.
- *
- * PENDING    -> PROCESSING, COMPLETED, FAILED
- * PROCESSING -> COMPLETED, FAILED
- * COMPLETED  -> REFUNDED, DISPUTED
- * FAILED     -> PENDING (retry)
- * REFUNDED   -> (final)
- * DISPUTED   -> REFUNDED
- */
+
+
+
+
+
+
+
+
+
 public enum PaymentState {
     PENDING,
     PROCESSING,

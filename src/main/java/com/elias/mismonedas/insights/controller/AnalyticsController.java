@@ -107,17 +107,16 @@ public class AnalyticsController {
         return ResponseEntity.ok(bas.getBudgetsExecutions(from, to, pageable));
     }
 
-    /*
 
-    @GetMapping("/dashboard/categories")
-    public ResponseEntity<DashboardResponse> categories(
-            @Valid @RequestBody PeriodRequest request) {
-        return ResponseEntity.ok(analyticsService.generateBalanceDashboardResponse(request));
-    }
 
-    @GetMapping("/dashboard/savings")
-    public ResponseEntity<DashboardResponse> savings(
-            @Valid @RequestBody PeriodRequest request) {
-        return ResponseEntity.ok(analyticsService.buildDashboard(request));
-    }*/
+
+
+
+
+
+
+
+
+
+
 }

@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-/** F3/F4/F5: planning reacciona a los eventos de ciclo de vida y de transaccion de {@code ledger}. */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -29,7 +28,6 @@ public class PlanningListener {
         log.info("Deleted budgets and saving goals for user {}", event.userId());
     }
 
-    /** F5: recalculo sincrono, dentro de la misma transaccion que escribio la transaccion. */
     @EventListener
     public void onTransactionChanged(TransactionChangedEvent event) {
         budgetService.checkAllBudgets(event.userId());

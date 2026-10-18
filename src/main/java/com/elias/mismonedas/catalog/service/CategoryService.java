@@ -14,11 +14,10 @@ public interface CategoryService {
     CategoryResponse update(Long id, CategoryRequest request);
     CategoryResponse findById(Long id);
 
-    /**
-     * F8: lookup de ownership — la categoria del usuario autenticado, o nada.
-     * Es el ÚNICO punto donde se valida la pertenencia; los demas módulos usan este
-     * contrato en vez de inyectar {@code CategoryRepository}.
-     */
+
+
+
+
     Category getOwned(Long id);
 
     List<CategoryResponse> findAllByUserAndActive(Long idUser, boolean active);

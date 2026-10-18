@@ -6,9 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.regex.Pattern;
 
-/**
- * Utilidades de IA.
- */
+
+
 @Slf4j
 public final class AiUtils {
 
@@ -27,10 +26,9 @@ public final class AiUtils {
     );
 
 
-    /**
-     * Keywords que indican intencion financiera/analitica.
-     * Si el mensaje no contiene ninguna → CHITCHAT.
-     */
+
+
+
     private static final List<Pattern> ADVISOR_PATTERNS = List.of(
             Pattern.compile("(?i)\\b(gast[oo]s?|ingres[oo]s?|balance|presupuest[oa]?|ahorro|deuda[s]?|categoria[s]?|pago[s]?|transacci[oo]n(es)?|flujo de caja|capital|inversi[oo]n|patrimoni[oo])"),
 
@@ -42,10 +40,9 @@ public final class AiUtils {
     );
 
 
-    /**
-     * Detecta la skill apropiada segun el contenido del mensaje del usuario.
-     * ADVISOR si hay intencion financiera explicita, CHITCHAT en caso contrario.
-     */
+
+
+
     public static ChatSkill detectSkill(String userMessage) {
         if (userMessage == null || userMessage.isBlank()) return ChatSkill.CHITCHAT;
         for (Pattern pattern : ADVISOR_PATTERNS) {
@@ -56,10 +53,9 @@ public final class AiUtils {
         return ChatSkill.CHITCHAT;
     }
 
-    /**
-     * Sanitiza el prompt del usuario: trunca, detecta patrones sospechosos y escapa.
-     * Retorna "[consulta no disponible]" si el input es malicioso.
-     */
+
+
+
     public static String sanitizeUserPrompt(String input, int maxLength) {
         if (input == null || input.isBlank()) return "";
 
@@ -80,9 +76,8 @@ public final class AiUtils {
         return escapeForPrompt(trimmed);
     }
 
-    /**
-     * Escapa caracteres especiales para insercion segura en prompts de texto.
-     */
+
+
     public static String escapeForPrompt(String input) {
         return input
                 .replace("\\", "\\\\")

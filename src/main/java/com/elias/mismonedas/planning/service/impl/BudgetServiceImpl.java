@@ -65,8 +65,6 @@ public class BudgetServiceImpl implements BudgetService {
     public BudgetResponse create(BudgetRequest request) {
         User user = securityService.getCurrentUser();
         Budget b = budgetMapper.toEntity(request);
-        // F8: la categoria debe pertenecer al usuario — con getReferenceById un usuario podia
-        // crear un presupuesto sobre la categoria (y el gasto) de otro usuario.
         b.setCategory(categoryRepository.findByIdAndUser_Id(request.getCategoryId(), user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to the user")));
         b.setUser(user);
@@ -195,7 +193,6 @@ public class BudgetServiceImpl implements BudgetService {
             }
 
             String budgetCurrency = b.getCurrencyCode();
-            // F6 (opcion B): SUM agregado en la base por moneda, no N conversiones en memoria.
             BigDecimal spent = ConvertedAmounts.sumConverted(
                     transactionRepository.sumAmountsByCurrencyForCategory(
                             userId, c.getId(), TransactionType.SPENT, periodStart, now),
@@ -257,7 +254,6 @@ public class BudgetServiceImpl implements BudgetService {
                 .orElseThrow(() -> new EntityNotFoundException("Budget not found: " + id));
     }
 
-    /** Payload de las alertas: la ultima transaccion del periodo, sin cargar el historial. */
     private Transaction lastTxOf(Long categoryId, OffsetDateTime from, OffsetDateTime to) {
         return transactionRepository
                 .findFirstByCategory_IdAndCreatedAtBetweenAndActiveAndTypeOrderByCreatedAtDesc(

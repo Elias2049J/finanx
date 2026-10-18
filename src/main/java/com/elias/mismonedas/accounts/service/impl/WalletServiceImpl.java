@@ -76,14 +76,6 @@ public class WalletServiceImpl implements WalletService {
         return walletMapper.toResponse(getOwned(id));
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<WalletResponse> findAllByUser(Long userId) {
-        return walletRepository.findByUserId(userId)
-                .stream()
-                .map(walletMapper::toResponse)
-                .toList();
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -93,13 +85,6 @@ public class WalletServiceImpl implements WalletService {
         return PageResponseFactory.from(walletRepository.findByUserId(userId, stablePage), walletMapper::toResponse);
     }
 
-    @Override
-    @Transactional
-    public WalletResponse update(Long id, WalletRequest request) {
-        Wallet existing = getOwned(id);
-        walletMapper.updateFromDto(request, existing);
-        return walletMapper.toResponse(walletRepository.save(existing));
-    }
 
     @Override
     @Transactional

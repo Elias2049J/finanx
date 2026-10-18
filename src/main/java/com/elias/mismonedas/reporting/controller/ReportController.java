@@ -18,16 +18,15 @@ public class ReportController {
     private final ReportingService reportingService;
     private final FileExportService fileExportService;
 
-    /*@GetMapping(value = "/export", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public ResponseEntity<byte[]> exportReport(
-            @RequestParam FileType fileType,
-            @Valid @RequestBody DateRangeRequest request
-    ) {
-        Report report = reportingService.generateBalanceReport(request);
-        FileExportDTO exported = fileExportService.exportReport(fileType, report);
-        return buildFileResponse(exported);
-    }
-*/
+
+
+
+
+
+
+
+
+
     private ResponseEntity<byte[]> buildFileResponse(FileExportDTO exported) {
         MediaType mediaType = exported.getMimetype() == null
                 ? MediaType.APPLICATION_OCTET_STREAM

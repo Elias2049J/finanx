@@ -44,19 +44,4 @@ public class WalletController {
         WalletResponse saved = walletService.create(request);
         return ResponseEntity.created(URI.create("/api/v1/wallets/" + saved.getId())).body(saved);
     }
-
-    @Operation(summary = "Actualizar billetera", tags = {"Wallets"})
-    @PutMapping("/{id}")
-    public ResponseEntity<WalletResponse> update(
-            @PathVariable Long id,
-            @Valid @RequestBody WalletRequest request) {
-        return ResponseEntity.ok(walletService.update(id, request));
-    }
-
-    @Operation(summary = "Deshabilitar billetera", tags = {"Wallets"})
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> disable(@PathVariable Long id) {
-        walletService.disable(id);
-        return ResponseEntity.noContent().build();
-    }
 }

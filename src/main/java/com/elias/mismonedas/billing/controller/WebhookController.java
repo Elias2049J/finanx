@@ -10,10 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * Entry point for external payment providers. Always responds fast; heavy
- * work happens inside PaymentService, keep this controller free of business logic.
- */
+
+
+
 @Slf4j
 @RestController
 @RequestMapping("/webhooks")

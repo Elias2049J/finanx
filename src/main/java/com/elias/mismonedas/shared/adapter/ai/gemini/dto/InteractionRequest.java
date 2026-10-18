@@ -3,12 +3,11 @@ package com.elias.mismonedas.shared.adapter.ai.gemini.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/**
- * Payload para POST /v1beta/interactions.
- *
- * <p>{@code previousInteractionId} es null en el primer turno;
- * en turnos posteriores contiene el id retornado por Google.
- */
+
+
+
+
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record InteractionRequest(
 

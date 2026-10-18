@@ -7,24 +7,23 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import java.util.List;
 
-/**
- * Respuesta de POST /v1beta/interactions.
- *
- * <pre>
- * {
- *   "id": "v1_Chd...",
- *   "status": "completed",
- *   "model": "gemini-2.5-flash",
- *   "steps": [ { "type": "model_output", "content": [...] } ],
- *   "usage": {
- *     "total_input_tokens": 120,
- *     "total_output_tokens": 80,
- *     "total_tokens": 200
- *   }
- * }
- * </pre>
- *
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record InteractionResponse(
 
@@ -94,10 +93,9 @@ public record InteractionResponse(
             @JsonProperty("text") String text
     ) {}
 
-    /**
-     * Uso de tokens según la Interactions API.
-     * Campo "usage" — no "usage_metadata" (que es de generateContent).
-     */
+
+
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Usage(
             @JsonProperty("total_input_tokens")  Integer totalInputTokens,
@@ -107,10 +105,9 @@ public record InteractionResponse(
             @JsonProperty("total_tokens")        Integer totalTokens
     ) {}
 
-    /**
-     * Extrae el texto del primer {@link Step.ModelOutputStep} encontrado.
-     * Retorna null si la respuesta no contiene texto.
-     */
+
+
+
     public String extractOutputText() {
         if (steps == null) return null;
         return steps.stream()

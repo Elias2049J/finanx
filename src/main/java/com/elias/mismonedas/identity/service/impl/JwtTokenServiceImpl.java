@@ -53,8 +53,6 @@ public class JwtTokenServiceImpl implements JwtTokenService {
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
-        // F11: el subject es el id, que no cambia. Antes era el email, de modo que
-        // cambiar de correo invalidaba todo token vivo (findByEmail dejaba de encontrarlo).
         String subject = "";
         String email = null;
         String role = null;

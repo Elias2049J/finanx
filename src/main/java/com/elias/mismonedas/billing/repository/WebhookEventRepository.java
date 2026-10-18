@@ -21,10 +21,9 @@ public interface WebhookEventRepository extends JpaRepository<WebhookEvent, Long
     @Query("select w from WebhookEvent w where w.id = :id")
     Optional<WebhookEvent> findByIdForUpdate(@Param("id") Long id);
 
-    /**
-     * Events persisted but not successfully handed to the broker before a crash
-     * or a broker outage. Ordered oldest-first so recovery drains arrival order.
-     */
+
+
+
     @Query("""
             select w from WebhookEvent w
             where w.state = :received

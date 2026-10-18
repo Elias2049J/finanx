@@ -8,12 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-/**
- * F3/F4: notificaciones borra su parte cuando se elimina una cuenta.
- *
- * <p>Los tokens FCM se listan aqui explicitamente: hasta F2 los borraba en cascada
- * {@code User.fcmTokens}, y esa cascada ya no existe.
- */
+
+
+
+
+
 @Component
 @RequiredArgsConstructor
 @Slf4j

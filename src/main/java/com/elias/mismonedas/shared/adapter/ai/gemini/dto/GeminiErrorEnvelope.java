@@ -3,19 +3,18 @@ package com.elias.mismonedas.shared.adapter.ai.gemini.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/**
- * Envelope de error retornado por la Gemini API.
- *
- * <pre>
- * {
- *   "error": {
- *     "code": 429,
- *     "message": "Resource has been exhausted...",
- *     "status": "RESOURCE_EXHAUSTED"
- *   }
- * }
- * </pre>
- */
+
+
+
+
+
+
+
+
+
+
+
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GeminiErrorEnvelope(
         @JsonProperty("error") GeminiError error

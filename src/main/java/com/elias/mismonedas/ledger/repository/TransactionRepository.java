@@ -22,7 +22,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
 
     java.util.Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
 
-    /** F8: todo acceso por id en el camino de request va acotado al usuario. */
     java.util.Optional<Transaction> findByIdAndUser_Id(Long id, Long userId);
 
     List<Transaction> findAllByUser_IdAndActiveTrue(Long userId);
@@ -49,11 +48,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
 
     void deleteAllByWallet_User_Id(Long userId);
 
-    /**
-     * F6 (opcion B): UNA query agrupada por {@code (meta, moneda)} que alimenta
-     * {@code SavingGoalTotals} para todas las metas de la lista a la vez — sin N+1.
-     * {@code COUNT(t)} por grupo debe sumarse entre monedas para el total de aportaciones.
-     */
+
+
+
+
     @Query("""
             SELECT t.savingGoal.id AS goalId,
                    t.savingGoal.currencyCode AS goalCurrencyCode,
@@ -67,10 +65,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     List<SavingGoalAggregate> sumAmountsByCurrencyForSavingGoals(
             @Param("userId") Long userId, @Param("goalIds") Collection<Long> goalIds);
 
-    /**
-     * F6 (opcion B): gastado de un presupuesto agregado en la base, acotado al periodo.
-     * F8: todo filtro en caliente lleva {@code user_id} — ninguna query cruza usuarios.
-     */
+
+
+
     @Query("""
             SELECT t.wallet.currencyCode AS currencyCode, SUM(t.amount) AS total
             FROM Transaction t
@@ -85,10 +82,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
             @Param("from") OffsetDateTime from,
             @Param("to") OffsetDateTime to);
 
-    /** Ultima transaccion activa de una meta — solo para el payload del evento de completion. */
     Optional<Transaction> findFirstBySavingGoal_IdAndActiveTrueOrderByCreatedAtDesc(Long savingGoalId);
 
-    /** Ultima transaccion activa de una categoria en el periodo — payload de las alertas de budget. */
     Optional<Transaction> findFirstByCategory_IdAndCreatedAtBetweenAndActiveAndTypeOrderByCreatedAtDesc(
             Long categoryId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active, TransactionType type);
 }

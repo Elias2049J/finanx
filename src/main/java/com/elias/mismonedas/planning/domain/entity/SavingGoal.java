@@ -16,12 +16,11 @@ import java.time.OffsetDateTime;
 
 import static java.math.RoundingMode.HALF_UP;
 
-/**
- * F6: la entidad ya NO mantiene la coleccion {@code transactions} ni computa sus propios
- * acumulados. Los totales agregados (SUM por moneda en la base, ver
- * {@code SavingGoalServiceImpl#totalsOf}) llegan como {@link SavingGoalTotals} — olvidarlos
- * no compila, y nadie puede caer en un barrido accidental del historial.
- */
+
+
+
+
+
 @Getter
 @Setter
 @AllArgsConstructor

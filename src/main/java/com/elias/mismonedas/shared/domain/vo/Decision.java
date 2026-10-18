@@ -1,6 +1,5 @@
 package com.elias.mismonedas.shared.domain.vo;
 
-/** Result of evaluating a business rule. */
 public record Decision(boolean allowed, String reason) {
 
     public Decision {
