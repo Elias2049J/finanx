@@ -26,6 +26,7 @@ public interface PaymentMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "subscription", ignore = true)
+    @Mapping(source = "currency", target = "currencyCode")
     @Mapping(target = "state", ignore = true)
     @Mapping(target = "externalReference", ignore = true)
     @Mapping(target = "failureReason", ignore = true)

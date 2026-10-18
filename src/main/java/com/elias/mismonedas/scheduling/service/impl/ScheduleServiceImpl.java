@@ -6,6 +6,8 @@ import com.elias.mismonedas.accounts.service.WalletService;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.service.ReasonResolver;
+import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
@@ -98,10 +100,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             if (tr.getTransactionType() != c.getType()) {
                 throw new IllegalArgumentException("The category transactionType must be the same as transactionSchedule");
             }
-            if (tr.getWalletId() != null) {
-                ts.setWallet(walletRepository.findByIdAndUser_Id(tr.getWalletId(), userId)
-                        .orElseThrow(() -> new IllegalArgumentException("Wallet not found or does not belong to the user")));
-            }
+            ts.setWallet(resolveWallet(userId, tr.getWalletId()));
             ts.setReason(
                     reasonResolver
                             .resolveOrCreate(userId, tr.getReasonId(), tr.getDescription())
@@ -113,6 +112,30 @@ public class ScheduleServiceImpl implements ScheduleService {
         s.setNextRunAt(rr.getStart());
 
         return buildResponse(scheduleRepository.save(s));
+    }
+
+    private Wallet resolveWallet(Long userId, Long walletId) {
+        if (walletId != null) {
+            return walletRepository.findByIdAndUser_Id(walletId, userId)
+                    .orElseThrow(() -> new IllegalArgumentException("Wallet not found or does not belong to the user"));
+        }
+        return walletRepository.findByUserIdAndPrimaryTrue(userId)
+                .orElseGet(() -> walletRepository.save(Wallet.builder()
+                        .user(userRepository.getReferenceById(userId))
+                        .currencyCode(resolveCurrency(userId))
+                        .balance(BigDecimal.ZERO)
+                        .primary(true)
+                        .build()));
+    }
+
+    private String resolveCurrency(Long userId) {
+        UserPreferences preferences = userRepository.findById(userId)
+                .map(User::getPreferences)
+                .orElse(null);
+        if (preferences == null || preferences.getCurrencyCode() == null) {
+            throw new IllegalArgumentException("Debe crear sus preferencias antes de programar movimientos");
+        }
+        return preferences.getCurrencyCode();
     }
 
     @Override
@@ -365,13 +388,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         Wallet wallet = st.getWallet();
 
         if (wallet == null) {
-            wallet = walletRepository.findByUserIdAndPrimaryTrue(st.getUser().getId())
-                    .orElseGet(() -> walletRepository.save(Wallet.builder()
-                            .user(st.getUser())
-                            .currencyCode(st.getUser().getPreferences().getCurrencyCode())
-                            .balance(BigDecimal.ZERO)
-                            .primary(true)
-                            .build()));
+            wallet = resolveWallet(st.getUser().getId(), null);
             tx.setWallet(wallet);
         }
 

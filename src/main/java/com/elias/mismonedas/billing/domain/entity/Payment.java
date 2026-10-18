@@ -4,6 +4,7 @@ import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
 import com.elias.mismonedas.billing.domain.enums.PaymentState;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -70,7 +71,7 @@ public class Payment {
 
     public void transitionTo(PaymentState target) {
         if (!this.state.canTransitionTo(target)) {
-            throw new IllegalStateException("Cannot transition payment from " + this.state + " to " + target);
+            throw new ConflictException("Cannot transition payment from " + this.state + " to " + target);
         }
         this.state = target;
         if (target == PaymentState.COMPLETED) {

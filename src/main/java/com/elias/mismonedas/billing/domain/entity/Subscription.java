@@ -4,6 +4,7 @@ import com.elias.mismonedas.billing.domain.enums.BillingCycle;
 import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
 import com.elias.mismonedas.billing.domain.enums.SubscriptionState;
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -79,7 +80,7 @@ public class Subscription {
 
     public void transitionTo(SubscriptionState target) {
         if (!this.state.canTransitionTo(target)) {
-            throw new IllegalStateException("Cannot transition subscription from " + this.state + " to " + target);
+            throw new ConflictException("Cannot transition subscription from " + this.state + " to " + target);
         }
         this.state = target;
     }

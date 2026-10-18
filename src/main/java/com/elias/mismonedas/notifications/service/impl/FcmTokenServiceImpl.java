@@ -12,6 +12,7 @@ import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.notifications.service.FcmTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -86,7 +87,7 @@ public class FcmTokenServiceImpl implements FcmTokenService {
                 .orElse(false);
         if (belongsToAnotherUser) {
             log.warn("Intento de eliminar token ajeno: userId={}, tokenId={}", userId, tokenId);
-            throw new RuntimeException("El token FCM no pertenece al usuario " + userId);
+            throw new AccessDeniedException("El token FCM no pertenece al usuario " + userId);
         }
         log.info("Token FCM inexistente, eliminacion idempotente id={}", tokenId);
     }

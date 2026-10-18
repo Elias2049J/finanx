@@ -2,18 +2,30 @@ package com.elias.mismonedas.shared.config;
 
 import com.elias.mismonedas.shared.dto.ErrorResponse;
 import com.elias.mismonedas.shared.exception.*;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
@@ -166,6 +178,92 @@ public class GlobalExceptionHandler {
         );
         log.warn("[handleDataIntegrity] Conflict at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+        int status = HttpStatus.UNSUPPORTED_MEDIA_TYPE.value();
+        ErrorResponse error = new ErrorResponse(
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getMessage(),
+                status,
+                LocalDateTime.now().toString()
+        );
+        log.warn("[handleMediaTypeNotSupported] Unsupported media type at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
+        return ResponseEntity.status(status).body(error);
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex, HttpServletRequest request) {
+        return respond(HttpStatus.NOT_FOUND, ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentNotFound(PaymentNotFoundException ex, HttpServletRequest request) {
+        return respond(HttpStatus.NOT_FOUND, ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<ErrorResponse> handleNoSuchElement(NoSuchElementException ex, HttpServletRequest request) {
+        return respond(HttpStatus.NOT_FOUND, "Recurso no encontrado", request, ex);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex, HttpServletRequest request) {
+        return respond(HttpStatus.CONFLICT, ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+        String message = ex.getConstraintViolations().stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                .collect(Collectors.joining(", "));
+        return respond(HttpStatus.BAD_REQUEST, message.isBlank() ? "Parametros invalidos" : message, request, ex);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        return respond(HttpStatus.BAD_REQUEST, fieldErrorsOf(ex.getBindingResult()), request, ex);
+    }
+
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ErrorResponse> handleBind(BindException ex, HttpServletRequest request) {
+        return respond(HttpStatus.BAD_REQUEST, fieldErrorsOf(ex.getBindingResult()), request, ex);
+    }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
+        return respond(HttpStatus.BAD_REQUEST, "Solicitud invalida: " + ex.getMessage(), request, ex);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        return respond(HttpStatus.METHOD_NOT_ALLOWED, ex.getMessage(), request, ex);
+    }
+
+    private String fieldErrorsOf(BindingResult bindingResult) {
+        String message = bindingResult.getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        return message.isBlank() ? "Datos de entrada invalidos" : message;
+    }
+
+    private ResponseEntity<ErrorResponse> respond(HttpStatus status, String message, HttpServletRequest request, Exception ex) {
+        ErrorResponse error = new ErrorResponse(
+                request.getMethod(),
+                request.getRequestURI(),
+                message,
+                status.value(),
+                LocalDateTime.now().toString()
+        );
+        if (status.is5xxServerError()) {
+            log.error("[{}] Exception at path: {}, method: {}, error: {}", status.value(), request.getRequestURI(), request.getMethod(), error, ex);
+        } else {
+            log.warn("[{}] Rejected at path: {}, method: {}, error: {}", status.value(), request.getRequestURI(), request.getMethod(), error);
+        }
+        return ResponseEntity.status(status).body(error);
     }
 
     @ExceptionHandler(Exception.class)
