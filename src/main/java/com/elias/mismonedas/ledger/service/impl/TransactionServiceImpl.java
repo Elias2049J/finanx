@@ -34,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpException;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -66,7 +67,24 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TransactionResponse create(TransactionRequest request) throws HttpException, IOException {
+    public TransactionResponse create(TransactionRequest request, String idempotencyKey) throws HttpException, IOException {
+        // C1: replay del mismo request. La clave es del cliente; ademas se acota al usuario
+        // autenticado para que una clave ajena no filtre ni devuelva otra transaccion.
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            var existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) {
+                Transaction replayed = existing.get();
+                Long owner = replayed.getWallet() != null ? replayed.getWallet().getUser().getId() : null;
+                Long current = securityService.getCurrentUser().getId();
+                if (!current.equals(owner)) {
+                    throw new IllegalArgumentException("Idempotency-Key already used by another user");
+                }
+                log.info("Transaction replay ignored: idempotencyKey={} maps to transaction id={}",
+                        idempotencyKey, replayed.getId());
+                return transactionMapper.toResponse(replayed);
+            }
+        }
+
         Transaction transaction = transactionMapper.toEntity(request);
         Wallet wallet = walletRepository.findById(request.getWalletId()).orElseThrow();
         Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow();
@@ -99,7 +117,24 @@ public class TransactionServiceImpl implements TransactionService {
                 .resolveOrCreate(userId, request.getReasonId(), request.getDescription())
                 .orElseThrow();
         transaction.setReason(reason);
-        Transaction saved = transactionRepository.save(transaction);
+        transaction.setIdempotencyKey(
+                idempotencyKey != null && !idempotencyKey.isBlank() ? idempotencyKey : null);
+        Transaction saved;
+        try {
+            saved = transactionRepository.save(transaction);
+        } catch (DataIntegrityViolationException race) {
+            // C1: dos reintentos simultaneos pasaron el SELECT y el unique de
+            // clave_idempotencia escogio al segundo. Se devuelve la transaccion ya registrada.
+            Transaction existing = transactionRepository.findByIdempotencyKey(transaction.getIdempotencyKey())
+                    .orElseThrow(() -> race);
+            Long owner = existing.getWallet() != null ? existing.getWallet().getUser().getId() : null;
+            if (!securityService.getCurrentUser().getId().equals(owner)) {
+                throw new IllegalArgumentException("Idempotency-Key already used by another user");
+            }
+            log.info("Transaction replay on race: idempotencyKey={} maps to transaction id={}",
+                    transaction.getIdempotencyKey(), existing.getId());
+            return transactionMapper.toResponse(existing);
+        }
 
         if (request.getReceiptId() != null) {
             Receipt receipt = receiptRepository.findByIdAndUser_Id(request.getReceiptId(), userId)

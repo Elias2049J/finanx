@@ -12,7 +12,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface TransactionService {
-    TransactionResponse create(TransactionRequest request) throws HttpException, IOException;
+    /**
+     * C1: {@code idempotencyKey} viene del header {@code Idempotency-Key}; si una transaccion
+     * con esa clave ya existe se devuelve sin crear otra (el reintento no duplica el gasto).
+     */
+    TransactionResponse create(TransactionRequest request, String idempotencyKey) throws HttpException, IOException;
     TransactionResponse update(Long id, TransactionRequest request);
     TransactionResponse findById(Long id);
     List<TransactionResponse> findAllByUser(Long userId);

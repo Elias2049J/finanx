@@ -14,6 +14,8 @@ import java.util.List;
 public interface TransactionRepository extends JpaRepository<Transaction, Long>, JpaSpecificationExecutor<Transaction> {
     List<Transaction> findAllByWallet_User_Id(Long userId);
 
+    java.util.Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
+
     List<Transaction> findAllByWallet_User_IdAndActiveTrue(Long userId);
 
     List<Transaction> findAllByWallet_User_IdAndCreatedAtBetweenAndActive(Long userId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, boolean active);

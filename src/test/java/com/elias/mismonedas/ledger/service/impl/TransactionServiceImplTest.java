@@ -34,6 +34,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -135,7 +136,7 @@ class TransactionServiceImplTest {
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
             when(transactionMapper.toResponse(savedTransaction)).thenReturn(response);
 
-            TransactionResponse result = service.create(request);
+            TransactionResponse result = service.create(request, null);
 
             assertThat(result.getId()).isEqualTo(999L);
             verify(receiptRepository, never()).findByIdAndUser_Id(anyLong(), anyLong());
@@ -164,12 +165,77 @@ class TransactionServiceImplTest {
             when(receiptRepository.findByIdAndUser_Id(777L, 1L)).thenReturn(Optional.of(receipt));
             when(transactionMapper.toResponse(savedTransaction)).thenReturn(response);
 
-            TransactionResponse result = service.create(request);
+            TransactionResponse result = service.create(request, null);
 
             assertThat(result.getId()).isEqualTo(999L);
             verify(receiptRepository).findByIdAndUser_Id(777L, 1L);
             verify(receiptRepository).save(receiptCaptor.capture());
             assertThat(receiptCaptor.getValue().getTransaction()).isEqualTo(savedTransaction);
+        }
+
+        @Test
+        void shouldReturnExistingTransactionOnIdempotencyKeyReplay() throws Exception {
+            // C1: replay rapido - la clave ya existe y pertenece al usuario autenticado.
+            Transaction existing = new Transaction();
+            existing.setId(999L);
+            existing.setWallet(wallet);
+            TransactionResponse existingResponse = new TransactionResponse();
+            existingResponse.setId(999L);
+
+            when(transactionRepository.findByIdempotencyKey("key-1")).thenReturn(Optional.of(existing));
+            when(securityService.getCurrentUser()).thenReturn(user);
+            when(transactionMapper.toResponse(existing)).thenReturn(existingResponse);
+
+            TransactionResponse result = service.create(request, "key-1");
+
+            assertThat(result.getId()).isEqualTo(999L);
+            verify(transactionRepository, never()).save(any());
+            verify(eventPublisher, never()).publishEvent(any(TransactionChangedEvent.class));
+        }
+
+        @Test
+        void shouldRejectReplayOfIdempotencyKeyOwnedByAnotherUser() {
+            User other = new User();
+            other.setId(2L);
+            Wallet otherWallet = new Wallet();
+            otherWallet.setUser(other);
+
+            Transaction existing = new Transaction();
+            existing.setId(888L);
+            existing.setWallet(otherWallet);
+
+            when(transactionRepository.findByIdempotencyKey("key-1")).thenReturn(Optional.of(existing));
+            when(securityService.getCurrentUser()).thenReturn(user);
+
+            assertThatThrownBy(() -> service.create(request, "key-1"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("another user");
+        }
+
+        @Test
+        void shouldReturnExistingTransactionWhenRaceLosesOnUniqueConstraint() throws Exception {
+            // C1: dos reintentos simultaneos pasaron el SELECT; el unique escogio al otro.
+            Transaction existing = new Transaction();
+            existing.setId(777L);
+            existing.setWallet(wallet);
+            TransactionResponse existingResponse = new TransactionResponse();
+            existingResponse.setId(777L);
+
+            when(securityService.getCurrentUser()).thenReturn(user);
+            when(transactionMapper.toEntity(request)).thenReturn(transaction);
+            when(walletRepository.findById(10L)).thenReturn(Optional.of(wallet));
+            when(categoryRepository.findById(100L)).thenReturn(Optional.of(category));
+            when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
+            when(transactionRepository.findByIdempotencyKey("key-1"))
+                    .thenReturn(Optional.empty(), Optional.of(existing));
+            when(transactionRepository.save(any()))
+                    .thenThrow(new DataIntegrityViolationException("uq clave_idempotencia"));
+            when(transactionMapper.toResponse(existing)).thenReturn(existingResponse);
+
+            TransactionResponse result = service.create(request, "key-1");
+
+            assertThat(result.getId()).isEqualTo(777L);
+            verify(eventPublisher, never()).publishEvent(any(TransactionChangedEvent.class));
         }
 
         @Test
@@ -183,7 +249,7 @@ class TransactionServiceImplTest {
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
             when(receiptRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.create(request))
+            assertThatThrownBy(() -> service.create(request, null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Receipt not found");
         }
@@ -206,7 +272,7 @@ class TransactionServiceImplTest {
             when(transactionRepository.save(any())).thenReturn(savedTransaction);
             when(receiptRepository.findByIdAndUser_Id(777L, 1L)).thenReturn(Optional.of(linkedReceipt));
 
-            assertThatThrownBy(() -> service.create(request))
+            assertThatThrownBy(() -> service.create(request, null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("already linked");
         }

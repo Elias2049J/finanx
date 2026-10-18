@@ -68,8 +68,10 @@ public class TransactionController {
             tags = {"Transactions"}
     )
     @PostMapping
-    public ResponseEntity<TransactionResponse> create(@Valid @RequestBody TransactionRequest request) throws HttpException, IOException {
-        TransactionResponse saved = transactionService.create(request);
+    public ResponseEntity<TransactionResponse> create(
+            @Valid @RequestBody TransactionRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) throws HttpException, IOException {
+        TransactionResponse saved = transactionService.create(request, idempotencyKey);
         return ResponseEntity.created(URI.create("/api/v1/transactions/" + saved.getId())).body(saved);
     }
 

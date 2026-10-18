@@ -74,6 +74,9 @@ public class Transaction {
     @OneToOne(mappedBy = "transaction", fetch = FetchType.LAZY)
     private Receipt receipt;
 
+    @Column(name = "clave_idempotencia", unique = true)
+    private String idempotencyKey;
+
     @PrePersist
     private void onCreate() {
         if (createdAt == null) {
