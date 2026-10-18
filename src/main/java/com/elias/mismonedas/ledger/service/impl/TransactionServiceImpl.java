@@ -14,6 +14,7 @@ import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.service.UserDataContextService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
+import com.elias.mismonedas.ledger.domain.event.TransactionChangedEvent;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.mapper.TransactionMapper;
@@ -23,8 +24,6 @@ import com.elias.mismonedas.ledger.service.TransactionService;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
-import com.elias.mismonedas.planning.service.BudgetService;
-import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
@@ -34,6 +33,7 @@ import com.elias.mismonedas.shared.money.CurrencyConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -58,12 +58,11 @@ public class TransactionServiceImpl implements TransactionService {
     private final ReceiptRepository receiptRepository;
     private final TransactionMapper transactionMapper;
     private final ReasonResolver reasonResolver;
-    private final BudgetService budgetService;
-    private final SavingGoalService savingGoalService;
     private final SavingGoalRepository sgRepository;
     private final UserDataContextService userDataContextService;
     private final CurrencyConverter currencyConverter;
     private final SecurityService securityService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -130,8 +129,7 @@ public class TransactionServiceImpl implements TransactionService {
         adjustBalance(wallet, saved.getType(), saved.getAmount());
         walletRepository.save(wallet);
 
-        budgetService.checkAllBudgets(userId);
-        savingGoalService.checkAllSavingGoals(userId);
+        eventPublisher.publishEvent(new TransactionChangedEvent(saved.getId(), userId));
         userDataContextService.updateUserDataContext(userId);
 
         return transactionMapper.toResponse(saved);
@@ -202,8 +200,7 @@ public class TransactionServiceImpl implements TransactionService {
             }
         }
 
-        budgetService.checkAllBudgets(userId);
-        savingGoalService.checkAllSavingGoals(userId);
+        eventPublisher.publishEvent(new TransactionChangedEvent(saved.getId(), userId));
         return transactionMapper.toResponse(saved);
     }
 
@@ -284,8 +281,7 @@ public class TransactionServiceImpl implements TransactionService {
         adjustBalance(wallet, transaction.getType(), transaction.getAmount().negate());
         walletRepository.save(wallet);
 
-        budgetService.checkAllBudgets(userId);
-        savingGoalService.checkAllSavingGoals(userId);
+        eventPublisher.publishEvent(new TransactionChangedEvent(transaction.getId(), userId));
         userDataContextService.updateUserDataContext(userId);
     }
 

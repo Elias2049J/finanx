@@ -17,14 +17,13 @@ import com.elias.mismonedas.insights.service.UserDataContextService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
+import com.elias.mismonedas.ledger.domain.event.TransactionChangedEvent;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
 import com.elias.mismonedas.ledger.service.impl.TransactionServiceImpl;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
-import com.elias.mismonedas.planning.service.BudgetService;
-import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +33,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -54,14 +54,14 @@ class TransactionServiceImplTest {
     @Mock private ReceiptRepository receiptRepository;
     @Mock private TransactionMapper transactionMapper;
     @Mock private ReasonResolver reasonResolver;
-    @Mock private BudgetService budgetService;
-    @Mock private SavingGoalService savingGoalService;
     @Mock private SavingGoalRepository sgRepository;
     @Mock private UserDataContextService userDataContextService;
     @Mock private CurrencyConverter currencyConverter;
     @Mock private SecurityService securityService;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @Captor private ArgumentCaptor<Receipt> receiptCaptor;
+    @Captor private ArgumentCaptor<TransactionChangedEvent> eventCaptor;
 
     private TransactionServiceImpl service;
 
@@ -78,8 +78,8 @@ class TransactionServiceImplTest {
     void setUp() {
         service = new TransactionServiceImpl(
                 transactionRepository, walletRepository, categoryRepository, userRepository,
-                receiptRepository, transactionMapper, reasonResolver, budgetService,
-                savingGoalService, sgRepository, userDataContextService, currencyConverter, securityService);
+                receiptRepository, transactionMapper, reasonResolver, sgRepository,
+                userDataContextService, currencyConverter, securityService, eventPublisher);
 
         user = new User();
         user.setId(1L);
@@ -140,8 +140,9 @@ class TransactionServiceImplTest {
             assertThat(result.getId()).isEqualTo(999L);
             verify(receiptRepository, never()).findByIdAndUser_Id(anyLong(), anyLong());
             verify(receiptRepository, never()).save(any());
-            verify(budgetService).checkAllBudgets(1L);
-            verify(savingGoalService).checkAllSavingGoals(1L);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().transactionId()).isEqualTo(999L);
+            assertThat(eventCaptor.getValue().userId()).isEqualTo(1L);
             verify(userDataContextService).updateUserDataContext(1L);
         }
 
