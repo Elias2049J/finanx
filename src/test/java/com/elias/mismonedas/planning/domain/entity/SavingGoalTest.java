@@ -1,6 +1,7 @@
 package com.elias.mismonedas.planning.domain.entity;
 
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
+import com.elias.mismonedas.planning.domain.vo.SavingGoalTotals;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -21,12 +22,12 @@ class SavingGoalTest {
     @Test
     void shouldUseAccumulatedAmountAndRunningStateForIsCompleted() {
         SavingGoal goal = goal(new BigDecimal("100.00"));
-        goal.setDisplayAccumulated(new BigDecimal("100.00"));
+        SavingGoalTotals totalsReached = new SavingGoalTotals(new BigDecimal("100.00"), 1);
 
-        assertThat(goal.isCompleted()).isTrue();
+        assertThat(goal.isCompleted(totalsReached)).isTrue();
 
         goal.setState(SavingGoalState.CANCELLED);
-        assertThat(goal.isCompleted()).isFalse();
+        assertThat(goal.isCompleted(totalsReached)).isFalse();
     }
 
     private SavingGoal goal(BigDecimal targetAmount) {

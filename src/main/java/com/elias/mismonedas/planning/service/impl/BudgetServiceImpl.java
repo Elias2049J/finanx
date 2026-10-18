@@ -19,11 +19,11 @@ import com.elias.mismonedas.planning.mapper.BudgetMapper;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
 import com.elias.mismonedas.planning.repository.BudgetSpecifications;
 import com.elias.mismonedas.planning.service.BudgetService;
+import com.elias.mismonedas.planning.support.ConvertedAmounts;
 import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
 import com.elias.mismonedas.scheduling.service.RecurrenceCalculatorService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
-import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
@@ -43,7 +43,6 @@ import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -180,15 +179,10 @@ public class BudgetServiceImpl implements BudgetService {
                 periodStart = Optional.ofNullable(b.getStart()).orElse(b.getCreatedAt());
                 if (b.getEnd() != null && now.isAfter(b.getEnd())) {
                     String budgetCurrency = b.getCurrencyCode();
-                    List<Transaction> allTxs = transactionRepository
-                            .findAllByCategory_IdAndCreatedAtBetweenAndActiveAndType(
-                                    c.getId(),
-                                    periodStart,
-                                    b.getEnd(),
-                                    true,
-                                    TransactionType.SPENT
-                            );
-                    BigDecimal finalSpent = computeConvertedSpent(allTxs, budgetCurrency);
+                    BigDecimal finalSpent = ConvertedAmounts.sumConverted(
+                            transactionRepository.sumAmountsByCurrencyForCategory(
+                                    c.getId(), TransactionType.SPENT, periodStart, b.getEnd()),
+                            budgetCurrency, currencyConverter);
                     b.setFrozenSpent(finalSpent);
                     b.setState(BudgetState.FINALIZED);
                     log.info("FINALIZED Budget id={} desc={} frozenSpent={}", b.getId(), b.getDescription(), finalSpent);
@@ -196,30 +190,12 @@ public class BudgetServiceImpl implements BudgetService {
                 }
             }
 
-            List<Transaction> txs = transactionRepository
-                    .findAllByCategory_IdAndCreatedAtBetweenAndActiveAndType(
-                            c.getId(),
-                            periodStart,
-                            now,
-                            true,
-                            TransactionType.SPENT
-                    );
-
             String budgetCurrency = b.getCurrencyCode();
-            BigDecimal spent = BigDecimal.ZERO;
-            Transaction lastTx = null;
-            for (Transaction t : txs) {
-                String txCurrency = t.getWallet() != null
-                        ? t.getWallet().getCurrencyCode()
-                        : budgetCurrency;
-                BigDecimal convertedAmount = currencyConverter
-                        .convert(Money.of(t.getAmount(), txCurrency), budgetCurrency)
-                        .amount();
-                spent = spent.add(convertedAmount);
-                if (lastTx == null || t.getCreatedAt().isAfter(lastTx.getCreatedAt())) {
-                    lastTx = t;
-                }
-            }
+            // F6 (opcion B): SUM agregado en la base por moneda, no N conversiones en memoria.
+            BigDecimal spent = ConvertedAmounts.sumConverted(
+                    transactionRepository.sumAmountsByCurrencyForCategory(
+                            c.getId(), TransactionType.SPENT, periodStart, now),
+                    budgetCurrency, currencyConverter);
 
             BudgetHealth previousHealth = b.getHealth();
             BudgetHealth currentHealth = b.updateHealth(spent);
@@ -229,6 +205,7 @@ public class BudgetServiceImpl implements BudgetService {
                 log.info("Budget {} superó el límite (spent={}, limit={})",
                         b.getId(), spent, b.getLimitAmount());
 
+                Transaction lastTx = lastTxOf(c.getId(), periodStart, now);
                 if (lastTx != null && b.markExceededNotified()) {
                     eventPublisher.publishEvent(new BudgetExceededEvent(
                             b.getId(),
@@ -246,6 +223,7 @@ public class BudgetServiceImpl implements BudgetService {
                 log.info("Budget {} alcanzó {}% (spent={}, limit={})",
                         b.getId(), alertPercent, spent, b.getLimitAmount());
 
+                Transaction lastTx = lastTxOf(c.getId(), periodStart, now);
                 if (lastTx != null && b.markNearLimitNotified()) {
                     eventPublisher.publishEvent(new BudgetNearLimitEvent(
                             b.getId(),
@@ -275,19 +253,12 @@ public class BudgetServiceImpl implements BudgetService {
                 .orElseThrow(() -> new EntityNotFoundException("Budget not found: " + id));
     }
 
-    private BigDecimal computeConvertedSpent(List<Transaction> txs, String budgetCurrency) {
-        return txs.stream()
-                .filter(t -> Boolean.TRUE.equals(t.getActive()))
-                .filter(t -> t.getAmount() != null)
-                .map(t -> {
-                    String txCurrency = t.getWallet() != null
-                            ? t.getWallet().getCurrencyCode()
-                            : budgetCurrency;
-                    return currencyConverter.convert(Money.of(t.getAmount(), txCurrency), budgetCurrency);
-                })
-                .filter(Objects::nonNull)
-                .reduce(Money.zero(budgetCurrency), Money::add)
-                .amount();
+    /** Payload de las alertas: la ultima transaccion del periodo, sin cargar el historial. */
+    private Transaction lastTxOf(Long categoryId, OffsetDateTime from, OffsetDateTime to) {
+        return transactionRepository
+                .findFirstByCategory_IdAndCreatedAtBetweenAndActiveAndTypeOrderByCreatedAtDesc(
+                        categoryId, from, to, true, TransactionType.SPENT)
+                .orElse(null);
     }
 
     private void applyRequestDateTimes(BudgetRequest request, Budget b) {

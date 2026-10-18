@@ -1,8 +1,8 @@
 package com.elias.mismonedas.planning.domain.entity;
 
 import com.elias.mismonedas.identity.domain.entity.User;
-import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
+import com.elias.mismonedas.planning.domain.vo.SavingGoalTotals;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,11 +13,15 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 import static java.math.RoundingMode.HALF_UP;
 
+/**
+ * F6: la entidad ya NO mantiene la coleccion {@code transactions} ni computa sus propios
+ * acumulados. Los totales agregados (SUM por moneda en la base, ver
+ * {@code SavingGoalServiceImpl#totalsOf}) llegan como {@link SavingGoalTotals} — olvidarlos
+ * no compila, y nadie puede caer en un barrido accidental del historial.
+ */
 @Getter
 @Setter
 @AllArgsConstructor
@@ -64,20 +68,6 @@ public class SavingGoal {
     @ManyToOne
     @JoinColumn(name = "id_usuario")
     private User user;
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "savingGoal")
-    private List<Transaction> transactions = new ArrayList<>();
-
-    @Transient
-    private BigDecimal displayAccumulated;
-
-    public BigDecimal getAccumulated() {
-        if (displayAccumulated != null) return displayAccumulated;
-        return transactions
-                .stream()
-                .filter(t -> Boolean.TRUE.equals(t.getActive()))
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
 
     @PrePersist
     private void onCreate() {
@@ -86,52 +76,45 @@ public class SavingGoal {
         createdAt = OffsetDateTime.now(user.getTimeZone().toZoneId());
     }
 
-    public double getProgressPercentage() {
-        if (targetAmount == null || targetAmount.compareTo(BigDecimal.ZERO) == 0) {
-            return 0.0;
-        }
-        return getAccumulated().divide(targetAmount, 2, HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-                .doubleValue();
-    }
-
-    public BigDecimal getOutstanding() {
-        return targetAmount.subtract(getAccumulated());
-
-    }
-
-    public int getTransactionsCount() {
-        return transactions.stream()
-                .mapToInt(t -> Boolean.TRUE.equals(t.getActive()) ? 1 : 0)
-                .sum();
-    }
-
     public long getDaysRemaining() {
         return Math.max(0, Duration
                 .between(OffsetDateTime.now(user.getTimeZone().toZoneId()), deadline)
                 .toDays());
     }
 
-    public BigDecimal getAverageContribution() {
-        long count = getTransactionsCount();
-        return count == 0 ? BigDecimal.ZERO :
-                getAccumulated().divide(BigDecimal.valueOf(count), 2, HALF_UP);
-    }
-
-    public boolean isCompleted() {
-        return state == SavingGoalState.RUNNING
-                && hasReachedTarget(getAccumulated());
-    }
-
     public boolean hasReachedTarget(BigDecimal accumulated) {
         return accumulated.compareTo(targetAmount) >= 0;
     }
 
-    public LocalDateTime getEstimatedCompletionDate() {
-        BigDecimal outstanding = getOutstanding();
-        BigDecimal avg = getAverageContribution();
+    public BigDecimal getOutstanding(SavingGoalTotals totals) {
+        return targetAmount.subtract(totals.accumulated());
+    }
+
+    public double getProgressPercentage(SavingGoalTotals totals) {
+        if (targetAmount == null || targetAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return 0.0;
+        }
+        return totals.accumulated().divide(targetAmount, 2, HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .doubleValue();
+    }
+
+    public BigDecimal getAverageContribution(SavingGoalTotals totals) {
+        int count = totals.transactionsCount();
+        return count == 0 ? BigDecimal.ZERO :
+                totals.accumulated().divide(BigDecimal.valueOf(count), 2, HALF_UP);
+    }
+
+    public LocalDateTime getEstimatedCompletionDate(SavingGoalTotals totals) {
+        BigDecimal outstanding = getOutstanding(totals);
+        BigDecimal avg = getAverageContribution(totals);
         if (avg.compareTo(BigDecimal.ZERO) == 0) return null;
         long months = outstanding.divide(avg, 0, HALF_UP).longValue();
         return OffsetDateTime.now(user.getTimeZone().toZoneId()).toLocalDateTime().plusMonths(months);
+    }
+
+    public boolean isCompleted(SavingGoalTotals totals) {
+        return state == SavingGoalState.RUNNING
+                && hasReachedTarget(totals.accumulated());
     }
 }

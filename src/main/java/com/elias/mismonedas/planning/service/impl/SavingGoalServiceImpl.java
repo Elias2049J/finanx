@@ -3,18 +3,21 @@ package com.elias.mismonedas.planning.service.impl;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
+import com.elias.mismonedas.ledger.repository.TransactionRepository;
+import com.elias.mismonedas.ledger.repository.projection.SavingGoalAggregate;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
 import com.elias.mismonedas.planning.domain.event.SavingGoalCompletedEvent;
+import com.elias.mismonedas.planning.domain.vo.SavingGoalTotals;
 import com.elias.mismonedas.planning.dto.saving.SavingGoalRequest;
 import com.elias.mismonedas.planning.dto.saving.SavingGoalResponse;
 import com.elias.mismonedas.planning.mapper.SavingGoalMapper;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
+import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.planning.service.SavingGoalService;
-import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.Comparator;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @Service
@@ -42,6 +46,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     private final ApplicationEventPublisher eventPublisher;
     private final CurrencyConverter currencyConverter;
     private final SecurityService securityService;
+    private final TransactionRepository transactionRepository;
 
     @Override
     @Transactional
@@ -59,7 +64,8 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         sg.setCreatedAt(OffsetDateTime.now(userZone));
         sg.setActive(true);
 
-        return sgMapper.toResponse(sgRepository.save(sg));
+        // Meta nueva: sin aportaciones, sin query.
+        return sgMapper.toResponse(sgRepository.save(sg), SavingGoalTotals.empty());
     }
 
     @Override
@@ -73,33 +79,42 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         ZoneId userZone = existing.getUser().getTimeZone().toZoneId();
         existing.setDeadline(request.getDeadline().atStartOfDay().atZone(userZone).toOffsetDateTime());
 
-        return sgMapper.toResponse(sgRepository.save(existing));
+        return sgMapper.toResponse(sgRepository.save(existing), totalsOf(List.of(existing)).get(existing.getId()));
     }
 
     @Transactional
     @Override
     public void cancel(Long id) {
         SavingGoal existing = getOwned(id);
-        BigDecimal converted = computeConvertedAccumulated(existing);
+        BigDecimal converted = totalsOf(List.of(existing)).get(existing.getId()).accumulated();
         existing.setFrozenAccumulated(converted);
         existing.setState(SavingGoalState.CANCELLED);
         sgRepository.save(existing);
     }
 
-    private BigDecimal computeConvertedAccumulated(SavingGoal sa) {
-        String goalCurrency = sa.getCurrencyCode();
-        return sa.getTransactions().stream()
-                .filter(t -> Boolean.TRUE.equals(t.getActive()))
-                .filter(t -> t.getAmount() != null)
-                .map(t -> {
-                    String txCurrency = t.getWallet() != null
-                            ? t.getWallet().getCurrencyCode()
-                            : goalCurrency;
-                    return currencyConverter.convert(Money.of(t.getAmount(), txCurrency), goalCurrency);
-                })
-                .filter(Objects::nonNull)
-                .reduce(Money.zero(goalCurrency), Money::add)
-                .amount();
+    /**
+     * F6 (opcion B): UNA query agrupada {@code (meta, moneda)} para toda la coleccion — convierte
+     * un monto por moneda, no por transaccion, y la base hace el barrido del historial.
+     * Las metas sin aportaciones quedan en {@link SavingGoalTotals#empty()}.
+     */
+    private Map<Long, SavingGoalTotals> totalsOf(Collection<SavingGoal> goals) {
+        Map<Long, SavingGoalTotals> totals = new HashMap<>();
+        for (SavingGoal goal : goals) {
+            totals.put(goal.getId(), SavingGoalTotals.empty());
+        }
+        if (goals.isEmpty()) {
+            return totals;
+        }
+        for (SavingGoalAggregate row : transactionRepository.sumAmountsByCurrencyForSavingGoals(totals.keySet())) {
+            BigDecimal converted = currencyConverter
+                    .convert(Money.of(row.getTotal(), row.getCurrencyCode()), row.getGoalCurrencyCode())
+                    .amount();
+            SavingGoalTotals current = totals.get(row.getGoalId());
+            totals.put(row.getGoalId(), new SavingGoalTotals(
+                    current.accumulated().add(converted),
+                    current.transactionsCount() + row.getTransactionsCount().intValue()));
+        }
+        return totals;
     }
 
     @Override
@@ -115,10 +130,10 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Override
     @Transactional(readOnly = true)
     public List<SavingGoalResponse> findAllActiveByUser(Long userId) {
-        return sgRepository.findAllByUser_IdAndActive(userId, true)
-                .stream()
-                .peek(sg -> sg.setDisplayAccumulated(computeConvertedAccumulated(sg)))
-                .map(sgMapper::toResponse)
+        List<SavingGoal> goals = sgRepository.findAllByUser_IdAndActive(userId, true);
+        Map<Long, SavingGoalTotals> totals = totalsOf(goals);
+        return goals.stream()
+                .map(g -> sgMapper.toResponse(g, totals.get(g.getId())))
                 .toList();
     }
 
@@ -130,15 +145,15 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         Page<SavingGoal> page = state == null
                 ? sgRepository.findAllByUser_IdAndActive(userId, active, stablePage)
                 : sgRepository.findAllByUser_IdAndActiveAndState(userId, active, state, stablePage);
-        return PageResponseFactory.from(page, sgMapper::toResponse);
+        Map<Long, SavingGoalTotals> totals = totalsOf(page.getContent());
+        return PageResponseFactory.from(page, g -> sgMapper.toResponse(g, totals.get(g.getId())));
     }
 
     @Override
     @Transactional(readOnly = true)
     public SavingGoalResponse findById(Long id) {
         SavingGoal entity = getOwned(id);
-        entity.setDisplayAccumulated(computeConvertedAccumulated(entity));
-        return sgMapper.toResponse(entity);
+        return sgMapper.toResponse(entity, totalsOf(List.of(entity)).get(entity.getId()));
     }
 
     private SavingGoal getOwned(Long id) {
@@ -151,34 +166,33 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Override
     public void checkAllSavingGoals(Long userId) {
         List<SavingGoal> all = sgRepository.findAllByUser_IdAndActiveAndState(userId, true, SavingGoalState.RUNNING);
+        Map<Long, SavingGoalTotals> totals = totalsOf(all);
         for (SavingGoal sa: all) {
             User u = sa.getUser();
-            String goalCurrency = sa.getCurrencyCode();
+            SavingGoalTotals goalTotals = totals.get(sa.getId());
 
-            BigDecimal convertedAccumulated = computeConvertedAccumulated(sa);
-
-            boolean completed = sa.hasReachedTarget(convertedAccumulated);
+            boolean completed = sa.hasReachedTarget(goalTotals.accumulated());
 
             if (completed) {
-                Transaction last = sa.getTransactions().stream()
-                        .filter(t -> Boolean.TRUE.equals(t.getActive()))
-                        .max(Comparator.comparing(Transaction::getCreatedAt))
+                // El evento solo necesita la ULTIMA aportacion como payload — no el historial.
+                Transaction last = transactionRepository
+                        .findFirstBySavingGoal_IdAndActiveTrueOrderByCreatedAtDesc(sa.getId())
                         .orElseThrow(() -> {
                             log.error("No active transactions found for SavingGoal id={} desc:{} user={}", sa.getId(), sa.getDescription(), userId);
                             return new IllegalStateException("Not active transactions found");
                                 });
                 sa.setState(SavingGoalState.COMPLETED);
                 sa.setCompletedAt(OffsetDateTime.now(u.getTimeZone().toZoneId()));
-                sa.setFrozenAccumulated(convertedAccumulated);
-                log.info("COMPLETING SavingGoal id={} desc={} convertedAccumulated={}", sa.getId(), sa.getDescription(), convertedAccumulated);
+                sa.setFrozenAccumulated(goalTotals.accumulated());
+                log.info("COMPLETING SavingGoal id={} desc={} convertedAccumulated={}", sa.getId(), sa.getDescription(), goalTotals.accumulated());
 
                 eventPublisher.publishEvent(new SavingGoalCompletedEvent(
                         sa.getId(),
                         u.getId(),
                         sa.getDescription(),
-                        convertedAccumulated,
+                        goalTotals.accumulated(),
                         sa.getTargetAmount(),
-                        goalCurrency,
+                        sa.getCurrencyCode(),
                         last.getCreatedAt(),
                         last.getAmount()
                 ));
