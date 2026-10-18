@@ -46,25 +46,55 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     }
 
     @Override
-    public String generateToken(UserDetails user) {
+    public String generateToken(UserDetails details) {
         Instant now = Instant.now();
 
-        List<String> authorities = user.getAuthorities().stream()
+        List<String> authorities = details.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
+        // F11: el subject es el id, que no cambia. Antes era el email, de modo que
+        // cambiar de correo invalidaba todo token vivo (findByEmail dejaba de encontrarlo).
         String subject = "";
-        if (user instanceof User u) {
-            subject = u.getEmail().trim().toLowerCase();
+        String email = null;
+        String role = null;
+        String state = null;
+        String timeZone = null;
+        String currencyCode = null;
+
+        if (details instanceof User u) {
+            subject = String.valueOf(u.getId());
+            email = u.getEmail() == null ? null : u.getEmail().trim().toLowerCase();
+            role = u.getRole() == null ? null : u.getRole().name();
+            state = u.getState() == null ? null : u.getState().name();
+            timeZone = u.getTimeZone() == null ? null : u.getTimeZone().name();
+            currencyCode = u.getPreferences() == null ? null : u.getPreferences().getCurrencyCode();
         }
 
-        return JWT.create()
+        var creator = JWT.create()
                 .withIssuer(issuer)
                 .withSubject(subject)
                 .withIssuedAt(Date.from(now))
                 .withExpiresAt(Date.from(now.plusSeconds(expirationSeconds)))
-                .withClaim(Constants.AUTHORITIES_CLAIM, authorities)
-                .sign(algorithm);
+                .withClaim(Constants.AUTHORITIES_CLAIM, authorities);
+
+        if (email != null) {
+            creator.withClaim(Constants.EMAIL_CLAIM, email);
+        }
+        if (role != null) {
+            creator.withClaim(Constants.ROLE_CLAIM, role);
+        }
+        if (state != null) {
+            creator.withClaim(Constants.STATE_CLAIM, state);
+        }
+        if (timeZone != null) {
+            creator.withClaim(Constants.TIMEZONE_CLAIM, timeZone);
+        }
+        if (currencyCode != null) {
+            creator.withClaim(Constants.CURRENCY_CLAIM, currencyCode);
+        }
+
+        return creator.sign(algorithm);
     }
 
     @Override

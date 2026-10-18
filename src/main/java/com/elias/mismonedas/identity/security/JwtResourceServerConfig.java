@@ -1,5 +1,6 @@
 package com.elias.mismonedas.identity.security;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.elias.mismonedas.identity.service.JwtTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -39,12 +40,26 @@ public class JwtResourceServerConfig {
                 claims.put("sub", decoded.getSubject());
                 claims.put("iss", decoded.getIssuer());
                 claims.put(Constants.AUTHORITIES_CLAIM, jwtTokenService.extractAuthorities(decoded));
+                // F11: claims self-sufficient que SecurityServiceImpl reconstruye sin tocar la BD.
+                // Whitelist explicita; un claim que no entre aqui no llega a la peticion.
+                copyClaim(claims, decoded, Constants.EMAIL_CLAIM);
+                copyClaim(claims, decoded, Constants.ROLE_CLAIM);
+                copyClaim(claims, decoded, Constants.STATE_CLAIM);
+                copyClaim(claims, decoded, Constants.TIMEZONE_CLAIM);
+                copyClaim(claims, decoded, Constants.CURRENCY_CLAIM);
 
                 return new Jwt(token, issuedAt, expiresAt, headers, claims);
             } catch (Exception ex) {
                 throw new JwtException("Invalid JWT", ex);
             }
         };
+    }
+
+    private static void copyClaim(Map<String, Object> claims, DecodedJWT decoded, String name) {
+        String value = decoded.getClaim(name).asString();
+        if (value != null) {
+            claims.put(name, value);
+        }
     }
 
     @Bean
