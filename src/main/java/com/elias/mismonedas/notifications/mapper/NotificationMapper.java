@@ -1,23 +1,18 @@
 package com.elias.mismonedas.notifications.mapper;
 
 import com.elias.mismonedas.identity.domain.entity.User;
-import com.elias.mismonedas.notifications.domain.entity.FcmToken;
 import com.elias.mismonedas.notifications.domain.entity.Notification;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Named;
-
-import java.util.List;
 
 @Mapper(componentModel = "spring", uses = DateMapper.class)
 public interface NotificationMapper {
 
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "user.email", target = "userEmail")
-    @Mapping(target = "fcmTokens", expression = "java(toTokenList(user))")
     @Mapping(source = "schedule.id", target = "scheduleId")
     @Mapping(source = "budget.id", target = "budgetId")
     @Mapping(source = "budget.description", target = "budgetDescription")
@@ -32,13 +27,5 @@ public interface NotificationMapper {
 
     default NotificationDTO toResponse(Notification entity) {
         return toResponseWithContext(entity, entity.getUser());
-    }
-
-    @Named("toTokenList")
-    default List<String> toTokenList(User user) {
-        if (user == null || user.getFcmTokens() == null) return List.of();
-        return user.getFcmTokens().stream()
-                .map(FcmToken::getToken)
-                .toList();
     }
 }

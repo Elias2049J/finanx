@@ -22,6 +22,7 @@ import com.elias.mismonedas.identity.service.JwtTokenService;
 import com.elias.mismonedas.identity.service.UserService;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
+import com.elias.mismonedas.notifications.repository.FcmTokenRepository;
 import com.elias.mismonedas.notifications.repository.NotificationRepository;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
@@ -60,6 +61,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
     private final NotificationRepository notificationRepository;
+    private final FcmTokenRepository fcmTokenRepository;
     private final SavingGoalRepository savingGoalRepository;
     private final ReasonRepository reasonRepository;
     private final BudgetScheduleRepository budgetScheduleRepository;
@@ -286,6 +288,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         notificationRepository.deleteAllByUser_Id(userId);
         logDelete(userId, "notifications");
+
+        // Antes lo borraba la cascada de User.fcmTokens (F2): ahora es explicito.
+        fcmTokenRepository.deleteAllByUser_Id(userId);
+        logDelete(userId, "fcm tokens");
 
         transactionRepository.deleteAllByWallet_User_Id(userId);
         logDelete(userId, "transactions");

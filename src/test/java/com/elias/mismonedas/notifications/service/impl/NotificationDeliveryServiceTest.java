@@ -183,7 +183,6 @@ class NotificationDeliveryServiceTest {
                         .message("Test notification")
                         .emailNotifications(true)
                         .userEmail("user@example.test")
-                        .fcmTokens(List.of("fcm-token"))
                         .build()))
                 .createdAt(OffsetDateTime.now())
                 .state(state)

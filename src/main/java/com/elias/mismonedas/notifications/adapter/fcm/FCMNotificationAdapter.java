@@ -1,5 +1,6 @@
 package com.elias.mismonedas.notifications.adapter.fcm;
 
+import com.elias.mismonedas.notifications.domain.entity.FcmToken;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.outbox.NotificationDeliveryChannel;
 import com.elias.mismonedas.notifications.port.NotificationPort;
@@ -54,9 +55,14 @@ public class FCMNotificationAdapter implements NotificationPort {
     @Override
     @CircuitBreaker(name = "fcm")
     public void send(NotificationDTO notification) {
-        List<String> tokens = notification.getFcmTokens();
-        if (tokens == null || tokens.isEmpty()) {
-            log.warn("Sin tokens FCM para userId={}, se omite envio push", notification.getUserId());
+        Long userId = notification.getUserId();
+        List<String> tokens = userId == null
+                ? List.of()
+                : fcmTokenRepository.findAllByUser_Id(userId).stream()
+                        .map(FcmToken::getToken)
+                        .toList();
+        if (tokens.isEmpty()) {
+            log.warn("Sin tokens FCM para userId={}, se omite envio push", userId);
             return;
         }
 

@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Builder
@@ -28,9 +27,6 @@ public class UserPreferencesResponse {
 
     @Schema(description = "Notificaciones por email habilitadas", example = "true")
     private boolean emailNotifications;
-
-    @Schema(description = "Tokens FCM registrados", example = "[\"fM8x...abc123\"]")
-    private List<String> fcmTokens;
 
     @Schema(description = "Fecha de creacion", example = "2026-06-25T23:59:59")
     private LocalDateTime createdAt;

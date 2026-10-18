@@ -1,10 +1,8 @@
 package com.elias.mismonedas.identity.domain.entity;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
 import com.elias.mismonedas.identity.domain.enums.Role;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.domain.enums.UserState;
-import com.elias.mismonedas.notifications.domain.entity.FcmToken;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,7 +13,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -53,12 +50,6 @@ public class User implements UserDetails {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private UserPreferences preferences;
-
-    @OneToMany(mappedBy = "user")
-    private List<Wallet> wallets;
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<FcmToken> fcmTokens = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
