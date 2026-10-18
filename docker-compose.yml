@@ -33,6 +33,9 @@ services:
       APP_STORAGE_SEAWEEDFS_ACCESS_KEY: ${SEAWEEDFS_ACCESS_KEY:-finanx-storage}
       APP_STORAGE_SEAWEEDFS_SECRET_KEY: ${SEAWEEDFS_SECRET_KEY:-finanx-storage-dev}
       APP_STORAGE_SEAWEEDFS_PRESIGNED_URL_TTL: 5m
+      FCM_CREDENTIALS_PATH: /run/secrets/firebase-sa
+    secrets:
+      - firebase-sa
     networks:
       - springnet
     restart: unless-stopped
@@ -138,6 +141,10 @@ services:
 
 networks:
   springnet:
+
+secrets:
+  firebase-sa:
+    file: ./secrets/mis-monedas-9a83a-firebase-adminsdk-fbsvc-f5bbb1549d.json
 
 volumes:
   postgres_data:
