@@ -5,6 +5,8 @@ import com.elias.mismonedas.billing.domain.entity.WebhookEvent;
 import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
 import com.elias.mismonedas.billing.domain.enums.PaymentState;
 import com.elias.mismonedas.billing.domain.enums.WebhookEventState;
+import com.elias.mismonedas.billing.dto.payment.PaymentRequest;
+import com.elias.mismonedas.billing.dto.payment.PaymentResponse;
 import com.elias.mismonedas.billing.dto.webhook.PaymentWebhookNotification;
 import com.elias.mismonedas.billing.exception.InvalidWebhookSignatureException;
 import com.elias.mismonedas.billing.mapper.PaymentMapper;
@@ -13,6 +15,7 @@ import com.elias.mismonedas.billing.port.PaymentWebhookPublisher;
 import com.elias.mismonedas.billing.repository.PaymentRepository;
 import com.elias.mismonedas.billing.repository.WebhookEventRepository;
 import com.elias.mismonedas.billing.service.impl.PaymentServiceImpl;
+import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +72,67 @@ class PaymentServiceImplTest {
 
     private Payment paymentInState(PaymentState state) {
         return Payment.builder().id(10L).state(state).build();
+    }
+
+    @Nested
+    class CreateTest {
+
+        @Test
+        void shouldReturnExistingPaymentOnIdempotencyKeyReplay() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currency("PEN")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .idempotencyKey("key-123")
+                    .build();
+            Payment existing = Payment.builder().id(55L).idempotencyKey("key-123").build();
+            PaymentResponse existingResponse = new PaymentResponse();
+            existingResponse.setId(55L);
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentRepository.findByIdempotencyKey("key-123")).thenReturn(Optional.of(existing));
+            when(paymentMapper.toResponse(existing)).thenReturn(existingResponse);
+
+            PaymentResponse result = service.create(request);
+
+            assertThat(result.getId()).isEqualTo(55L);
+            verify(paymentPort, never()).createPaymentIntent(any());
+            verify(paymentRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldCreatePaymentWhenIdempotencyKeyIsNew() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currency("PEN")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .idempotencyKey("key-new")
+                    .build();
+            Payment mapped = new Payment();
+            Payment saved = Payment.builder().id(66L).build();
+            PaymentResponse response = new PaymentResponse();
+            response.setId(66L);
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentRepository.findByIdempotencyKey("key-new")).thenReturn(Optional.empty());
+            when(paymentMapper.toEntity(request)).thenReturn(mapped);
+            when(paymentPort.createPaymentIntent(any())).thenReturn("EXT-1");
+            when(paymentRepository.save(any())).thenReturn(saved);
+            when(paymentMapper.toResponse(saved)).thenReturn(response);
+
+            PaymentResponse result = service.create(request);
+
+            assertThat(result.getId()).isEqualTo(66L);
+            assertThat(mapped.getIdempotencyKey()).isEqualTo("key-new");
+        }
+
+        private User user() {
+            User u = new User();
+            u.setId(1L);
+            return u;
+        }
     }
 
     @Nested

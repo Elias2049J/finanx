@@ -61,6 +61,17 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse create(PaymentRequest request) {
         User user = securityService.getCurrentUser();
 
+        // C4: replay de un create anterior. Si el cliente reenvia la misma Idempotency-Key,
+        // se devuelve el pago ya registrado en vez de chocar con el unique de clave_idempotencia.
+        if (request.getIdempotencyKey() != null) {
+            var existing = paymentRepository.findByIdempotencyKey(request.getIdempotencyKey());
+            if (existing.isPresent()) {
+                log.info("Payment replay ignored: idempotencyKey={} maps to payment id={}",
+                        request.getIdempotencyKey(), existing.get().getId());
+                return paymentMapper.toResponse(existing.get());
+            }
+        }
+
         Payment payment = paymentMapper.toEntity(request);
         payment.setUser(user);
         payment.setIdempotencyKey(
