@@ -345,9 +345,20 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     private Transaction executeTransactionSchedule(TransactionSchedule st) {
         OffsetDateTime executedAt = st.getNextRunAt();
+
+        // C3: clave de negocio (scheduleId, fecha). Si la ocurrencia ya se ejecuto, no se
+        // duplica la transaccion ni se vuelve a tocar el saldo; solo se avanza el schedule.
+        String occurrenceKey = occurrenceKey(st.getId(), executedAt);
+        if (transactionRepository.findByIdempotencyKey(occurrenceKey).isPresent()) {
+            log.warn("ScheduledTransaction occurrence already executed: key={} — skipping duplicate", occurrenceKey);
+            advanceOrFinalize(st);
+            return null;
+        }
+
         st.setLastRunAt(executedAt);
 
         Transaction tx = tsMapper.toTransaction(st);
+        tx.setIdempotencyKey(occurrenceKey);
         Wallet wallet = st.getWallet();
 
         if (wallet == null) {
@@ -383,6 +394,15 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     private Budget executeBudgetSchedule(BudgetSchedule st) {
         OffsetDateTime executedAt = st.getNextRunAt();
+
+        // C3: clave de negocio (scheduleId, fecha); la ocurrencia ya ejecutada no se duplica.
+        String occurrenceKey = occurrenceKey(st.getId(), executedAt);
+        if (budgetRepository.findByIdempotencyKey(occurrenceKey).isPresent()) {
+            log.warn("BudgetSchedule occurrence already executed: key={} — skipping duplicate", occurrenceKey);
+            advanceOrFinalize(st);
+            return null;
+        }
+
         st.setLastRunAt(executedAt);
 
         OffsetDateTime budgetEnd = rcService.computeNextRunAt(st)
@@ -408,7 +428,13 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .description(st.getDescription())
                 .start(executedAt)
                 .end(budgetEnd)
+                .idempotencyKey(occurrenceKey)
                 .build();
+    }
+
+    /** C3: clave de negocio de una ocurrencia de schedule — (scheduleId, fecha). */
+    private String occurrenceKey(Long scheduleId, OffsetDateTime occurrenceDate) {
+        return "schedule:" + scheduleId + ":" + occurrenceDate;
     }
 
     private record RunResult(int created, int completed, int errored) {}
@@ -432,7 +458,11 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         for (S sc : dueList) {
             try {
-                created.add(executor.apply(sc));
+                Object result = executor.apply(sc);
+                // C3: null = ocurrencia ya ejecutada (replay); no se agrega a la lista de guardado.
+                if (result != null) {
+                    created.add(result);
+                }
                 if (sc.getState() == ScheduleState.FINALIZED) completed++;
             } catch (Exception e) {
                 log.error("Error processing {}: id={} userId={} nextRunAt={}",
@@ -443,7 +473,9 @@ public class ScheduleServiceImpl implements ScheduleService {
             }
         }
 
-        saver.accept(created);
+        if (!created.isEmpty()) {
+            saver.accept(created);
+        }
         scheduleRepository.saveAll(dueList);
 
         log.info("{} job summary: dueCount={} created={} completed={} errored={}",

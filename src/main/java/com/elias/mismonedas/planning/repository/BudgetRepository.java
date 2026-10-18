@@ -15,6 +15,8 @@ import java.util.Optional;
 public interface BudgetRepository extends JpaRepository<Budget, Long>, JpaSpecificationExecutor<Budget> {
     List<Budget> findAllByUser_Id(Long userId);
 
+    Optional<Budget> findByIdempotencyKey(String idempotencyKey);
+
     Optional<Budget> findByIdAndUser_Id(Long id, Long userId);
 
     List<Budget> findAllByUser_IdAndActiveTrue(Long userId);
