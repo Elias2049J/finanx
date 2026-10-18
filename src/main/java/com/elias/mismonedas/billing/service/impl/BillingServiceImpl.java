@@ -50,14 +50,14 @@ public class BillingServiceImpl implements BillingService {
 
     @Override
     @Transactional
-    public SubscriptionResponse subscribeAndActivate(SubscriptionRequest request) {
+    public void subscribeAndActivate(SubscriptionRequest request) {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id " + request.getUserId()));
         Subscription subscription = buildPending(request, user);
         activate(subscription);
         Subscription saved = subscriptionRepository.save(subscription);
         log.info("Subscription created+activated id={} userId={} plan={}", saved.getId(), user.getId(), saved.getPlan());
-        return subscriptionMapper.toResponse(saved);
+        subscriptionMapper.toResponse(saved);
     }
 
     private Subscription buildPending(SubscriptionRequest request, User user) {

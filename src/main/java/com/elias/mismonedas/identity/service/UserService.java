@@ -26,8 +26,6 @@ public interface UserService {
 
     UserResponse update(Long aLong, UserRequest request);
 
-    List<UserResponse> searchByName(String q);
-
     TimeZone[] listTimeZones();
 
     void resetAccountData(Long userId);

@@ -67,7 +67,7 @@ public class SavingGoal {
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "savingGoal")
     private List<Transaction> transactions = new ArrayList<>();
 
-    @jakarta.persistence.Transient
+    @Transient
     private BigDecimal displayAccumulated;
 
     public BigDecimal getAccumulated() {
@@ -77,10 +77,6 @@ public class SavingGoal {
                 .filter(t -> Boolean.TRUE.equals(t.getActive()))
                 .map(Transaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    public void setDisplayAccumulated(BigDecimal displayAccumulated) {
-        this.displayAccumulated = displayAccumulated;
     }
 
     @PrePersist

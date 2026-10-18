@@ -10,9 +10,6 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Business operations for payments and inbound provider webhooks.
- */
 public interface PaymentService {
 
     PaymentResponse create(PaymentRequest request);
