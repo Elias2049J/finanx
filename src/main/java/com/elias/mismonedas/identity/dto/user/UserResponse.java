@@ -7,7 +7,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -33,9 +32,6 @@ public class UserResponse {
 
     @Schema(description = "Estado actual del usuario", implementation = UserState.class, example = "ENABLED")
     private UserState state;
-
-    @Schema(description = "Balance monetario del usuario", example = "1500.00")
-    private BigDecimal moneyBalance;
 
     @Schema(description = "Fecha y hora de creacion del usuario", example = "2026-06-25T23:59:59")
     private LocalDateTime createdAt;

@@ -17,7 +17,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -62,9 +61,6 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
         }
         if (user.getRole() == null) {
             user.setRole(Role.USER);
-        }
-        if (user.getMoneyBalance() == null) {
-            user.setMoneyBalance(BigDecimal.ZERO);
         }
 
         String token = jwtTokenService.generateToken(user);

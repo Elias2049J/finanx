@@ -14,7 +14,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,7 +26,6 @@ import java.util.List;
         @Index(name = "idx_usuario_email", columnList = "email")
     }
 )
-@Inheritance(strategy = InheritanceType.JOINED)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -42,9 +40,6 @@ public class User implements UserDetails {
 
     @Column(name = "apellidos")
     private String lastname;
-
-    @Column(name = "balance")
-    private BigDecimal moneyBalance;
 
     @Column(name = "email", unique = true, nullable = false)
     private String email;
@@ -101,8 +96,6 @@ public class User implements UserDetails {
             createdAt = OffsetDateTime.now(getTimeZone().toZoneId());
         if (state == null)
             state = UserState.ENABLED;
-        if (moneyBalance == null)
-            moneyBalance = BigDecimal.ZERO;
         if (role == null)
             role = Role.USER;
     }
