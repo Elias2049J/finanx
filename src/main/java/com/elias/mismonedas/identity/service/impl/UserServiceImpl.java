@@ -96,7 +96,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         billingService.subscribeAndActivate(subRequest);
 
         String token = jwtTokenService.generateToken(saved);
-        return new LoginResponse(userMapper.toResponse(saved), token);
+        return new LoginResponse(token);
     }
 
     @Override

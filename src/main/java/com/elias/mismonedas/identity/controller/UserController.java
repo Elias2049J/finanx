@@ -18,8 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
-
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -54,7 +52,9 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody UserRequest request) {
         LoginResponse saved = userService.register(request);
-        return ResponseEntity.created(URI.create("/api/v1/users/" + saved.getUser().getId())).body(saved);
+        // F12: la respuesta ya no lleva el usuario, por lo que tampoco puede construirse el
+        // header Location a partir de su id. Quien necesite el id lo obtiene del claim `sub`.
+        return ResponseEntity.ok(saved);
     }
 
     @Operation(summary = "Actualizar datos de usuario", operationId = "updateUser", tags = {"Users"})

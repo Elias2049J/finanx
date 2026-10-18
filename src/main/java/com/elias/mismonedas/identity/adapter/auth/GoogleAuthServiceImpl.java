@@ -6,8 +6,6 @@ import com.elias.mismonedas.identity.dto.auth.GoogleIdTokenPayload;
 import com.elias.mismonedas.identity.dto.auth.GoogleLoginRequest;
 import com.elias.mismonedas.identity.dto.auth.LoginResponse;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
-import com.elias.mismonedas.identity.dto.user.UserResponse;
-import com.elias.mismonedas.identity.mapper.UserMapper;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.service.JwtTokenService;
 import com.elias.mismonedas.identity.service.UserService;
@@ -28,7 +26,6 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
-    private final UserMapper userMapper;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
@@ -63,9 +60,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
             user.setRole(Role.USER);
         }
 
-        String token = jwtTokenService.generateToken(user);
-        UserResponse userDto = userMapper.toResponse(user);
-        return new LoginResponse(userDto, token);
+        return new LoginResponse(jwtTokenService.generateToken(user));
     }
 
     @Override
@@ -80,8 +75,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
             User saved = userRepository.save(existing);
 
-            String token = jwtTokenService.generateToken(saved);
-            return new LoginResponse(userMapper.toResponse(saved), token);
+            return new LoginResponse(jwtTokenService.generateToken(saved));
         }
 
         UserRequest request = new UserRequest();

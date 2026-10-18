@@ -1,6 +1,5 @@
 package com.elias.mismonedas.identity.dto.auth;
 
-import com.elias.mismonedas.identity.dto.user.UserResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,14 +12,8 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-@Schema(description = "Respuesta de login que contiene el usuario autenticado y el token JWT")
+@Schema(description = "Respuesta de autenticacion que contiene solo el token JWT")
 public class LoginResponse {
-
-    @Schema(
-            description = "Informacion del usuario autenticado",
-            implementation = UserResponse.class
-    )
-    private UserResponse user;
 
     @Schema(
             description = "Token JWT generado tras la autenticacion",
@@ -28,4 +21,3 @@ public class LoginResponse {
     )
     private String token;
 }
-
