@@ -51,6 +51,7 @@ public interface ScheduleMapper {
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "nextRunAt", target = "nextRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "lastRunAt", target = "lastRunAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(target = "type", constant = "TRANSACTION")
     TransactionScheduleResponse toResponseWithContext(TransactionSchedule entity, @Context User user);
 
     @Mapping(source = "user.id", target = "userId")
@@ -61,6 +62,7 @@ public interface ScheduleMapper {
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "nextRunAt", target = "nextRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "lastRunAt", target = "lastRunAt", qualifiedByName = "OffsetToLocal")
+    @Mapping(target = "type", constant = "BUDGET")
     BudgetScheduleResponse toResponseWithContext(BudgetSchedule entity, @Context User user);
 
     default BudgetScheduleResponse toResponse(BudgetSchedule entity) {

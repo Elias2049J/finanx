@@ -17,8 +17,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.PROPERTY,
-        property = "type"
+        include = JsonTypeInfo.As.EXISTING_PROPERTY,
+        property = "type",
+        visible = true
 )
 @JsonSubTypes({
         @JsonSubTypes.Type(value = TransactionScheduleResponse.class, name = "TRANSACTION"),
@@ -31,6 +32,13 @@ import java.time.LocalDateTime;
                 @DiscriminatorMapping(value = "BUDGET", schema = BudgetScheduleResponse.class),
                 @DiscriminatorMapping(value = "TRANSACTION", schema = TransactionScheduleResponse.class)})
 public class ScheduleResponse {
+
+    @Schema(
+            description = "Tipo de programacion (TRANSACTION o BUDGET)",
+            example = "TRANSACTION",
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
+    private String type;
 
     @Schema(description = "Identificador unico de la programacion", example = "2001")
     private Long id;
