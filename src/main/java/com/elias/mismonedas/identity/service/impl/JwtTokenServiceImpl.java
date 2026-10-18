@@ -55,6 +55,8 @@ public class JwtTokenServiceImpl implements JwtTokenService {
 
         String subject = "";
         String email = null;
+        String name = null;
+        String lastname = null;
         String role = null;
         String state = null;
         String timeZone = null;
@@ -63,6 +65,8 @@ public class JwtTokenServiceImpl implements JwtTokenService {
         if (details instanceof User u) {
             subject = String.valueOf(u.getId());
             email = u.getEmail() == null ? null : u.getEmail().trim().toLowerCase();
+            name = u.getName();
+            lastname = u.getLastname();
             role = u.getRole() == null ? null : u.getRole().name();
             state = u.getState() == null ? null : u.getState().name();
             timeZone = u.getTimeZone() == null ? null : u.getTimeZone().name();
@@ -78,6 +82,12 @@ public class JwtTokenServiceImpl implements JwtTokenService {
 
         if (email != null) {
             creator.withClaim(Constants.EMAIL_CLAIM, email);
+        }
+        if (name != null) {
+            creator.withClaim(Constants.NAME_CLAIM, name);
+        }
+        if (lastname != null) {
+            creator.withClaim(Constants.LASTNAME_CLAIM, lastname);
         }
         if (role != null) {
             creator.withClaim(Constants.ROLE_CLAIM, role);

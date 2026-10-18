@@ -70,4 +70,20 @@ public class AuthController {
     public ResponseEntity<LoginResponse> google(@Valid @RequestBody GoogleLoginRequest request) {
         return ResponseEntity.ok(googleAuthService.authenticate(request));
     }
+
+    @Operation(
+            summary = "Refrescar token",
+            description = "Reemite el JWT del usuario autenticado con las claims actuales " +
+                    "(por ejemplo tras crear o actualizar sus preferencias).",
+            operationId = "refreshToken",
+            tags = {"Auth"},
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Token reemitido"),
+                    @ApiResponse(responseCode = "401", description = "No autenticado")
+            }
+    )
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refresh() {
+        return ResponseEntity.ok(userService.refreshToken());
+    }
 }

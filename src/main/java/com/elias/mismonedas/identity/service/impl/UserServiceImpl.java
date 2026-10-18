@@ -68,6 +68,14 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
+    public LoginResponse refreshToken() {
+        Long userId = securityService.getCurrentUser().getId();
+        User user = getEntityById(userId);
+        return new LoginResponse(jwtTokenService.generateToken(user));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public java.util.List<UserResponse> findAll() {
         return userRepository.findAll()
                 .stream()

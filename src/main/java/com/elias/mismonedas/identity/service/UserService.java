@@ -12,6 +12,8 @@ import java.util.List;
 public interface UserService {
     LoginResponse register(UserRequest request);
 
+    LoginResponse refreshToken();
+
     List<UserResponse> findAll();
 
     PageResponse<UserResponse> list(String search, Pageable pageable);

@@ -10,6 +10,8 @@ public final class Constants {
     public static final String AUTHORITIES_CLAIM = "authorities";
 
     public static final String EMAIL_CLAIM = "email";
+    public static final String NAME_CLAIM = "name";
+    public static final String LASTNAME_CLAIM = "lastname";
     public static final String ROLE_CLAIM = "role";
     public static final String STATE_CLAIM = "state";
     public static final String TIMEZONE_CLAIM = "tz";

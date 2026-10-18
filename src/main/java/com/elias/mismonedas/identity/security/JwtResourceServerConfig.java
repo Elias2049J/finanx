@@ -41,6 +41,8 @@ public class JwtResourceServerConfig {
                 claims.put("iss", decoded.getIssuer());
                 claims.put(Constants.AUTHORITIES_CLAIM, jwtTokenService.extractAuthorities(decoded));
                 copyClaim(claims, decoded, Constants.EMAIL_CLAIM);
+                copyClaim(claims, decoded, Constants.NAME_CLAIM);
+                copyClaim(claims, decoded, Constants.LASTNAME_CLAIM);
                 copyClaim(claims, decoded, Constants.ROLE_CLAIM);
                 copyClaim(claims, decoded, Constants.STATE_CLAIM);
                 copyClaim(claims, decoded, Constants.TIMEZONE_CLAIM);

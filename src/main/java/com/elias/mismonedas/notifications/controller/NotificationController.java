@@ -72,10 +72,10 @@ public class NotificationController {
                     @ApiResponse(responseCode = "404", description = "No encontrada")
             }
     )
-    @PostMapping("/discard")
+    @PostMapping("/{id}/discard")
     public ResponseEntity<Void> discard(
-            @Parameter(description = "ID de la notificacion") @RequestBody Long idNotification) {
-        notificationService.discard(idNotification);
+            @Parameter(description = "ID de la notificacion") @PathVariable Long id) {
+        notificationService.discard(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -89,10 +89,10 @@ public class NotificationController {
                     @ApiResponse(responseCode = "404", description = "No encontrada")
             }
     )
-    @PostMapping("/mark-as-read")
+    @PostMapping("/{id}/read")
     public ResponseEntity<Void> markAsRead(
-            @Parameter(description = "ID de la notificacion") @RequestBody Long idNotification) {
-        notificationService.markAsRead(idNotification);
+            @Parameter(description = "ID de la notificacion") @PathVariable Long id) {
+        notificationService.markAsRead(id);
         return ResponseEntity.noContent().build();
     }
 

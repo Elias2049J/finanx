@@ -18,18 +18,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.WebApplicationContext;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 @Component
 @Scope(value = WebApplicationContext.SCOPE_REQUEST, proxyMode = ScopedProxyMode.TARGET_CLASS)
 @RequiredArgsConstructor
@@ -71,6 +59,8 @@ public class SecurityServiceImpl implements SecurityService {
         User user = new User();
         user.setId(parseId(jwt.getSubject()));
         user.setEmail(jwt.getClaimAsString(Constants.EMAIL_CLAIM));
+        user.setName(jwt.getClaimAsString(Constants.NAME_CLAIM));
+        user.setLastname(jwt.getClaimAsString(Constants.LASTNAME_CLAIM));
         user.setRole(parseEnum(jwt.getClaimAsString(Constants.ROLE_CLAIM), Role.class, Role.USER));
         user.setState(parseEnum(jwt.getClaimAsString(Constants.STATE_CLAIM), UserState.class, UserState.ENABLED));
         user.setPreferences(UserPreferences.builder()
