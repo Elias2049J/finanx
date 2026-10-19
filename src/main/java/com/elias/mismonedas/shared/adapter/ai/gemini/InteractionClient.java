@@ -4,7 +4,7 @@ import com.elias.mismonedas.shared.adapter.ai.gemini.dto.GeminiErrorEnvelope;
 import com.elias.mismonedas.shared.adapter.ai.gemini.dto.InteractionRequest;
 import com.elias.mismonedas.shared.adapter.ai.gemini.dto.InteractionResponse;
 import com.elias.mismonedas.shared.adapter.ai.gemini.exception.GeminiException;
-import com.elias.mismonedas.shared.adapter.ai.gemini.exception.GeminiException;
+import com.elias.mismonedas.shared.config.HttpRequestFactories;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+
+import java.time.Duration;
 
 @Slf4j
 @Component
@@ -30,11 +32,18 @@ public class InteractionClient {
     @Value("${app.gemini.api-key}")
     private String apiKey;
 
+    @Value("${app.http.connect-timeout:5s}")
+    private Duration connectTimeout;
+
+    @Value("${app.gemini.read-timeout:60s}")
+    private Duration geminiReadTimeout;
+
     private RestClient restClient;
 
     @PostConstruct
     private void init() {
         this.restClient = builder
+                .requestFactory(HttpRequestFactories.create(connectTimeout, geminiReadTimeout))
                 .baseUrl(baseUrl)
                 .defaultHeader("Content-Type", "application/json")
                 .defaultHeader("x-goog-api-key", apiKey)
