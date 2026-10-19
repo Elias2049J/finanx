@@ -1,0 +1,6 @@
+.git
+.env
+application-secrets.yml
+application-secrets.yaml
+secrets/
+doc/
