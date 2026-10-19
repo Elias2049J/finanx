@@ -18,6 +18,7 @@ import com.elias.mismonedas.billing.service.impl.PaymentServiceImpl;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -86,7 +88,7 @@ class PaymentServiceImplTest {
                     .provider(PaymentProvider.MERCADO_PAGO)
                     .idempotencyKey("key-123")
                     .build();
-            Payment existing = Payment.builder().id(55L).idempotencyKey("key-123").build();
+            Payment existing = Payment.builder().id(55L).idempotencyKey("key-123").user(user()).build();
             PaymentResponse existingResponse = new PaymentResponse();
             existingResponse.setId(55L);
 
@@ -97,6 +99,29 @@ class PaymentServiceImplTest {
             PaymentResponse result = service.create(request);
 
             assertThat(result.getId()).isEqualTo(55L);
+            verify(paymentPort, never()).createPaymentIntent(any());
+            verify(paymentRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldRejectReplayOfIdempotencyKeyOwnedByAnotherUser() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currency("PEN")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .idempotencyKey("key-123")
+                    .build();
+            User other = new User();
+            other.setId(2L);
+            Payment existing = Payment.builder().id(55L).idempotencyKey("key-123").user(other).build();
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentRepository.findByIdempotencyKey("key-123")).thenReturn(Optional.of(existing));
+
+            assertThatThrownBy(() -> service.create(request))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessageContaining("another user");
             verify(paymentPort, never()).createPaymentIntent(any());
             verify(paymentRepository, never()).save(any());
         }

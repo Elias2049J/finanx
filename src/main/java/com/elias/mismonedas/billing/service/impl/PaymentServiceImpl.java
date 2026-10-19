@@ -23,6 +23,7 @@ import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import com.elias.mismonedas.shared.exception.PaymentNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -64,9 +65,13 @@ public class PaymentServiceImpl implements PaymentService {
         if (request.getIdempotencyKey() != null) {
             var existing = paymentRepository.findByIdempotencyKey(request.getIdempotencyKey());
             if (existing.isPresent()) {
+                Payment replayed = existing.get();
+                if (replayed.getUser() == null || !replayed.getUser().getId().equals(user.getId())) {
+                    throw new ConflictException("Idempotency-Key already used by another user");
+                }
                 log.info("Payment replay ignored: idempotencyKey={} maps to payment id={}",
-                        request.getIdempotencyKey(), existing.get().getId());
-                return paymentMapper.toResponse(existing.get());
+                        request.getIdempotencyKey(), replayed.getId());
+                return paymentMapper.toResponse(replayed);
             }
         }
 
@@ -84,6 +89,9 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (DataIntegrityViolationException race) {
             Payment existing = paymentRepository.findByIdempotencyKey(payment.getIdempotencyKey())
                     .orElseThrow(() -> race);
+            if (existing.getUser() == null || !existing.getUser().getId().equals(user.getId())) {
+                throw new ConflictException("Idempotency-Key already used by another user");
+            }
             log.info("Payment replay on race: idempotencyKey={} maps to payment id={}",
                     payment.getIdempotencyKey(), existing.getId());
             return paymentMapper.toResponse(existing);
