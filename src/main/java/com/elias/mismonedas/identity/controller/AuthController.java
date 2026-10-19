@@ -1,11 +1,13 @@
 package com.elias.mismonedas.identity.controller;
 
 import com.elias.mismonedas.identity.adapter.auth.GoogleAuthService;
+import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.auth.GoogleLoginRequest;
 import com.elias.mismonedas.identity.dto.auth.LoginRequest;
-import com.elias.mismonedas.identity.dto.auth.LoginResponse;
+import com.elias.mismonedas.identity.dto.auth.RefreshRequest;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
 import com.elias.mismonedas.identity.service.AuthService;
+import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -25,6 +27,7 @@ public class AuthController {
     private final AuthService authService;
     private final GoogleAuthService googleAuthService;
     private final UserService userService;
+    private final AuthTokenService authTokenService;
 
     @Operation(
             summary = "Login",
@@ -37,7 +40,7 @@ public class AuthController {
             }
     )
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
@@ -52,7 +55,7 @@ public class AuthController {
             }
     )
     @PostMapping("/register")
-    public ResponseEntity<LoginResponse> register(@Valid @RequestBody UserRequest request) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody UserRequest request) {
         return ResponseEntity.ok(userService.register(request));
     }
 
@@ -67,23 +70,37 @@ public class AuthController {
             }
     )
     @PostMapping("/google")
-    public ResponseEntity<LoginResponse> google(@Valid @RequestBody GoogleLoginRequest request) {
+    public ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleLoginRequest request) {
         return ResponseEntity.ok(googleAuthService.authenticate(request));
     }
 
     @Operation(
-            summary = "Refrescar token",
-            description = "Reemite el JWT del usuario autenticado con las claims actuales " +
-                    "(por ejemplo tras crear o actualizar sus preferencias).",
+            summary = "Refrescar tokens",
+            description = "Rota el refresh token y emite un nuevo par de tokens.",
             operationId = "refreshToken",
             tags = {"Auth"},
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Token reemitido"),
-                    @ApiResponse(responseCode = "401", description = "No autenticado")
+                    @ApiResponse(responseCode = "200", description = "Tokens renovados"),
+                    @ApiResponse(responseCode = "401", description = "Refresh token invalido")
             }
     )
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResponse> refresh() {
-        return ResponseEntity.ok(userService.refreshToken());
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authTokenService.refresh(request.getRefreshToken()));
+    }
+
+    @Operation(
+            summary = "Logout",
+            description = "Revoca la sesion asociada al refresh token.",
+            operationId = "logout",
+            tags = {"Auth"},
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Sesion revocada")
+            }
+    )
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest request) {
+        authTokenService.revoke(request.getRefreshToken());
+        return ResponseEntity.noContent().build();
     }
 }

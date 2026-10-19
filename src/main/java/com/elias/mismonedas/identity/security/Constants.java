@@ -14,6 +14,4 @@ public final class Constants {
     public static final String LASTNAME_CLAIM = "lastname";
     public static final String ROLE_CLAIM = "role";
     public static final String STATE_CLAIM = "state";
-    public static final String TIMEZONE_CLAIM = "tz";
-    public static final String CURRENCY_CLAIM = "cc";
 }

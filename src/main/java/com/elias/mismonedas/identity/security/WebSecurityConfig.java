@@ -2,6 +2,7 @@ package com.elias.mismonedas.identity.security;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -30,6 +32,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 public class WebSecurityConfig {
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final RestAccessDeniedHandler restAccessDeniedHandler;
+    private final ActiveUserFilter activeUserFilter;
 
     @Value("${app.front-url}")
     private String frontUrl;
@@ -54,6 +57,8 @@ public class WebSecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/google",
                                 "/api/v1/auth/register",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout",
                                 "/v3/api-docs.yaml",
                                 "/swagger-ui.html"
                         ).permitAll()
@@ -88,9 +93,17 @@ public class WebSecurityConfig {
                         .jwt(jwt ->
                                 jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)
                         )
-                );
+                )
+                .addFilterAfter(activeUserFilter, BearerTokenAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    FilterRegistrationBean<ActiveUserFilter> activeUserFilterRegistration() {
+        FilterRegistrationBean<ActiveUserFilter> registration = new FilterRegistrationBean<>(activeUserFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

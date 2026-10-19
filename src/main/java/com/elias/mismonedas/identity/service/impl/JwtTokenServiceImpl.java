@@ -59,8 +59,6 @@ public class JwtTokenServiceImpl implements JwtTokenService {
         String lastname = null;
         String role = null;
         String state = null;
-        String timeZone = null;
-        String currencyCode = null;
 
         if (details instanceof User u) {
             subject = String.valueOf(u.getId());
@@ -69,8 +67,6 @@ public class JwtTokenServiceImpl implements JwtTokenService {
             lastname = u.getLastname();
             role = u.getRole() == null ? null : u.getRole().name();
             state = u.getState() == null ? null : u.getState().name();
-            timeZone = u.getTimeZone() == null ? null : u.getTimeZone().name();
-            currencyCode = u.getPreferences() == null ? null : u.getPreferences().getCurrencyCode();
         }
 
         var creator = JWT.create()
@@ -94,12 +90,6 @@ public class JwtTokenServiceImpl implements JwtTokenService {
         }
         if (state != null) {
             creator.withClaim(Constants.STATE_CLAIM, state);
-        }
-        if (timeZone != null) {
-            creator.withClaim(Constants.TIMEZONE_CLAIM, timeZone);
-        }
-        if (currencyCode != null) {
-            creator.withClaim(Constants.CURRENCY_CLAIM, currencyCode);
         }
 
         return creator.sign(algorithm);

@@ -2,12 +2,12 @@ package com.elias.mismonedas.identity.adapter.auth;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.enums.Role;
+import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.auth.GoogleIdTokenPayload;
 import com.elias.mismonedas.identity.dto.auth.GoogleLoginRequest;
-import com.elias.mismonedas.identity.dto.auth.LoginResponse;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
 import com.elias.mismonedas.identity.repository.UserRepository;
-import com.elias.mismonedas.identity.service.JwtTokenService;
+import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     private final UserRepository userRepository;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final JwtTokenService jwtTokenService;
+    private final AuthTokenService authTokenService;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
@@ -33,7 +33,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
     @Override
     @Transactional
-    public LoginResponse authenticate(GoogleLoginRequest request) {
+    public AuthResponse authenticate(GoogleLoginRequest request) {
         var payload = googleIdTokenVerifier.verify(request.getIdToken(), googleClientId);
         String email = payload.email().trim().toLowerCase();
 
@@ -44,7 +44,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     }
 
     @Override
-    public LoginResponse login(GoogleIdTokenPayload payload) {
+    public AuthResponse login(GoogleIdTokenPayload payload) {
         String email = payload.email();
 
         User user = userRepository.findByEmail(email)
@@ -60,11 +60,11 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
             user.setRole(Role.USER);
         }
 
-        return new LoginResponse(jwtTokenService.generateToken(user));
+        return authTokenService.issue(user);
     }
 
     @Override
-    public LoginResponse register(GoogleIdTokenPayload payload) {
+    public AuthResponse register(GoogleIdTokenPayload payload) {
         String email = payload.email().trim().toLowerCase();
 
         User existing = userRepository.findByEmail(email).orElse(null);
@@ -75,7 +75,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
             User saved = userRepository.save(existing);
 
-            return new LoginResponse(jwtTokenService.generateToken(saved));
+            return authTokenService.issue(saved);
         }
 
         UserRequest request = new UserRequest();

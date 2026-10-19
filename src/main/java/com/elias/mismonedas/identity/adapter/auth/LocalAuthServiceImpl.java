@@ -1,36 +1,31 @@
 package com.elias.mismonedas.identity.adapter.auth;
 
+import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.auth.LoginRequest;
-import com.elias.mismonedas.identity.dto.auth.LoginResponse;
 import com.elias.mismonedas.identity.service.AuthService;
-import com.elias.mismonedas.identity.service.JwtTokenService;
+import com.elias.mismonedas.identity.service.AuthTokenService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 public class LocalAuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenService jwtTokenService;
+    private final AuthTokenService authTokenService;
 
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = jwtTokenService.generateToken(userDetails);
-
-        return new LoginResponse(token);
+        return authTokenService.issue((User) authentication.getPrincipal());
     }
 }

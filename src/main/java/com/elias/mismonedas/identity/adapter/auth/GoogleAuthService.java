@@ -1,11 +1,11 @@
 package com.elias.mismonedas.identity.adapter.auth;
 
+import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.auth.GoogleIdTokenPayload;
 import com.elias.mismonedas.identity.dto.auth.GoogleLoginRequest;
-import com.elias.mismonedas.identity.dto.auth.LoginResponse;
 
 public interface GoogleAuthService {
-    LoginResponse authenticate(GoogleLoginRequest request);
-    LoginResponse login(GoogleIdTokenPayload payload);
-    LoginResponse register(GoogleIdTokenPayload payload);
+    AuthResponse authenticate(GoogleLoginRequest request);
+    AuthResponse login(GoogleIdTokenPayload payload);
+    AuthResponse register(GoogleIdTokenPayload payload);
 }

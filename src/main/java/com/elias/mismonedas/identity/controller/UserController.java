@@ -1,7 +1,7 @@
 package com.elias.mismonedas.identity.controller;
 
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
-import com.elias.mismonedas.identity.dto.auth.LoginResponse;
+import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
 import com.elias.mismonedas.identity.dto.user.UserResponse;
 import com.elias.mismonedas.identity.service.UserService;
@@ -50,8 +50,8 @@ public class UserController {
     @Operation(summary = "Registrar un nuevo usuario", operationId = "registerUser", tags = {"Users"})
     @PreAuthorize("hasRole('SYSTEM')")
     @PostMapping("/register")
-    public ResponseEntity<LoginResponse> register(@Valid @RequestBody UserRequest request) {
-        LoginResponse saved = userService.register(request);
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody UserRequest request) {
+        AuthResponse saved = userService.register(request);
         return ResponseEntity.ok(saved);
     }
 

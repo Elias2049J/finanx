@@ -6,7 +6,7 @@ import com.elias.mismonedas.identity.domain.enums.UserState;
 import com.elias.mismonedas.identity.domain.event.UserDataResetEvent;
 import com.elias.mismonedas.identity.domain.event.UserDeletedEvent;
 import com.elias.mismonedas.identity.domain.event.UserRegisteredEvent;
-import com.elias.mismonedas.identity.dto.auth.LoginResponse;
+import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
 import com.elias.mismonedas.identity.dto.user.UserResponse;
 import com.elias.mismonedas.identity.mapper.UserMapper;
@@ -14,7 +14,7 @@ import com.elias.mismonedas.identity.repository.UserPreferencesRepository;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.repository.UserSpecifications;
 import com.elias.mismonedas.identity.security.SecurityService;
-import com.elias.mismonedas.identity.service.JwtTokenService;
+import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.UserService;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
@@ -43,14 +43,14 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
-    private final JwtTokenService jwtTokenService;
+    private final AuthTokenService authTokenService;
     private final UserPreferencesRepository preferencesRepository;
     private final SecurityService securityService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
-    public LoginResponse register(UserRequest request) {
+    public AuthResponse register(UserRequest request) {
         User user = userMapper.toEntity(request);
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email already taken");
@@ -62,16 +62,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         eventPublisher.publishEvent(new UserRegisteredEvent(saved.getId()));
 
-        String token = jwtTokenService.generateToken(saved);
-        return new LoginResponse(token);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public LoginResponse refreshToken() {
-        Long userId = securityService.getCurrentUser().getId();
-        User user = getEntityById(userId);
-        return new LoginResponse(jwtTokenService.generateToken(user));
+        return authTokenService.issue(saved);
     }
 
     @Override
@@ -110,6 +101,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         ZoneId zoneId = user.getTimeZone().toZoneId();
         user.disable();
         user.setDisabledAt(OffsetDateTime.now(zoneId));
+        authTokenService.revokeAllForUser(id);
         return userMapper.toResponse(userRepository.save(user));
     }
 
@@ -126,6 +118,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public UserResponse block(Long id) {
         User user = getEntityById(id);
         user.block();
+        authTokenService.revokeAllForUser(id);
         return userMapper.toResponse(userRepository.save(user));
     }
 

@@ -2,7 +2,6 @@ package com.elias.mismonedas.identity.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.entity.UserPreferences;
-import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.dto.user.UserPreferencesRequest;
 import com.elias.mismonedas.identity.dto.user.UserPreferencesResponse;
 import com.elias.mismonedas.identity.mapper.UserPreferencesMapper;
@@ -40,23 +39,6 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
 
     @Override
     @Transactional
-    public UserPreferencesResponse getOrCreateDefaults(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
-
-        return repository.findByUser_Id(userId)
-                .map(mapper::toResponse)
-                .orElseGet(() -> {
-                    UserPreferencesRequest defaults = new UserPreferencesRequest();
-                    defaults.setTimeZone(TimeZone.AMERICA_LIMA);
-                    defaults.setCurrencyCode("PEN");
-                    defaults.setEmailNotifications(true);
-                    return createFor(userId, defaults);
-                });
-    }
-
-    @Override
-    @Transactional
     public UserPreferencesResponse create(UserPreferencesRequest request) {
         return createFor(securityService.getCurrentUser().getId(), request);
     }
@@ -83,8 +65,6 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
     @Transactional
     public UserPreferencesResponse update(UserPreferencesRequest request) {
         Long userId = securityService.getCurrentUser().getId();
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
         UserPreferences prefs = repository.findByUser_Id(userId)
                 .orElseThrow(() -> new UserPreferencesNotFoundException(userId));

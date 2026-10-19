@@ -7,8 +7,6 @@ public interface UserPreferencesService {
 
     UserPreferencesResponse findByUserId();
 
-    UserPreferencesResponse getOrCreateDefaults(Long userId);
-
     UserPreferencesResponse create(UserPreferencesRequest request);
 
     UserPreferencesResponse update(UserPreferencesRequest request);
