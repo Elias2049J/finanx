@@ -11,7 +11,6 @@ import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -28,13 +27,10 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     private final AuthTokenService authTokenService;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
 
-    @Value("${spring.security.oauth2.client.registration.google.client-id}")
-    private String googleClientId;
-
     @Override
     @Transactional
     public AuthResponse authenticate(GoogleLoginRequest request) {
-        var payload = googleIdTokenVerifier.verify(request.getIdToken(), googleClientId);
+        var payload = googleIdTokenVerifier.verify(request.getIdToken());
         String email = payload.email().trim().toLowerCase();
 
         if (userRepository.existsByEmail(email)) {
