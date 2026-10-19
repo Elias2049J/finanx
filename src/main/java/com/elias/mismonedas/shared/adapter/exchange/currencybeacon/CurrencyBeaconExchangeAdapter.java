@@ -1,48 +1,39 @@
 package com.elias.mismonedas.shared.adapter.exchange.currencybeacon;
 
+import com.elias.mismonedas.shared.exception.CurrencyConversionException;
 import com.elias.mismonedas.shared.port.ExchangePort;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
-
-
-
-
-
-
-
-@Slf4j
 public class CurrencyBeaconExchangeAdapter implements ExchangePort {
 
     private final CurrencyBeaconClient client;
+    private final ExchangeRateProvider rateProvider;
 
-    public CurrencyBeaconExchangeAdapter(CurrencyBeaconClient client) {
+    public CurrencyBeaconExchangeAdapter(CurrencyBeaconClient client, ExchangeRateProvider rateProvider) {
         this.client = client;
+        this.rateProvider = rateProvider;
     }
 
     @Override
-    @Cacheable(value = "exchangeRates", key = "'convert_' + #fromCurrency + '_' + #toCurrency")
     public BigDecimal convert(BigDecimal amount, String fromCurrency, String toCurrency) {
-        if (fromCurrency.equalsIgnoreCase(toCurrency)) {
+        String from = fromCurrency.toUpperCase(Locale.ROOT);
+        String to = toCurrency.toUpperCase(Locale.ROOT);
+        if (from.equals(to)) {
             return amount;
         }
-        try {
-            return client.convert(amount, fromCurrency, toCurrency);
-        } catch (Exception e) {
-            log.warn("Fallo al convertir {} de {} a {}, usando tasas en cache: {}",
-                    amount, fromCurrency, toCurrency, e.getMessage());
-            return fallbackConvert(amount, fromCurrency, toCurrency);
+        BigDecimal rate = rates(from).get(to);
+        if (rate == null) {
+            throw new CurrencyConversionException("No exchange rate available for " + from + " to " + to);
         }
+        return amount.multiply(rate).setScale(2, RoundingMode.HALF_UP);
     }
 
     @Override
-    @Cacheable(value = "exchangeRates", key = "'convert_' + #fromCurrency + '_' + #toCurrency + '_' + #date")
     public BigDecimal convert(BigDecimal amount, String fromCurrency, String toCurrency, LocalDate date) {
         if (fromCurrency.equalsIgnoreCase(toCurrency)) {
             return amount;
@@ -50,27 +41,21 @@ public class CurrencyBeaconExchangeAdapter implements ExchangePort {
         try {
             return client.convert(amount, fromCurrency, toCurrency, date);
         } catch (Exception e) {
-            log.warn("Fallo al convertir {} de {} a {} en {}, usando tasas en cache: {}",
-                    amount, fromCurrency, toCurrency, date, e.getMessage());
-            return fallbackConvert(amount, fromCurrency, toCurrency);
+            throw new CurrencyConversionException(
+                    "Failed to convert " + fromCurrency + " to " + toCurrency + " on " + date, e);
         }
     }
 
     @Override
-    @Cacheable(value = "exchangeRates", key = "'rates_' + #baseCurrency")
     public Map<String, BigDecimal> getExchangeRates(String baseCurrency) {
-        try {
-            return client.getLatestRates(baseCurrency);
-        } catch (Exception e) {
-            log.warn("Fallo al obtener tasas para base={}, usando cache fallback: {}", baseCurrency, e.getMessage());
-        }
-        return Map.of();
+        return rates(baseCurrency.toUpperCase(Locale.ROOT));
     }
 
-    private BigDecimal fallbackConvert(BigDecimal amount, String from, String to) {
-        Map<String, BigDecimal> rates = getExchangeRates(from);
-        return Optional.ofNullable(rates.get(to.toUpperCase()))
-                .map(rate -> amount.multiply(rate).setScale(2, RoundingMode.HALF_UP))
-                .orElse(amount);
+    private Map<String, BigDecimal> rates(String baseCurrency) {
+        try {
+            return rateProvider.rates(baseCurrency);
+        } catch (Exception e) {
+            throw new CurrencyConversionException("Failed to fetch exchange rates for " + baseCurrency, e);
+        }
     }
 }

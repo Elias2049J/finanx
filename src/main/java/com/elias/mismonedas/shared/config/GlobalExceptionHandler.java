@@ -142,6 +142,11 @@ public class GlobalExceptionHandler {
                 .body(error);
     }
 
+    @ExceptionHandler(CurrencyConversionException.class)
+    public ResponseEntity<ErrorResponse> handleCurrencyConversion(CurrencyConversionException ex, HttpServletRequest request) {
+        return respond(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request, ex);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(

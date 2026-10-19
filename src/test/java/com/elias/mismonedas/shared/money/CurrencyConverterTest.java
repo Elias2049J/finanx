@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -47,14 +48,13 @@ class CurrencyConverterTest {
     }
 
     @Test
-    void shouldFallBackToRawAmountWhenConversionFails() {
+    void shouldPropagateConversionFailure() {
         when(exchangePort.convert(any(), eq("USD"), eq("PEN")))
                 .thenThrow(new RuntimeException("provider down"));
 
-        Money result = converter.convert(Money.of(new BigDecimal("10.00"), "USD"), "PEN");
-
-        assertThat(result.amount()).isEqualByComparingTo("10.00");
-        assertThat(result.currencyCode()).isEqualTo("PEN");
+        assertThatThrownBy(() -> converter.convert(Money.of(new BigDecimal("10.00"), "USD"), "PEN"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("provider down");
     }
 
     @Test

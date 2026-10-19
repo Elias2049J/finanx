@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 public class CurrencyBeaconConfig {
 
     @Bean
-    public ExchangePort currencyBeaconExchangeAdapter(CurrencyBeaconClient client) {
-        return new CurrencyBeaconExchangeAdapter(client);
+    public ExchangePort currencyBeaconExchangeAdapter(CurrencyBeaconClient client, ExchangeRateProvider rateProvider) {
+        return new CurrencyBeaconExchangeAdapter(client, rateProvider);
     }
 }
