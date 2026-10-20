@@ -4,12 +4,11 @@ import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.outbox.NotificationOutbox;
 import com.elias.mismonedas.notifications.outbox.OutboxState;
 import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxRepository;
-import com.elias.mismonedas.notifications.port.NotificationOutboxPublisher;
 import com.elias.mismonedas.notifications.repository.NotificationRepository;
+import com.elias.mismonedas.notifications.service.impl.NotificationOutboxDispatcher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.amqp.AmqpException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,23 +24,20 @@ public class NotificationScheduler {
     private static final int RETENTION_DAYS = 90;
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationRepository notificationRepository;
-    private final NotificationOutboxPublisher outboxPublisher;
+    private final NotificationOutboxDispatcher outboxDispatcher;
 
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "notificationScheduler.processOutbox", lockAtMostFor = "PT5M", lockAtLeastFor = "PT30S")
     public void processOutbox() {
         List<NotificationOutbox> pending = outboxRepository.findTop50ByStateOrderByIdAsc(OutboxState.PENDING);
+        int rescued = 0;
         for (NotificationOutbox entry : pending) {
-            try {
-                outboxPublisher.publish(entry.getId());
-                int updated = outboxRepository.markPublishedIfPending(
-                        entry.getId(), OutboxState.PENDING, OutboxState.PUBLISHED);
-                if (updated == 0) {
-                    log.debug("Outbox id={} changed state while publishing; keeping current state", entry.getId());
-                }
-            } catch (AmqpException ex) {
-                log.warn("Outbox id={} remains PENDING because the broker did not confirm publishing", entry.getId(), ex);
+            if (outboxDispatcher.dispatch(entry.getId())) {
+                rescued++;
             }
+        }
+        if (rescued > 0) {
+            log.info("Red de seguridad del outbox: publicadas {} de {} entradas PENDING", rescued, pending.size());
         }
     }
 

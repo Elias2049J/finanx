@@ -16,17 +16,11 @@ public interface NotificationService {
 
     NotificationDTO findById(Long id);
 
-    List<NotificationDTO> findAllByUser(Long userId);
-
     PageResponse<NotificationDTO> list(NotificationState state, String search, Pageable pageable);
-
-    List<NotificationDTO> findAllByUserAndState(Long userId, NotificationState state);
 
     void markAsRead(Long id);
 
     void discard(Long id);
 
     void purgeOlderThan(LocalDateTime threshold);
-
-    List<NotificationDTO> findAllScheduledByUser(long userId);
 }

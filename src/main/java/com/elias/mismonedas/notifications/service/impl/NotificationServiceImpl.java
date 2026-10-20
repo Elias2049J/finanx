@@ -5,6 +5,7 @@ import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.notifications.domain.entity.Notification;
 import com.elias.mismonedas.notifications.domain.enums.NotificationState;
+import com.elias.mismonedas.notifications.domain.event.NotificationOutboxCreatedEvent;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.mapper.NotificationMapper;
 import com.elias.mismonedas.notifications.outbox.NotificationOutbox;
@@ -21,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,6 +46,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationOutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -57,13 +60,15 @@ public class NotificationServiceImpl implements NotificationService {
             dto.setEmailNotifications(saved.getUser().getPreferences().isEmailNotifications());
         }
 
-        outboxRepository.save(NotificationOutbox.builder()
+        NotificationOutbox outbox = outboxRepository.save(NotificationOutbox.builder()
                 .notificationId(saved.getId())
                 .type(saved.getType())
                 .payload(toJson(dto))
                 .state(OutboxState.PENDING)
                 .createdAt(OffsetDateTime.now(saved.getUser().getTimeZone().toZoneId()))
                 .build());
+
+        eventPublisher.publishEvent(new NotificationOutboxCreatedEvent(outbox.getId()));
 
     }
 
@@ -81,13 +86,6 @@ public class NotificationServiceImpl implements NotificationService {
         return notificationMapper.toResponse(getOwned(id));
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<NotificationDTO> findAllByUser(Long userId) {
-        return notificationRepository.findAllByUser_IdAndStateIsNotOrderByCreatedAtDesc(userId, NotificationState.DISCARD)
-                .stream().map(notificationMapper::toResponse)
-                .toList();
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -97,15 +95,6 @@ public class NotificationServiceImpl implements NotificationService {
         Page<Notification> page = notificationRepository.findAll(
                 NotificationSpecifications.list(userId, state, search), stablePage);
         return PageResponseFactory.from(page, notificationMapper::toResponse);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<NotificationDTO> findAllByUserAndState(Long userId, NotificationState state) {
-        return notificationRepository.findAllByUser_IdAndState(userId, state)
-                .stream()
-                .map(notificationMapper::toResponse)
-                .toList();
     }
 
     @Override
@@ -143,14 +132,5 @@ public class NotificationServiceImpl implements NotificationService {
         List<Notification> nList = notificationRepository.findAllByUser_IdAndStateAndSentAtBefore(userId, NotificationState.SENT, OffsetDateTime.now(u.getTimeZone().toZoneId()));
         nList.forEach(this::disable);
         notificationRepository.saveAll(nList);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<NotificationDTO> findAllScheduledByUser(long userId) {
-        return notificationRepository.findAllByUser_IdAndStateAndScheduledAtBefore(userId, NotificationState.SCHEDULED, OffsetDateTime.now())
-                .stream()
-                .map(notificationMapper::toResponse)
-                .toList();
     }
 }
