@@ -10,6 +10,8 @@
     "stress:breakpoint": "node run-stress.js breakpoint",
     "stress:spike": "node run-stress.js spike",
     "stress:soak": "node run-stress.js soak",
+    "e2e": "node run-e2e.js scheduling",
+    "e2e:scheduling": "node run-e2e.js scheduling",
     "report": "node generate-report.js"
   },
   "keywords": [],
