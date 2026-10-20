@@ -213,6 +213,6 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setDisabledAt(OffsetDateTime.now(zoneId));
         Transaction saved = transactionRepository.save(transaction);
 
-        eventPublisher.publishEvent(new TransactionDisabledEvent(saved.getId(), userId, saved.getAmount(), saved.getType()));
+        eventPublisher.publishEvent(new TransactionDisabledEvent(saved.getId(), userId, saved.getWallet().getId(), saved.getAmount(), saved.getType()));
     }
 }

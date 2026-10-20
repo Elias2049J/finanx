@@ -10,5 +10,6 @@ public record TransactionRegisteredEvent(
         BigDecimal amount,
         Long transactionId,
         Long userId,
-        TransactionType type) {
+        TransactionType type,
+        Long scheduleId) {
 }

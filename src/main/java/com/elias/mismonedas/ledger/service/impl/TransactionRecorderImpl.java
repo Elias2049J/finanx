@@ -88,7 +88,8 @@ public class TransactionRecorderImpl implements TransactionRecorder {
                 saved.getAmount(),
                 saved.getId(),
                 userId,
-                saved.getType()));
+                saved.getType(),
+                scheduleId));
 
         walletService.updateBalance(userId, wallet.getId(), saved.getType(), saved.getAmount());
 
