@@ -22,13 +22,13 @@ public interface TransactionMapper {
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "savingGoal.id", target = "savingGoalId")
-    @Mapping(source = "schedule.id", target = "scheduleId")
     TransactionResponse toResponseWithContext(Transaction entity, @Context User user);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "wallet", ignore = true)
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "reason", ignore = true)
+    @Mapping(target = "scheduleId", ignore = true)
     Transaction toEntity(TransactionRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -36,6 +36,7 @@ public interface TransactionMapper {
     @Mapping(target = "wallet", ignore = true)
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "reason", ignore = true)
+    @Mapping(target = "scheduleId", ignore = true)
     void updateFromDto(TransactionRequest dto, @MappingTarget Transaction entity);
 
     default TransactionResponse toResponse(Transaction entity) {

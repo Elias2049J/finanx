@@ -86,6 +86,7 @@ public class Budget {
     @Column(name = "alertado_limite")
     private Boolean exceededNotified = false;
 
+    // TODO: desacoplar Budget.schedule a scheduleId (mismo patron que Transaction).
     @ManyToOne
     @JoinColumn(name = "id_programacion")
     private BudgetSchedule schedule;

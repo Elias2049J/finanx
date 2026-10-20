@@ -1,26 +1,23 @@
 package com.elias.mismonedas.scheduling.service.impl;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
-import com.elias.mismonedas.accounts.repository.WalletRepository;
-import com.elias.mismonedas.accounts.service.WalletService;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.service.ReasonResolver;
-import com.elias.mismonedas.identity.domain.entity.User;
-import com.elias.mismonedas.identity.domain.entity.UserPreferences;
-import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
-import com.elias.mismonedas.ledger.domain.entity.Transaction;
-import com.elias.mismonedas.ledger.domain.enums.TransactionType;
-import com.elias.mismonedas.ledger.repository.TransactionRepository;
-import com.elias.mismonedas.planning.domain.entity.Budget;
+import com.elias.mismonedas.scheduling.service.RecurrenceCalculatorService;
+import com.elias.mismonedas.scheduling.service.RecurrenceService;
+import com.elias.mismonedas.scheduling.service.ScheduleService;
+import com.elias.mismonedas.wallets.service.WalletService;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
+import com.elias.mismonedas.planning.service.BudgetService;
 import com.elias.mismonedas.planning.service.BudgetService;
 import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
 import com.elias.mismonedas.scheduling.domain.entity.Schedule;
 import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
+import com.elias.mismonedas.scheduling.domain.event.BudgetScheduleDueEvent;
+import com.elias.mismonedas.scheduling.domain.event.TransactionScheduleDueEvent;
 import com.elias.mismonedas.scheduling.domain.enums.RecurrenceType;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.recurrencerule.RecurrenceRuleRequest;
@@ -38,25 +35,22 @@ import com.elias.mismonedas.scheduling.service.ScheduleService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.HashSet;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -68,17 +62,15 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final TransactionScheduleRepository tsRepository;
     private final BudgetScheduleRepository bsRepository;
-    private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final ScheduleMapper tsMapper;
-    private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
     private final RecurrenceCalculatorService rcService;
     private final ReasonResolver reasonResolver;
     private final RecurrenceService recurrenceService;
     private final BudgetService budgetService;
     private final SavingGoalService savingGoalService;
-    private final WalletRepository walletRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final WalletService walletService;
     private final TransactionTemplate transactionTemplate;
     private final SecurityService securityService;
@@ -100,7 +92,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             if (tr.getTransactionType() != c.getType()) {
                 throw new IllegalArgumentException("The category transactionType must be the same as transactionSchedule");
             }
-            ts.setWallet(resolveWallet(userId, tr.getWalletId()));
+            ts.setWallet(walletService.getOwned(tr.getWalletId()));
             ts.setReason(
                     reasonResolver
                             .resolveOrCreate(userId, tr.getReasonId(), tr.getDescription())
@@ -111,109 +103,13 @@ public class ScheduleServiceImpl implements ScheduleService {
         RecurrenceRule rr = resolveRecurrence(s, request.getRecurrenceRule());
         s.setNextRunAt(rr.getStart());
 
-        return buildResponse(scheduleRepository.save(s));
-    }
-
-    private Wallet resolveWallet(Long userId, Long walletId) {
-        if (walletId != null) {
-            return walletRepository.findByIdAndUser_Id(walletId, userId)
-                    .orElseThrow(() -> new IllegalArgumentException("Wallet not found or does not belong to the user"));
-        }
-        return walletRepository.findByUserIdAndPrimaryTrue(userId)
-                .orElseGet(() -> walletRepository.save(Wallet.builder()
-                        .user(userRepository.getReferenceById(userId))
-                        .currencyCode(resolveCurrency(userId))
-                        .balance(BigDecimal.ZERO)
-                        .primary(true)
-                        .build()));
-    }
-
-    private String resolveCurrency(Long userId) {
-        UserPreferences preferences = userRepository.findById(userId)
-                .map(User::getPreferences)
-                .orElse(null);
-        if (preferences == null || preferences.getCurrencyCode() == null) {
-            throw new IllegalArgumentException("Debe crear sus preferencias antes de programar movimientos");
-        }
-        return preferences.getCurrencyCode();
-    }
-
-    @Override
-    @Transactional
-    public ScheduleResponse update(Long id, ScheduleRequest request) {
-        Schedule existing = getOwned(id);
-        Long ownerId = existing.getUser().getId();
-
-        tsMapper.updateFromDtoDispatch(request, existing);
-        existing.setCategory(categoryRepository.findByIdAndUser_Id(request.getCategoryId(), ownerId)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to the user")));
-
-        if (request instanceof TransactionScheduleRequest tr
-                && existing instanceof TransactionSchedule ts) {
-            if (tr.getWalletId() != null) {
-                ts.setWallet(walletRepository.findByIdAndUser_Id(tr.getWalletId(), ownerId)
-                        .orElseThrow(() -> new IllegalArgumentException("Wallet not found or does not belong to the user")));
-            }
-            ts.setReason(
-                    reasonResolver
-                            .resolveOrCreate(securityService.getCurrentUser().getId(),
-                                    tr.getReasonId(), tr.getDescription())
-                            .orElse(null)
-            );
-        }
-
-        if (request.getRecurrenceRule() != null) {
-            RecurrenceRule rr = existing.getRecurrenceRule() != null
-                    ? recurrenceService.update(existing.getRecurrenceRule().getId(), request.getRecurrenceRule())
-                    : resolveRecurrence(existing, request.getRecurrenceRule());
-
-            existing.setNextRunAt(rr.getStart());
-        }
-
-        return buildResponse(scheduleRepository.save(existing));
+        return tsMapper.toResponseDispatch(scheduleRepository.save(s));
     }
 
     @Override
     @Transactional(readOnly = true)
     public ScheduleResponse findById(Long id) {
         return tsMapper.toResponseDispatch(getOwned(id));
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<ScheduleResponse> findAllByUser(Long userId) {
-        return scheduleRepository.findAllByUser_IdAndActiveTrue(userId)
-                .stream()
-                .map(tsMapper::toResponseDispatch)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<ScheduleResponse> findAllActiveByUserAndState(Long userId, ScheduleState state) {
-        return scheduleRepository.findAllByUser_IdAndActiveAndState(userId, true, state)
-                .stream()
-                .map(tsMapper::toResponseDispatch)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<BudgetScheduleResponse> findAllBScheduleActiveByUserAndState(Long userId, ScheduleState state) {
-        return bsRepository.findAllByUser_IdAndActiveAndState(userId, true, state)
-                .stream()
-                .map(tsMapper::toResponse)
-                .toList();
-
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<TransactionScheduleResponse> findAllTScheduleActiveByUserAndState(Long userId, ScheduleState state) {
-        return tsRepository.findAllByUser_IdAndActiveAndState(userId, true, state)
-                .stream()
-                .map(tsMapper::toResponse)
-                .toList();
     }
 
     @Override
@@ -291,141 +187,200 @@ public class ScheduleServiceImpl implements ScheduleService {
         Long cursor = 0L;
         while (cursor != null) {
             final long afterId = cursor;
-            cursor = transactionTemplate.execute(status -> processTransactionBatch(afterId));
+            TransactionBatchPage page = transactionTemplate.execute(status -> findTransactionBatch(afterId));
+            if (page == null) {
+                return;
+            }
+
+            Set<Long> affectedUsers = new HashSet<>();
+            for (Long id : page.dueIds()) {
+                try {
+                    Long userId = transactionTemplate.execute(status -> processTransactionOccurrence(id));
+                    if (userId != null) {
+                        affectedUsers.add(userId);
+                    }
+                } catch (Exception e) {
+                    log.error("Error processing TransactionSchedule: id={}", id, e);
+                    markTransactionScheduleError(id);
+                }
+            }
+
+            recheckPlanning(affectedUsers);
+            cursor = page.nextCursor();
         }
     }
 
-
-
-
-
-    private Long processTransactionBatch(long afterId) {
+    private TransactionBatchPage findTransactionBatch(long afterId) {
         List<TransactionSchedule> batch = tsRepository.findByActiveTrueAndStateAndIdGreaterThan(
                 ScheduleState.RUNNING, afterId, PageRequest.of(0, BATCH_SIZE, Sort.by("id")));
 
-        if (batch.isEmpty()) {
+        List<Long> dueIds = batch.stream()
+                .filter(this::isDue)
+                .map(TransactionSchedule::getId)
+                .toList();
+
+        Long nextCursor = batch.size() < BATCH_SIZE ? null : batch.get(batch.size() - 1).getId();
+        return new TransactionBatchPage(dueIds, nextCursor);
+    }
+
+    private Long processTransactionOccurrence(Long id) {
+        TransactionSchedule st = tsRepository.findById(id).orElse(null);
+        if (st == null || !Boolean.TRUE.equals(st.getActive())
+                || st.getState() != ScheduleState.RUNNING || !isDue(st)) {
             return null;
         }
 
-        List<TransactionSchedule> dueList = batch.stream()
-                .filter(this::isDue)
-                .toList();
+        publishTransactionDue(st);
 
-        if (!dueList.isEmpty()) {
-            Set<Long> affectedUsers = new HashSet<>();
-            runJob(
-                    "TransactionSchedule",
-                    dueList,
-                    st -> {
-                        affectedUsers.add(st.getUser().getId());
-                        return executeTransactionSchedule(st);
-                    },
-                    created -> {
-                        transactionRepository.saveAll((List<Transaction>) created);
-                        affectedUsers.forEach(userId -> {
-                            budgetService.checkAllBudgets(userId);
-                            savingGoalService.checkAllSavingGoals(userId);
-                        });
-                    }
-            );
-        }
-
-        return batch.size() < BATCH_SIZE ? null : batch.get(batch.size() - 1).getId();
+        scheduleRepository.save(st);
+        return st.getUser().getId();
     }
+
+    private void markTransactionScheduleError(Long id) {
+        try {
+            transactionTemplate.execute(status -> {
+                tsRepository.findById(id).ifPresent(st -> {
+                    st.setActive(false);
+                    st.setState(ScheduleState.ERROR);
+                    scheduleRepository.save(st);
+                });
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("Could not mark TransactionSchedule as ERROR: id={}", id, e);
+        }
+    }
+
+    private void recheckPlanning(Set<Long> userIds) {
+        for (Long userId : userIds) {
+            try {
+                budgetService.checkAllBudgets(userId);
+            } catch (RuntimeException e) {
+                log.error("Recomputo de presupuestos fallo para el usuario {}", userId, e);
+            }
+            try {
+                savingGoalService.checkAllSavingGoals(userId);
+            } catch (RuntimeException e) {
+                log.error("Recomputo de metas fallo para el usuario {}", userId, e);
+            }
+        }
+    }
+
+    private record TransactionBatchPage(List<Long> dueIds, Long nextCursor) {}
 
     @Override
     public void runDueBudgets() {
         Long cursor = 0L;
         while (cursor != null) {
             final long afterId = cursor;
-            cursor = transactionTemplate.execute(status -> processBudgetBatch(afterId));
+            BudgetBatchPage page = transactionTemplate.execute(status -> findBudgetBatch(afterId));
+            if (page == null) {
+                return;
+            }
+
+            for (Long id : page.dueIds()) {
+                try {
+                    transactionTemplate.execute(status -> {
+                        processBudgetOccurrence(id);
+                        return null;
+                    });
+                } catch (Exception e) {
+                    log.error("Error processing BudgetSchedule: id={}", id, e);
+                    markBudgetScheduleError(id);
+                }
+            }
+
+            cursor = page.nextCursor();
         }
     }
 
-
-
-
-
-    private Long processBudgetBatch(long afterId) {
+    private BudgetBatchPage findBudgetBatch(long afterId) {
         List<BudgetSchedule> batch = bsRepository.findByActiveTrueAndStateAndIdGreaterThan(
                 ScheduleState.RUNNING, afterId, PageRequest.of(0, BATCH_SIZE, Sort.by("id")));
 
-        if (batch.isEmpty()) {
-            return null;
-        }
-
-        List<BudgetSchedule> dueList = batch.stream()
+        List<Long> dueIds = batch.stream()
                 .filter(this::isDue)
+                .map(BudgetSchedule::getId)
                 .toList();
 
-        if (!dueList.isEmpty()) {
-            runJob(
-                    "BudgetSchedule",
-                    dueList,
-                    this::executeBudgetSchedule,
-                    created -> budgetRepository.saveAll((List<Budget>) created)
-            );
-        }
-
-        return batch.size() < BATCH_SIZE ? null : batch.get(batch.size() - 1).getId();
+        Long nextCursor = batch.size() < BATCH_SIZE ? null : batch.get(batch.size() - 1).getId();
+        return new BudgetBatchPage(dueIds, nextCursor);
     }
 
-    private Transaction executeTransactionSchedule(TransactionSchedule st) {
-        OffsetDateTime executedAt = st.getNextRunAt();
-
-        String occurrenceKey = occurrenceKey(st.getId(), executedAt);
-        if (transactionRepository.findByIdempotencyKey(occurrenceKey).isPresent()) {
-            log.warn("ScheduledTransaction occurrence already executed: key={} — skipping duplicate", occurrenceKey);
-            advanceOrFinalize(st);
-            return null;
+    private void processBudgetOccurrence(Long id) {
+        BudgetSchedule st = bsRepository.findById(id).orElse(null);
+        if (st == null || !Boolean.TRUE.equals(st.getActive())
+                || st.getState() != ScheduleState.RUNNING || !isDue(st)) {
+            return;
         }
+
+        publishBudgetDue(st);
+
+        scheduleRepository.save(st);
+    }
+
+    private void markBudgetScheduleError(Long id) {
+        try {
+            transactionTemplate.execute(status -> {
+                bsRepository.findById(id).ifPresent(st -> {
+                    st.setActive(false);
+                    st.setState(ScheduleState.ERROR);
+                    scheduleRepository.save(st);
+                });
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("Could not mark BudgetSchedule as ERROR: id={}", id, e);
+        }
+    }
+
+    private record BudgetBatchPage(List<Long> dueIds, Long nextCursor) {}
+
+    private void publishTransactionDue(TransactionSchedule st) {
+        OffsetDateTime executedAt = st.getNextRunAt();
 
         st.setLastRunAt(executedAt);
 
-        Transaction tx = tsMapper.toTransaction(st);
-        tx.setIdempotencyKey(occurrenceKey);
-        tx.setUser(st.getUser());
-        Wallet wallet = st.getWallet();
-
-        if (wallet == null) {
-            wallet = resolveWallet(st.getUser().getId(), null);
-            tx.setWallet(wallet);
-        }
-
-        if (tx.getType() == TransactionType.INCOME) {
-            wallet.setBalance(wallet.getBalance().add(tx.getAmount()));
-        } else {
-            wallet.setBalance(wallet.getBalance().subtract(tx.getAmount()));
-        }
-        walletRepository.save(wallet);
+        eventPublisher.publishEvent(new TransactionScheduleDueEvent(
+                st.getId(),
+                st.getUser().getId(),
+                st.getWallet().getId(),
+                st.getCategory() != null ? st.getCategory().getId() : null,
+                st.getReason() != null ? st.getReason().getId() : null,
+                st.getAmount(),
+                st.getPaymentMethod(),
+                st.getTransactionType(),
+                executedAt));
 
         boolean hasNext = advanceOrFinalize(st);
 
         if (hasNext) {
             log.info("ScheduledTransaction executed: id={} userId={} walletId={} executedAt={} nextRunAt={}",
-                    st.getId(), st.getUser().getId(), wallet.getId(), executedAt, st.getNextRunAt());
+                    st.getId(), st.getUser().getId(), st.getWallet().getId(), executedAt, st.getNextRunAt());
         } else {
             log.info("ScheduledTransaction completed: id={} userId={} walletId={} executedAt={} (no further occurrences)",
-                    st.getId(), st.getUser().getId(), wallet.getId(), executedAt);
+                    st.getId(), st.getUser().getId(), st.getWallet().getId(), executedAt);
         }
-
-        return tx;
     }
 
-    private Budget executeBudgetSchedule(BudgetSchedule st) {
+    private void publishBudgetDue(BudgetSchedule st) {
         OffsetDateTime executedAt = st.getNextRunAt();
-
-        String occurrenceKey = occurrenceKey(st.getId(), executedAt);
-        if (budgetRepository.findByIdempotencyKey(occurrenceKey).isPresent()) {
-            log.warn("BudgetSchedule occurrence already executed: key={} — skipping duplicate", occurrenceKey);
-            advanceOrFinalize(st);
-            return null;
-        }
 
         st.setLastRunAt(executedAt);
 
         OffsetDateTime budgetEnd = rcService.computeNextRunAt(st)
                 .orElse(st.getRecurrenceRule().getEnd());
+
+        eventPublisher.publishEvent(new BudgetScheduleDueEvent(
+                st.getId(),
+                st.getUser().getId(),
+                st.getCategory() != null ? st.getCategory().getId() : null,
+                st.getAlertable(),
+                st.getPercentAlert(),
+                st.getLimitAmount(),
+                st.getDescription(),
+                executedAt,
+                budgetEnd));
 
         boolean hasNext = advanceOrFinalize(st);
 
@@ -436,69 +391,6 @@ public class ScheduleServiceImpl implements ScheduleService {
             log.info("BudgetSchedule completed: id={} userId={} executedAt={} (no further occurrences)",
                     st.getId(), st.getUser().getId(), executedAt);
         }
-
-        return Budget.builder()
-                .schedule(st)
-                .user(st.getUser())
-                .category(st.getCategory())
-                .alertable(st.getAlertable())
-                .percentAlert(st.getPercentAlert())
-                .limitAmount(st.getLimitAmount())
-                .description(st.getDescription())
-                .start(executedAt)
-                .end(budgetEnd)
-                .idempotencyKey(occurrenceKey)
-                .build();
-    }
-
-    private String occurrenceKey(Long scheduleId, OffsetDateTime occurrenceDate) {
-        return "schedule:" + scheduleId + ":" + occurrenceDate;
-    }
-
-    private record RunResult(int created, int completed, int errored) {}
-
-    private <S extends Schedule> RunResult runJob(
-            String jobName,
-            List<S> dueList,
-            Function<S, ?> executor,
-            Consumer<List<?>> saver
-    ) {
-        if (dueList.isEmpty()) {
-            log.info("{} job: dueCount=0", jobName);
-            return new RunResult(0, 0, 0);
-        }
-
-        log.info("{} job: dueCount={}", jobName, dueList.size());
-
-        List<Object> created = new ArrayList<>(dueList.size());
-        int completed = 0;
-        int errored   = 0;
-
-        for (S sc : dueList) {
-            try {
-                Object result = executor.apply(sc);
-                if (result != null) {
-                    created.add(result);
-                }
-                if (sc.getState() == ScheduleState.FINALIZED) completed++;
-            } catch (Exception e) {
-                log.error("Error processing {}: id={} userId={} nextRunAt={}",
-                        jobName, sc.getId(), sc.getUser().getId(), sc.getNextRunAt(), e);
-                sc.setActive(false);
-                sc.setState(ScheduleState.ERROR);
-                errored++;
-            }
-        }
-
-        if (!created.isEmpty()) {
-            saver.accept(created);
-        }
-        scheduleRepository.saveAll(dueList);
-
-        log.info("{} job summary: dueCount={} created={} completed={} errored={}",
-                jobName, dueList.size(), created.size(), completed, errored);
-
-        return new RunResult(created.size(), completed, errored);
     }
 
     private boolean isDue(Schedule st) {
@@ -517,8 +409,6 @@ public class ScheduleServiceImpl implements ScheduleService {
         return false;
     }
 
-
-
     private RecurrenceRule resolveRecurrence(Schedule schedule, RecurrenceRuleRequest rrReq) {
         RecurrenceRuleRequest toCreate = new RecurrenceRuleRequest();
         toCreate.setRecurrenceType(rrReq.getRecurrenceType());
@@ -534,13 +424,5 @@ public class ScheduleServiceImpl implements ScheduleService {
         RecurrenceRule rr = recurrenceService.create(schedule.getUser().getId(), toCreate);
         schedule.setRecurrenceRule(rr);
         return rr;
-    }
-
-    private ScheduleResponse buildResponse(Schedule saved) {
-        ScheduleResponse response = tsMapper.toResponseDispatch(saved);
-        if (saved.getRecurrenceRule() != null) {
-            response.setRecurrenceRule(recurrenceService.findById(saved.getRecurrenceRule().getId()));
-        }
-        return response;
     }
 }

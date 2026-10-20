@@ -1,6 +1,6 @@
 package com.elias.mismonedas.ledger.domain.entity;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.domain.entity.Reason;
 import com.elias.mismonedas.document.domain.entity.Receipt;
@@ -8,7 +8,6 @@ import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
-import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -54,11 +53,6 @@ public class Transaction {
     @JoinColumn(name = "id_billetera", nullable = false)
     private Wallet wallet;
 
-
-
-
-
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_usuario", nullable = false)
     private User user;
@@ -70,9 +64,8 @@ public class Transaction {
     @Column(name = "activo")
     private Boolean active;
 
-    @ManyToOne
-    @JoinColumn(name = "id_programacion")
-    private TransactionSchedule schedule;
+    @Column(name = "id_programacion")
+    private Long scheduleId;
 
     @ManyToOne
     @JoinColumn(name = "id_meta_ahorro")
@@ -81,7 +74,7 @@ public class Transaction {
     @Column(name = "fecha_desactivacion")
     private OffsetDateTime disabledAt;
 
-    @OneToOne(mappedBy = "transaction", fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "transaction")
     private Receipt receipt;
 
     @Column(name = "clave_idempotencia", unique = true)
@@ -94,6 +87,9 @@ public class Transaction {
         }
         if (createdAt == null) {
             createdAt = OffsetDateTime.now(wallet.getUser().getTimeZone().toZoneId());
+        }
+        if (this.getType() != category.getType()) {
+            throw new IllegalArgumentException("The category transactionType must be the same as transaction");
         }
         if (paymentMethod == null) {
             paymentMethod = PaymentMethod.CASH;

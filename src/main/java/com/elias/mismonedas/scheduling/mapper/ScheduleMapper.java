@@ -1,13 +1,12 @@
 package com.elias.mismonedas.scheduling.mapper;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.entity.Schedule;
 import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
 import com.elias.mismonedas.scheduling.dto.schedule.*;
-import com.elias.mismonedas.scheduling.mapper.RecurrenceRuleMapper;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import org.mapstruct.*;
 
@@ -111,7 +110,7 @@ public interface ScheduleMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "wallet", source = "wallet")
     @Mapping(target = "createdAt", source = "lastRunAt")
-    @Mapping(target = "schedule", source = "st")
+    @Mapping(target = "scheduleId", source = "st.id")
     @Mapping(source = "transactionType", target = "type")
     Transaction toTransaction(TransactionSchedule st);
 }

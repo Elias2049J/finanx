@@ -13,21 +13,12 @@ import java.util.List;
 
 public interface ScheduleService {
     ScheduleResponse create(ScheduleRequest request);
-    ScheduleResponse update(Long id, ScheduleRequest request);
     ScheduleResponse findById(Long id);
-
-    List<ScheduleResponse> findAllByUser(Long userId);
 
     void pause(Long id);
     void resume(Long id);
     void cancel(Long id);
     void disable(Long id);
-
-    List<ScheduleResponse> findAllActiveByUserAndState(Long userId, ScheduleState state);
-
-    List<BudgetScheduleResponse> findAllBScheduleActiveByUserAndState(Long userId, ScheduleState state);
-
-    List<TransactionScheduleResponse> findAllTScheduleActiveByUserAndState(Long userId, ScheduleState state);
 
     PageResponse<ScheduleResponse> list(ScheduleState state, Pageable pageable);
 

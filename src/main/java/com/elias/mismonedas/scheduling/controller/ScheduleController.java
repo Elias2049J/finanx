@@ -50,26 +50,6 @@ public class ScheduleController {
     }
 
     @Operation(
-            summary = "Actualizar programacion",
-            description = "Actualiza una programacion existente.",
-            operationId = "updateSchedule",
-            tags = {"Schedule"},
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Actualizada",
-                            content = @Content(schema = @Schema(implementation = ScheduleResponse.class))),
-                    @ApiResponse(responseCode = "400", description = "Datos invalidos"),
-                    @ApiResponse(responseCode = "404", description = "No encontrada")
-            }
-    )
-    @PutMapping("/{id}")
-    public ResponseEntity<ScheduleResponse> update(
-            @Parameter(description = "ID de la programacion")
-            @PathVariable Long id,
-            @Valid @RequestBody ScheduleRequest request) {
-        return ResponseEntity.ok(scheduleService.update(id, request));
-    }
-
-    @Operation(
             summary = "Listar programaciones por usuario y estado",
             description = "Lista programaciones activas paginadas con filtro opcional state.",
             operationId = "listSchedules",

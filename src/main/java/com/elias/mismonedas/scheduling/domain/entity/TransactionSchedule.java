@@ -1,6 +1,6 @@
 package com.elias.mismonedas.scheduling.domain.entity;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.catalog.domain.entity.Reason;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
