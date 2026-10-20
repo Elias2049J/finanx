@@ -18,39 +18,13 @@ import java.util.Optional;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long>, JpaSpecificationExecutor<Transaction> {
-    List<Transaction> findAllByUser_Id(Long userId);
+    Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
 
-    java.util.Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
-
-    java.util.Optional<Transaction> findByIdAndUser_Id(Long id, Long userId);
-
-    List<Transaction> findAllByUser_IdAndActiveTrue(Long userId);
-
-    List<Transaction> findAllByUser_IdAndCreatedAtBetweenAndActive(Long userId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, boolean active);
-
-    List<Transaction> findAllByUser_IdAndActive(Long userId, Boolean active);
+    Optional<Transaction> findByIdAndUser_Id(Long id, Long userId);
 
     List<Transaction> findAllByCategory_IdAndCreatedAtBetweenAndActive(Long categoryId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active);
 
-    List<Transaction> findAllByWallet_User_IdAndCreatedAtBetweenAndActive(Long userId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active);
-
-    List<Transaction> findAllByCategory_IdAndCreatedAtBetweenAndActiveAndType(
-            Long categoryId,
-            OffsetDateTime createdAtAfter,
-            OffsetDateTime createdAtBefore,
-            Boolean active,
-            TransactionType type
-    );
-
-    List<Transaction> findAllByWallet_User_IdAndCreatedAtBetweenAndActiveAndType(Long userId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active, TransactionType type);
-
-    List<Transaction> findAllByWallet_IdAndCreatedAtBetweenAndActive(Long walletId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active);
-
     void deleteAllByWallet_User_Id(Long userId);
-
-
-
-
 
     @Query("""
             SELECT t.savingGoal.id AS goalId,

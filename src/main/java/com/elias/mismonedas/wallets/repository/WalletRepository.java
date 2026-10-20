@@ -1,6 +1,6 @@
-package com.elias.mismonedas.accounts.repository;
+package com.elias.mismonedas.wallets.repository;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,4 +1,4 @@
-package com.elias.mismonedas.accounts.dto.wallet;
+package com.elias.mismonedas.wallets.dto.wallet;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

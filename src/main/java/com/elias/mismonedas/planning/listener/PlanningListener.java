@@ -1,7 +1,8 @@
 package com.elias.mismonedas.planning.listener;
 
 import com.elias.mismonedas.identity.domain.event.UserDeletedEvent;
-import com.elias.mismonedas.ledger.domain.event.TransactionChangedEvent;
+import com.elias.mismonedas.ledger.domain.event.TransactionDisabledEvent;
+import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import com.elias.mismonedas.planning.service.BudgetService;
@@ -22,14 +23,20 @@ public class PlanningListener {
     private final SavingGoalService savingGoalService;
 
     @EventListener
-    public void onUserDeleted(UserDeletedEvent event) {
+    public void on(UserDeletedEvent event) {
         budgetRepository.deleteAllByUser_Id(event.userId());
         savingGoalRepository.deleteAllByUser_Id(event.userId());
         log.info("Deleted budgets and saving goals for user {}", event.userId());
     }
 
     @EventListener
-    public void onTransactionChanged(TransactionChangedEvent event) {
+    public void on(TransactionDisabledEvent event) {
+        budgetService.checkAllBudgets(event.userId());
+        savingGoalService.checkAllSavingGoals(event.userId());
+    }
+
+    @EventListener
+    public void on(TransactionRegisteredEvent event) {
         budgetService.checkAllBudgets(event.userId());
         savingGoalService.checkAllSavingGoals(event.userId());
     }

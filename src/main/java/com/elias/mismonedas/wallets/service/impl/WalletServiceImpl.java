@@ -1,14 +1,15 @@
-package com.elias.mismonedas.accounts.service.impl;
+package com.elias.mismonedas.wallets.service.impl;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
-import com.elias.mismonedas.accounts.dto.wallet.WalletRequest;
-import com.elias.mismonedas.accounts.dto.wallet.WalletResponse;
-import com.elias.mismonedas.accounts.mapper.WalletMapper;
-import com.elias.mismonedas.accounts.repository.WalletRepository;
+import com.elias.mismonedas.ledger.domain.enums.TransactionType;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.dto.wallet.WalletRequest;
+import com.elias.mismonedas.wallets.dto.wallet.WalletResponse;
+import com.elias.mismonedas.wallets.mapper.WalletMapper;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
-import com.elias.mismonedas.accounts.service.WalletService;
+import com.elias.mismonedas.wallets.service.WalletService;
 import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
 import com.elias.mismonedas.billing.plan.PlanRequiredException;
 import com.elias.mismonedas.billing.service.SubscriptionService;
@@ -24,7 +25,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -116,5 +116,18 @@ public class WalletServiceImpl implements WalletService {
                             .build();
                     return walletMapper.toResponse(walletRepository.save(wallet));
                 });
+    }
+
+    @Transactional
+    @Override
+    public void updateBalance(Long userId, Long walletId, TransactionType type, BigDecimal amount) {
+        Wallet wallet = walletRepository.findByIdAndUser_Id(walletId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Wallet not found: " + walletId));
+
+        if (type == TransactionType.INCOME) {
+            wallet.setBalance(wallet.getBalance().add(amount));
+        } else {
+            wallet.setBalance(wallet.getBalance().subtract(amount));
+        }
     }
 }

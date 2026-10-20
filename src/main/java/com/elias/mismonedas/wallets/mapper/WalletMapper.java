@@ -1,8 +1,8 @@
-package com.elias.mismonedas.accounts.mapper;
+package com.elias.mismonedas.wallets.mapper;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
-import com.elias.mismonedas.accounts.dto.wallet.WalletRequest;
-import com.elias.mismonedas.accounts.dto.wallet.WalletResponse;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.dto.wallet.WalletRequest;
+import com.elias.mismonedas.wallets.dto.wallet.WalletResponse;
 import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")

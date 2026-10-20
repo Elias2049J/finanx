@@ -20,16 +20,16 @@ public class BudgetRecheckListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTransactionRegistered(TransactionRegisteredEvent event) {
         try {
-            budgetService.checkAllBudgets(event.userID());
+            budgetService.checkAllBudgets(event.userId());
         } catch (RuntimeException ex) {
             log.error("Recomputo de presupuestos fallo para el usuario {} tras crear la transaccion {}",
-                    event.userID(), event.transactionId(), ex);
+                    event.userId(), event.transactionId(), ex);
         }
         try {
-            savingGoalService.checkAllSavingGoals(event.userID());
+            savingGoalService.checkAllSavingGoals(event.userId());
         } catch (RuntimeException ex) {
             log.error("Recomputo de metas fallo para el usuario {} tras crear la transaccion {}",
-                    event.userID(), event.transactionId(), ex);
+                    event.userId(), event.transactionId(), ex);
         }
     }
 }

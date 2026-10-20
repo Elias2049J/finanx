@@ -1,8 +1,9 @@
 package com.elias.mismonedas.ledger.service.impl;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
-import com.elias.mismonedas.accounts.repository.WalletRepository;
-import com.elias.mismonedas.accounts.service.WalletService;
+import com.elias.mismonedas.document.service.ReceiptScanService;
+import com.elias.mismonedas.planning.service.SavingGoalService;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.service.WalletService;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.domain.entity.Reason;
 import com.elias.mismonedas.catalog.service.CategoryService;
@@ -11,24 +12,24 @@ import com.elias.mismonedas.document.domain.entity.Receipt;
 import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
-import com.elias.mismonedas.insights.service.UserDataContextService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
-import com.elias.mismonedas.ledger.domain.event.TransactionChangedEvent;
+import com.elias.mismonedas.ledger.domain.event.TransactionDisabledEvent;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
 import com.elias.mismonedas.ledger.repository.TransactionSpecifications;
+import com.elias.mismonedas.ledger.service.TransactionRecorder;
 import com.elias.mismonedas.ledger.service.TransactionService;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
-import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,28 +43,26 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.List;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
-    private final WalletRepository walletRepository;
     private final WalletService walletService;
     private final CategoryService categoryService;
     private final ReceiptRepository receiptRepository;
     private final TransactionMapper transactionMapper;
     private final ReasonResolver reasonResolver;
-    private final SavingGoalRepository sgRepository;
-    private final UserDataContextService userDataContextService;
+    private final SavingGoalService savingGoalService;
     private final CurrencyConverter currencyConverter;
     private final SecurityService securityService;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransactionRecorder transactionRecorder;
+    private final ReceiptScanService receiptScanService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -73,9 +72,8 @@ public class TransactionServiceImpl implements TransactionService {
             var existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
                 Transaction replayed = existing.get();
-                Long owner = replayed.getUser() != null ? replayed.getUser().getId() : null;
-                if (!currentUserId.equals(owner)) {
-                    throw new IllegalArgumentException("Idempotency-Key already used by another user");
+                if (replayed.getUser() == null || !replayed.getUser().getId().equals(currentUserId)) {
+                    throw new ConflictException("Idempotency-Key already used by another user");
                 }
                 log.info("Transaction replay ignored: idempotencyKey={} maps to transaction id={}",
                         idempotencyKey, replayed.getId());
@@ -87,12 +85,6 @@ public class TransactionServiceImpl implements TransactionService {
         Wallet wallet = walletService.getOwned(request.getWalletId());
         Category category = categoryService.getOwned(request.getCategoryId());
 
-        if (transaction.getType() != category.getType()) {
-            throw new IllegalArgumentException("The category transactionType must be the same as transaction");
-        }
-        if (!category.getUser().getId().equals(currentUserId)) {
-            throw new IllegalArgumentException("Category does not belong to the user's wallet");
-        }
         transaction.setWallet(wallet);
         transaction.setUser(wallet.getUser());
         transaction.setCategory(category);
@@ -101,10 +93,8 @@ public class TransactionServiceImpl implements TransactionService {
             if (transaction.getType() != TransactionType.INCOME) {
                 throw new IllegalArgumentException("Cannot associate a spent to a saving goal");
             }
-            SavingGoal sg = sgRepository.findById(request.getSavingGoalId()).orElseThrow();
-            if (!sg.getUser().getId().equals(currentUserId)) {
-                throw new IllegalArgumentException("Saving goal does not belong to the user");
-            }
+            SavingGoal sg = savingGoalService.getOwned(request.getSavingGoalId());
+
             if (sg.getState() != SavingGoalState.RUNNING) {
                 throw new IllegalArgumentException("Cannot associate a transaction to a completed or cancelled saving goal");
             }
@@ -115,27 +105,29 @@ public class TransactionServiceImpl implements TransactionService {
                 .resolveOrCreate(currentUserId, request.getReasonId(), request.getDescription())
                 .orElseThrow();
         transaction.setReason(reason);
-        transaction.setIdempotencyKey(
-                idempotencyKey != null && !idempotencyKey.isBlank() ? idempotencyKey : null);
+        String effectiveKey = idempotencyKey != null && !idempotencyKey.isBlank() ? idempotencyKey : null;
+        transaction.setIdempotencyKey(effectiveKey);
         Transaction saved;
         try {
             saved = transactionRepository.save(transaction);
         } catch (DataIntegrityViolationException race) {
 
-            Transaction existing = transactionRepository.findByIdempotencyKey(transaction.getIdempotencyKey())
+            Transaction existing = transactionRepository.findByIdempotencyKey(effectiveKey)
                     .orElseThrow(() -> race);
-            if (!securityService.getCurrentUser().getId().equals(
-                    existing.getUser() != null ? existing.getUser().getId() : null)) {
-                throw new IllegalArgumentException("Idempotency-Key already used by another user");
+            if (existing.getUser() == null || !existing.getUser().getId().equals(currentUserId)) {
+                throw new ConflictException("Idempotency-Key already used by another user");
             }
             log.info("Transaction replay on race: idempotencyKey={} maps to transaction id={}",
-                    transaction.getIdempotencyKey(), existing.getId());
+                    effectiveKey, existing.getId());
             return transactionMapper.toResponse(existing);
         }
 
+        Long receiptId = null;
+        Money converted = null;
+        Long savingGoalId = request.getSavingGoalId();
+
         if (request.getReceiptId() != null) {
-            Receipt receipt = receiptRepository.findByIdAndUser_Id(request.getReceiptId(), currentUserId)
-                    .orElseThrow(() -> new IllegalArgumentException("Receipt not found or does not belong to user"));
+            Receipt receipt = receiptScanService.getOwned(request.getReceiptId());
             if (receipt.getTransaction() != null) {
                 throw new IllegalArgumentException("Receipt is already linked to another transaction");
             }
@@ -144,27 +136,38 @@ public class TransactionServiceImpl implements TransactionService {
                 String fromCurrency = receipt.getCurrencyGuess();
                 String toCurrency = wallet.getCurrencyCode();
                 if (fromCurrency != null && !fromCurrency.equals(toCurrency)) {
-                    Money converted = currencyConverter.convert(
+                    converted = currencyConverter.convert(
                             Money.of(receipt.getDetectedAmount(), fromCurrency), toCurrency);
-                    transaction.setAmount(converted.amount());
                     log.info("currency_conversion receipt_id={} from={} to={} original={} converted={}",
                             request.getReceiptId(), fromCurrency, toCurrency,
                             receipt.getDetectedAmount(), converted.amount());
                 }
-                saved = transactionRepository.save(transaction);
             }
 
-            receipt.setTransaction(saved);
+            receiptId = receipt.getId();
+        }
+
+        Transaction recorded = transactionRecorder.record(
+                currentUserId,
+                wallet.getId(),
+                category.getId(),
+                reason.getId(),
+                null,
+                transaction.getAmount(),
+                transaction.getType(),
+                transaction.getCreatedAt(),
+                effectiveKey,
+                converted,
+                receiptId,
+                savingGoalId);
+
+        if (receiptId != null) {
+            Receipt receipt = receiptScanService.getOwned(receiptId);
+            receipt.setTransaction(recorded);
             receiptRepository.save(receipt);
         }
 
-        adjustBalance(wallet, saved.getType(), saved.getAmount());
-        walletRepository.save(wallet);
-
-        eventPublisher.publishEvent(new TransactionChangedEvent(saved.getId(), currentUserId));
-        userDataContextService.updateUserDataContext(currentUserId);
-
-        return transactionMapper.toResponse(saved);
+        return transactionMapper.toResponse(recorded);
     }
 
     @Transactional(readOnly = true)
@@ -172,15 +175,6 @@ public class TransactionServiceImpl implements TransactionService {
     public TransactionResponse findById(Long id) {
         return transactionMapper.toResponse(
                 transactionRepository.findByIdAndUser_Id(id, securityService.getCurrentUser().getId()).orElseThrow());
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<TransactionResponse> findAllByUser(Long userId) {
-        return transactionRepository.findAllByUser_Id(userId)
-                .stream()
-                .map(transactionMapper::toResponse)
-                .toList();
     }
 
     @Override
@@ -210,28 +204,15 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
-    public void disable(Long id) throws HttpException, IOException {
+    public void disable(Long id){
         Transaction transaction = transactionRepository
                 .findByIdAndUser_Id(id, securityService.getCurrentUser().getId()).orElseThrow();
-        Wallet wallet = transaction.getWallet();
         Long userId = transaction.getUser().getId();
         ZoneId zoneId = transaction.getUser().getTimeZone().toZoneId();
         transaction.setActive(false);
         transaction.setDisabledAt(OffsetDateTime.now(zoneId));
-        transactionRepository.save(transaction);
+        Transaction saved = transactionRepository.save(transaction);
 
-        adjustBalance(wallet, transaction.getType(), transaction.getAmount().negate());
-        walletRepository.save(wallet);
-
-        eventPublisher.publishEvent(new TransactionChangedEvent(transaction.getId(), userId));
-        userDataContextService.updateUserDataContext(userId);
-    }
-
-    private void adjustBalance(Wallet wallet, TransactionType type, BigDecimal amount) {
-        if (type == TransactionType.INCOME) {
-            wallet.setBalance(wallet.getBalance().add(amount));
-        } else {
-            wallet.setBalance(wallet.getBalance().subtract(amount));
-        }
+        eventPublisher.publishEvent(new TransactionDisabledEvent(saved.getId(), userId, saved.getAmount(), saved.getType()));
     }
 }

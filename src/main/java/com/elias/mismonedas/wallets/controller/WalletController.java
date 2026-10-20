@@ -1,8 +1,8 @@
-package com.elias.mismonedas.accounts.controller;
+package com.elias.mismonedas.wallets.controller;
 
-import com.elias.mismonedas.accounts.dto.wallet.WalletRequest;
-import com.elias.mismonedas.accounts.dto.wallet.WalletResponse;
-import com.elias.mismonedas.accounts.service.WalletService;
+import com.elias.mismonedas.wallets.dto.wallet.WalletRequest;
+import com.elias.mismonedas.wallets.dto.wallet.WalletResponse;
+import com.elias.mismonedas.wallets.service.WalletService;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;

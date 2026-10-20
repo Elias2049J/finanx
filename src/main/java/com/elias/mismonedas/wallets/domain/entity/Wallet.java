@@ -1,4 +1,4 @@
-package com.elias.mismonedas.accounts.domain.entity;
+package com.elias.mismonedas.wallets.domain.entity;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import jakarta.persistence.*;
