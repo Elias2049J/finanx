@@ -1,7 +1,7 @@
 package com.elias.mismonedas.ledger.repository;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
-import com.elias.mismonedas.accounts.repository.WalletRepository;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.domain.entity.Reason;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
@@ -11,7 +11,6 @@ import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
-import com.elias.mismonedas.ledger.repository.TransactionRepository;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

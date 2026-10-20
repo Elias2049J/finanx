@@ -107,20 +107,6 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setReason(reason);
         String effectiveKey = idempotencyKey != null && !idempotencyKey.isBlank() ? idempotencyKey : null;
         transaction.setIdempotencyKey(effectiveKey);
-        Transaction saved;
-        try {
-            saved = transactionRepository.save(transaction);
-        } catch (DataIntegrityViolationException race) {
-
-            Transaction existing = transactionRepository.findByIdempotencyKey(effectiveKey)
-                    .orElseThrow(() -> race);
-            if (existing.getUser() == null || !existing.getUser().getId().equals(currentUserId)) {
-                throw new ConflictException("Idempotency-Key already used by another user");
-            }
-            log.info("Transaction replay on race: idempotencyKey={} maps to transaction id={}",
-                    effectiveKey, existing.getId());
-            return transactionMapper.toResponse(existing);
-        }
 
         Long receiptId = null;
         Money converted = null;
@@ -147,19 +133,35 @@ public class TransactionServiceImpl implements TransactionService {
             receiptId = receipt.getId();
         }
 
-        Transaction recorded = transactionRecorder.record(
-                currentUserId,
-                wallet.getId(),
-                category.getId(),
-                reason.getId(),
-                null,
-                transaction.getAmount(),
-                transaction.getType(),
-                transaction.getCreatedAt(),
-                effectiveKey,
-                converted,
-                receiptId,
-                savingGoalId);
+        if (transaction.getType() != category.getType()) {
+            throw new IllegalArgumentException("The category transactionType must be the same as transaction");
+        }
+
+        Transaction recorded;
+        try {
+            recorded = transactionRecorder.record(
+                    currentUserId,
+                    wallet.getId(),
+                    category.getId(),
+                    reason.getId(),
+                    null,
+                    transaction.getAmount(),
+                    transaction.getType(),
+                    transaction.getCreatedAt(),
+                    effectiveKey,
+                    converted,
+                    receiptId,
+                    savingGoalId);
+        } catch (DataIntegrityViolationException race) {
+            Transaction existing = transactionRepository.findByIdempotencyKey(effectiveKey)
+                    .orElseThrow(() -> race);
+            if (existing.getUser() == null || !existing.getUser().getId().equals(currentUserId)) {
+                throw new ConflictException("Idempotency-Key already used by another user");
+            }
+            log.info("Transaction replay on race: idempotencyKey={} maps to transaction id={}",
+                    effectiveKey, existing.getId());
+            return transactionMapper.toResponse(existing);
+        }
 
         if (receiptId != null) {
             Receipt receipt = receiptScanService.getOwned(receiptId);
