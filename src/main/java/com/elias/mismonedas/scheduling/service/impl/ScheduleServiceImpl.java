@@ -196,20 +196,15 @@ public class ScheduleServiceImpl implements ScheduleService {
                 return;
             }
 
-            Set<Long> affectedUsers = new HashSet<>();
             for (Long id : page.dueIds()) {
                 try {
-                    Long userId = transactionTemplate.execute(status -> processTransactionOccurrence(id));
-                    if (userId != null) {
-                        affectedUsers.add(userId);
-                    }
+                    transactionTemplate.execute(status -> processTransactionOccurrence(id));
                 } catch (Exception e) {
                     log.error("Error processing TransactionSchedule: id={}", id, e);
                     markTransactionScheduleError(id);
                 }
             }
 
-            recheckPlanning(affectedUsers);
             cursor = page.nextCursor();
         }
     }
@@ -256,18 +251,6 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     private void recheckPlanning(Set<Long> userIds) {
-        for (Long userId : userIds) {
-            try {
-                budgetService.checkAllBudgets(userId);
-            } catch (RuntimeException e) {
-                log.error("Recomputo de presupuestos fallo para el usuario {}", userId, e);
-            }
-            try {
-                savingGoalService.checkAllSavingGoals(userId);
-            } catch (RuntimeException e) {
-                log.error("Recomputo de metas fallo para el usuario {}", userId, e);
-            }
-        }
     }
 
     private record TransactionBatchPage(List<Long> dueIds, Long nextCursor) {}
