@@ -12,14 +12,6 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
-
-
-
-
-
-
-
-
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -28,7 +20,7 @@ public class BillingListener {
     private final BillingService billingService;
 
     @EventListener
-    public void onUserRegistered(UserRegisteredEvent event) {
+    public void on(UserRegisteredEvent event) {
         var subRequest = SubscriptionRequest.builder()
                 .userId(event.userId())
                 .plan(SubscriptionPlan.PREMIUM)

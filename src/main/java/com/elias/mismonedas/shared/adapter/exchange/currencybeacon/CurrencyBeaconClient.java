@@ -12,14 +12,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
-
-
-
-
-
-
-
-
 @Slf4j
 @Component
 public class CurrencyBeaconClient {
