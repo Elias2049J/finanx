@@ -3,21 +3,22 @@ package com.elias.mismonedas.scheduling.service.impl;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.service.ReasonResolver;
+import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.ledger.service.TransactionRecorder;
 import com.elias.mismonedas.scheduling.service.RecurrenceCalculatorService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
 import com.elias.mismonedas.wallets.service.WalletService;
+import com.elias.mismonedas.planning.domain.entity.Budget;
+import com.elias.mismonedas.planning.domain.event.BudgetRegisteredEvent;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
-import com.elias.mismonedas.planning.service.BudgetService;
 import com.elias.mismonedas.planning.service.BudgetService;
 import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
 import com.elias.mismonedas.scheduling.domain.entity.Schedule;
 import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
-import com.elias.mismonedas.scheduling.domain.event.BudgetScheduleDueEvent;
-import com.elias.mismonedas.scheduling.domain.event.TransactionScheduleDueEvent;
 import com.elias.mismonedas.scheduling.domain.enums.RecurrenceType;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.recurrencerule.RecurrenceRuleRequest;
@@ -32,6 +33,7 @@ import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.scheduling.service.RecurrenceCalculatorService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,6 +73,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final BudgetService budgetService;
     private final SavingGoalService savingGoalService;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransactionRecorder transactionRecorder;
+    private final EntityManager entityManager;
     private final WalletService walletService;
     private final TransactionTemplate transactionTemplate;
     private final SecurityService securityService;
@@ -230,7 +234,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             return null;
         }
 
-        publishTransactionDue(st);
+        executeTransaction(st);
 
         scheduleRepository.save(st);
         return st.getUser().getId();
@@ -314,7 +318,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             return;
         }
 
-        publishBudgetDue(st);
+        executeBudget(st);
 
         scheduleRepository.save(st);
     }
@@ -336,21 +340,24 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     private record BudgetBatchPage(List<Long> dueIds, Long nextCursor) {}
 
-    private void publishTransactionDue(TransactionSchedule st) {
+    private void executeTransaction(TransactionSchedule st) {
         OffsetDateTime executedAt = st.getNextRunAt();
 
         st.setLastRunAt(executedAt);
 
-        eventPublisher.publishEvent(new TransactionScheduleDueEvent(
-                st.getId(),
+        transactionRecorder.record(
                 st.getUser().getId(),
                 st.getWallet().getId(),
                 st.getCategory() != null ? st.getCategory().getId() : null,
                 st.getReason() != null ? st.getReason().getId() : null,
+                st.getId(),
                 st.getAmount(),
-                st.getPaymentMethod(),
                 st.getTransactionType(),
-                executedAt));
+                executedAt,
+                UUID.randomUUID().toString(),
+                null,
+                null,
+                null);
 
         boolean hasNext = advanceOrFinalize(st);
 
@@ -363,7 +370,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
     }
 
-    private void publishBudgetDue(BudgetSchedule st) {
+    private void executeBudget(BudgetSchedule st) {
         OffsetDateTime executedAt = st.getNextRunAt();
 
         st.setLastRunAt(executedAt);
@@ -371,16 +378,23 @@ public class ScheduleServiceImpl implements ScheduleService {
         OffsetDateTime budgetEnd = rcService.computeNextRunAt(st)
                 .orElse(st.getRecurrenceRule().getEnd());
 
-        eventPublisher.publishEvent(new BudgetScheduleDueEvent(
-                st.getId(),
-                st.getUser().getId(),
-                st.getCategory() != null ? st.getCategory().getId() : null,
-                st.getAlertable(),
-                st.getPercentAlert(),
-                st.getLimitAmount(),
-                st.getDescription(),
-                executedAt,
-                budgetEnd));
+        User user = entityManager.getReference(User.class, st.getUser().getId());
+        Category category = st.getCategory() != null
+                ? categoryRepository.getReferenceById(st.getCategory().getId())
+                : null;
+
+        Budget budget = budgetRepository.save(Budget.builder()
+                .schedule(st)
+                .user(user)
+                .category(category)
+                .alertable(st.getAlertable())
+                .percentAlert(st.getPercentAlert())
+                .limitAmount(st.getLimitAmount())
+                .currencyCode(st.getUser().getPreferences().getCurrencyCode())
+                .description(st.getDescription())
+                .start(executedAt)
+                .end(budgetEnd)
+                .build());
 
         boolean hasNext = advanceOrFinalize(st);
 
@@ -391,6 +405,8 @@ public class ScheduleServiceImpl implements ScheduleService {
             log.info("BudgetSchedule completed: id={} userId={} executedAt={} (no further occurrences)",
                     st.getId(), st.getUser().getId(), executedAt);
         }
+
+        eventPublisher.publishEvent(new BudgetRegisteredEvent(budget.getId(), st.getUser().getId()));
     }
 
     private boolean isDue(Schedule st) {
