@@ -6,11 +6,12 @@ import com.elias.mismonedas.document.domain.entity.Receipt;
 import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
 import com.elias.mismonedas.document.dto.ReceiptResponse;
 import com.elias.mismonedas.document.dto.scan.ReceiptScanResultMessage;
+import com.elias.mismonedas.document.mapper.ReceiptMapper;
 import com.elias.mismonedas.document.outbox.ReceiptScanJobDispatcher;
 import com.elias.mismonedas.document.outbox.ReceiptScanOutbox;
 import com.elias.mismonedas.document.outbox.ReceiptScanOutboxState;
 import com.elias.mismonedas.document.outbox.persistence.ReceiptScanOutboxRepository;
-import com.elias.mismonedas.document.port.ReceiptData;
+import com.elias.mismonedas.document.dto.ReceiptData;
 import com.elias.mismonedas.document.port.ReceiptParserPort;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import com.elias.mismonedas.document.repository.ReceiptRepository;
@@ -41,21 +42,40 @@ import static org.mockito.Mockito.*;
 class ReceiptScanServiceImplTest {
 
     @Mock private ReceiptParserPort regexParser;
-    @Mock private ReceiptParserPort geminiParser;
+    @Mock private ReceiptParserPort aiParser;
     @Mock private ReceiptRepository receiptRepository;
     @Mock private ImageService imageService;
     @Mock private SecurityService securityService;
     @Mock private CategoryRepository categoryRepository;
     @Mock private ReceiptScanOutboxRepository outboxRepository;
     @Mock private ReceiptScanJobDispatcher jobDispatcher;
+    @Mock private ReceiptMapper receiptMapper;
 
     private ReceiptScanServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new ReceiptScanServiceImpl(
-                regexParser, geminiParser, receiptRepository, imageService,
-                securityService, categoryRepository, outboxRepository, jobDispatcher);
+                regexParser, aiParser, receiptRepository, imageService,
+                securityService, categoryRepository, outboxRepository, jobDispatcher, receiptMapper);
+        lenient().when(receiptMapper.toResponse(any(Receipt.class))).thenAnswer(invocation -> {
+            Receipt receipt = invocation.getArgument(0);
+            return new ReceiptResponse(
+                    receipt.getId(),
+                    receipt.getStatus(),
+                    receipt.getErrorMessage(),
+                    receipt.getImage() != null ? receipt.getImage().getId() : null,
+                    receipt.getDetectedAmount(),
+                    receipt.getDetectedDate(),
+                    receipt.getDescription(),
+                    receipt.getPaymentMethod(),
+                    receipt.getTransactionType(),
+                    receipt.getDetectedCategoryId(),
+                    receipt.getRawOcrText(),
+                    receipt.getCurrencyGuess(),
+                    receipt.getConfidenceScore(),
+                    receipt.getParserEngineUsed());
+        });
     }
 
     @Nested
@@ -127,7 +147,7 @@ class ReceiptScanServiceImplTest {
             assertThat(receipt.getRawOcrText()).isEqualTo("TOTAL S/. 45.00");
             assertThat(receipt.getOcrDurationMs()).isEqualTo(1500L);
             assertThat(receipt.getErrorMessage()).isNull();
-            verify(geminiParser, never()).parse(any());
+            verify(aiParser, never()).parse(any());
             verify(receiptRepository).save(receipt);
         }
 
@@ -137,7 +157,7 @@ class ReceiptScanServiceImplTest {
             when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
             when(regexParser.parse("texto ambiguo")).thenReturn(
                     new ReceiptData(null, null, null, "PEN", null, null, 0.0, null));
-            when(geminiParser.parse("texto ambiguo")).thenReturn(new ReceiptData(
+            when(aiParser.parse("texto ambiguo")).thenReturn(new ReceiptData(
                     new BigDecimal("32.50"), LocalDate.of(2026, 7, 2), "Restaurante",
                     "PEN", PaymentMethod.CREDIT_CARD, TransactionType.SPENT, 0.85, null));
 
@@ -168,7 +188,7 @@ class ReceiptScanServiceImplTest {
             when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
             when(regexParser.parse("texto sin monto")).thenReturn(
                     new ReceiptData(null, null, null, "PEN", null, null, 0.0, null));
-            when(geminiParser.parse("texto sin monto")).thenThrow(new RuntimeException("Gemini error"));
+            when(aiParser.parse("texto sin monto")).thenThrow(new RuntimeException("Gemini error"));
 
             service.applyScanResult(new ReceiptScanResultMessage(
                     1L, "DONE", "texto sin monto", "rapidocr-ppocrv6", 0.3, 1000L, null));
@@ -238,7 +258,7 @@ class ReceiptScanServiceImplTest {
             receipt.setDetectedAmount(new BigDecimal("45.00"));
             when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
 
-            ReceiptResponse result = service.getScanResult(1L);
+            ReceiptResponse result = service.getById(1L);
 
             assertThat(result.getReceiptId()).isEqualTo(1L);
             assertThat(result.getStatus()).isEqualTo(ReceiptScanStatus.DONE);
@@ -250,7 +270,7 @@ class ReceiptScanServiceImplTest {
             when(securityService.getCurrentUser()).thenReturn(createTestUser());
             when(receiptRepository.findByIdAndUser_Id(99L, 1L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getScanResult(99L))
+            assertThatThrownBy(() -> service.getById(99L))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -266,7 +286,7 @@ class ReceiptScanServiceImplTest {
             receipt.setRawOcrText("TOTAL S/. 45.00");
             receipt.setConfidenceScore(0.5);
             when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
-            when(geminiParser.parse("TOTAL S/. 45.00")).thenReturn(new ReceiptData(
+            when(aiParser.parse("TOTAL S/. 45.00")).thenReturn(new ReceiptData(
                     new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado ABC",
                     "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
             when(receiptRepository.save(any(Receipt.class))).thenAnswer(i -> i.getArgument(0));

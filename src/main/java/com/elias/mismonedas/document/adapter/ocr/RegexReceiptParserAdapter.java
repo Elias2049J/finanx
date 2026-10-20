@@ -1,6 +1,6 @@
 package com.elias.mismonedas.document.adapter.ocr;
 
-import com.elias.mismonedas.document.port.ReceiptData;
+import com.elias.mismonedas.document.dto.ReceiptData;
 import com.elias.mismonedas.document.port.ReceiptParserPort;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;

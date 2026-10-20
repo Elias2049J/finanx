@@ -9,11 +9,12 @@ import com.elias.mismonedas.document.domain.entity.Receipt;
 import com.elias.mismonedas.document.domain.enums.ReceiptScanStatus;
 import com.elias.mismonedas.document.dto.ReceiptResponse;
 import com.elias.mismonedas.document.dto.scan.ReceiptScanResultMessage;
+import com.elias.mismonedas.document.mapper.ReceiptMapper;
 import com.elias.mismonedas.document.outbox.ReceiptScanJobDispatcher;
 import com.elias.mismonedas.document.outbox.ReceiptScanOutbox;
 import com.elias.mismonedas.document.outbox.ReceiptScanOutboxState;
 import com.elias.mismonedas.document.outbox.persistence.ReceiptScanOutboxRepository;
-import com.elias.mismonedas.document.port.ReceiptData;
+import com.elias.mismonedas.document.dto.ReceiptData;
 import com.elias.mismonedas.document.port.ReceiptParserPort;
 import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.document.service.ImageService;
@@ -38,30 +39,33 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
     private static final double CONFIDENCE_THRESHOLD = 0.55;
 
     private final ReceiptParserPort regexParser;
-    private final ReceiptParserPort geminiParser;
+    private final ReceiptParserPort aiParser;
     private final ReceiptRepository receiptRepository;
     private final ImageService imageService;
     private final SecurityService securityService;
     private final CategoryRepository categoryRepository;
     private final ReceiptScanOutboxRepository outboxRepository;
     private final ReceiptScanJobDispatcher jobDispatcher;
+    private final ReceiptMapper receiptMapper;
 
     public ReceiptScanServiceImpl(@Qualifier("regex") ReceiptParserPort regexParser,
-                                  @Qualifier("gemini") ReceiptParserPort geminiParser,
+                                  @Qualifier("gemini") ReceiptParserPort aiParser,
                                   ReceiptRepository receiptRepository,
                                   ImageService imageService,
                                   SecurityService securityService,
                                   CategoryRepository categoryRepository,
                                   ReceiptScanOutboxRepository outboxRepository,
-                                  ReceiptScanJobDispatcher jobDispatcher) {
+                                  ReceiptScanJobDispatcher jobDispatcher,
+                                  ReceiptMapper receiptMapper) {
         this.regexParser = regexParser;
-        this.geminiParser = geminiParser;
+        this.aiParser = aiParser;
         this.receiptRepository = receiptRepository;
         this.imageService = imageService;
         this.securityService = securityService;
         this.categoryRepository = categoryRepository;
         this.outboxRepository = outboxRepository;
         this.jobDispatcher = jobDispatcher;
+        this.receiptMapper = receiptMapper;
     }
 
     @Override
@@ -93,7 +97,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
 
         log.info("scan_enqueued receipt_id={} userId={} bucket={} objectKey={}",
                 receipt.getId(), userId, image.getBucketName(), image.getObjectKey());
-        return toResponse(receipt);
+        return this.receiptMapper.toResponse(receipt);
     }
 
     private void publishScanJobAfterCommit(Long outboxId) {
@@ -145,7 +149,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
 
         if (data.parseConfidence() < CONFIDENCE_THRESHOLD) {
             try {
-                ReceiptData improved = geminiParser.parse(rawText);
+                ReceiptData improved = aiParser.parse(rawText);
                 if (improved.parseConfidence() > data.parseConfidence()) {
                     data = improved;
                     engineUsed = "GEMINI";
@@ -189,11 +193,16 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
 
     @Override
     @Transactional(readOnly = true)
-    public ReceiptResponse getScanResult(Long receiptId) {
+    public Receipt getOwned(Long receiptId) {
         Long userId = securityService.getCurrentUser().getId();
-        Receipt receipt = receiptRepository.findByIdAndUser_Id(receiptId, userId)
+        return receiptRepository.findByIdAndUser_Id(receiptId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
-        return toResponse(receipt);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReceiptResponse getById(Long receiptId) {
+        return this.receiptMapper.toResponse(getOwned(receiptId));
     }
 
     @Override
@@ -209,7 +218,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
         }
 
         double oldConfidence = receipt.getConfidenceScore() != null ? receipt.getConfidenceScore() : 0.0;
-        ReceiptData improved = geminiParser.parse(rawText);
+        ReceiptData improved = aiParser.parse(rawText);
         if (improved.parseConfidence() > oldConfidence) {
             Long detectedCategoryId = matchCategory(userId, improved, rawText);
             receipt.setDetectedAmount(improved.amount());
@@ -229,7 +238,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
                     receiptId, improved.parseConfidence(), oldConfidence);
         }
 
-        return toResponse(receipt);
+        return this.receiptMapper.toResponse(receipt);
     }
 
     private void fail(Receipt receipt, String reason) {
@@ -241,26 +250,6 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
 
     private static boolean isTerminal(ReceiptScanStatus status) {
         return status == ReceiptScanStatus.DONE || status == ReceiptScanStatus.FAILED;
-    }
-
-    private ReceiptResponse toResponse(Receipt receipt) {
-        Long imageId = receipt.getImage() != null ? receipt.getImage().getId() : null;
-        return new ReceiptResponse(
-                receipt.getId(),
-                receipt.getStatus(),
-                receipt.getErrorMessage(),
-                imageId,
-                receipt.getDetectedAmount(),
-                receipt.getDetectedDate(),
-                receipt.getDescription(),
-                receipt.getPaymentMethod(),
-                receipt.getTransactionType(),
-                receipt.getDetectedCategoryId(),
-                receipt.getRawOcrText(),
-                receipt.getCurrencyGuess(),
-                receipt.getConfidenceScore(),
-                receipt.getParserEngineUsed()
-        );
     }
 
     private Long matchCategory(Long userId, ReceiptData data, String rawOcrText) {

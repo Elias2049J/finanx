@@ -11,7 +11,6 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
-import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.time.Duration;
 
@@ -31,7 +30,7 @@ public class SeaweedFsObjectStorageAdapter implements ObjectStoragePort {
                 .contentDisposition(contentDisposition(filename))
                 .contentLength((long) data.length)
                 .build();
-        s3Client.putObject(request, RequestBody.fromInputStream(new ByteArrayInputStream(data), data.length));
+        s3Client.putObject(request, RequestBody.fromBytes(data));
     }
 
     @Override

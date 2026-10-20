@@ -80,6 +80,6 @@ public class ReceiptController {
     @GetMapping("/{receiptId}")
     public ResponseEntity<ReceiptResponse> getScanResult(
             @PathVariable Long receiptId) {
-        return ResponseEntity.ok(receiptScanService.getScanResult(receiptId));
+        return ResponseEntity.ok(receiptScanService.getById(receiptId));
     }
 }

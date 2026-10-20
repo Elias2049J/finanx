@@ -35,12 +35,19 @@ class SeaweedFsObjectStorageAdapterTest {
         adapter.putObject("images", "images/1/a.jpg", "image/jpeg", "receipt.jpg", contents);
 
         ArgumentCaptor<PutObjectRequest> requestCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
-        verify(s3Client).putObject(requestCaptor.capture(), any(RequestBody.class));
+        ArgumentCaptor<RequestBody> bodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client).putObject(requestCaptor.capture(), bodyCaptor.capture());
         assertThat(requestCaptor.getValue().bucket()).isEqualTo("images");
         assertThat(requestCaptor.getValue().key()).isEqualTo("images/1/a.jpg");
         assertThat(requestCaptor.getValue().contentType()).isEqualTo("image/jpeg");
         assertThat(requestCaptor.getValue().contentDisposition()).contains("receipt.jpg");
         assertThat(requestCaptor.getValue().contentLength()).isEqualTo(3L);
+
+        // El cuerpo debe tener longitud conocida (no transferencia "aws-chunked",
+        // que SeaweedFS rechaza de forma intermitente con 500).
+        RequestBody body = bodyCaptor.getValue();
+        assertThat(body.optionalContentLength()).contains(3L);
+        assertThat(body.contentStreamProvider()).isNotNull();
     }
 
     @Test

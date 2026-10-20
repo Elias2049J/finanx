@@ -1,4 +1,4 @@
-package com.elias.mismonedas.document.port;
+package com.elias.mismonedas.document.dto;
 
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;

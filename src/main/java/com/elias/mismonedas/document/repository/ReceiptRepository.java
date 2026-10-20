@@ -17,13 +17,9 @@ public interface ReceiptRepository extends JpaRepository<Receipt, Long> {
 
     List<Receipt> findAllByUser_Id(Long userId);
 
-    List<Receipt> findAllByUser_IdAndActiveTrue(Long userId);
-
     Optional<Receipt> findByIdAndUser_Id(Long id, Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from Receipt r where r.id = :id")
     Optional<Receipt> findByIdForUpdate(@Param("id") Long id);
-
-    long countByUser_IdAndCreatedAtAfter(Long userId, OffsetDateTime after);
 }
