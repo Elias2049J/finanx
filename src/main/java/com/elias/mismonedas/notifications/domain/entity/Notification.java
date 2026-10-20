@@ -51,6 +51,7 @@ public class Notification {
     @Column(name = "estado", nullable = false)
     private NotificationState state;
 
+    // TODO: desacoplar Notification.schedule a scheduleId (mismo patron que Transaction).
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_programacion")
     private Schedule schedule;

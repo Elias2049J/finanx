@@ -4,6 +4,8 @@ import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.planning.domain.event.BudgetExceededEvent;
 import com.elias.mismonedas.planning.domain.event.BudgetNearLimitEvent;
 import com.elias.mismonedas.planning.domain.event.SavingGoalCompletedEvent;
+import com.elias.mismonedas.scheduling.domain.event.BudgetScheduleExecutedEvent;
+import com.elias.mismonedas.scheduling.domain.event.TransactionScheduleExecutedEvent;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -52,5 +54,13 @@ public class NotificationMessageFormatter {
                 " el " +
                 dateMapper.toStringES(event.lastTransactionAt(), zone) +
                 ". ¡Excelente disciplina financiera!";
+    }
+
+    public String transactionScheduleExecuted(TransactionScheduleExecutedEvent event) {
+        return "Se ha registrado un nuevo movimiento";
+    }
+
+    public String budgetScheduleExecuted(BudgetScheduleExecutedEvent event) {
+        return "Se ha registrado un nuevo presupuesto";
     }
 }
