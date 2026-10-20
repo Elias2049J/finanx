@@ -91,11 +91,6 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         sgRepository.save(existing);
     }
 
-
-
-
-
-
     private Map<Long, SavingGoalTotals> totalsOf(Long userId, Collection<SavingGoal> goals) {
         Map<Long, SavingGoalTotals> totals = new HashMap<>();
         for (SavingGoal goal : goals) {
@@ -108,8 +103,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
             BigDecimal converted = currencyConverter
                     .convert(Money.of(row.getTotal(), row.getCurrencyCode()), row.getGoalCurrencyCode())
                     .amount();
-            SavingGoalTotals current = totals.get(row.getGoalId());
-            totals.put(row.getGoalId(), new SavingGoalTotals(
+            totals.computeIfPresent(row.getGoalId(), (k, current) -> new SavingGoalTotals(
                     current.accumulated().add(converted),
                     current.transactionsCount() + row.getTransactionsCount().intValue()));
         }
@@ -124,16 +118,6 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         existing.setActive(false);
         existing.setDisabledAt(OffsetDateTime.now(zoneId));
         sgRepository.save(existing);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<SavingGoalResponse> findAllActiveByUser(Long userId) {
-        List<SavingGoal> goals = sgRepository.findAllByUser_IdAndActive(userId, true);
-        Map<Long, SavingGoalTotals> totals = totalsOf(userId, goals);
-        return goals.stream()
-                .map(g -> sgMapper.toResponse(g, totals.get(g.getId())))
-                .toList();
     }
 
     @Override
@@ -155,7 +139,9 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         return sgMapper.toResponse(entity, totalsOf(entity.getUser().getId(), List.of(entity)).get(entity.getId()));
     }
 
-    private SavingGoal getOwned(Long id) {
+    @Transactional
+    @Override
+    public SavingGoal getOwned(Long id) {
         Long userId = securityService.getCurrentUser().getId();
         return sgRepository.findByIdAndUser_Id(id, userId)
                 .orElseThrow(() -> new EntityNotFoundException("SavingGoal not found: " + id));

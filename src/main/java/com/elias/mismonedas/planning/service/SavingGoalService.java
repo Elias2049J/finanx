@@ -1,5 +1,6 @@
 package com.elias.mismonedas.planning.service;
 
+import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.planning.dto.saving.SavingGoalRequest;
 import com.elias.mismonedas.planning.dto.saving.SavingGoalResponse;
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
@@ -18,9 +19,11 @@ public interface SavingGoalService {
 
     @Transactional
     void disable(Long id);
-    List<SavingGoalResponse> findAllActiveByUser(Long userId);
     PageResponse<SavingGoalResponse> list(Boolean active, SavingGoalState state, Pageable pageable);
     SavingGoalResponse findById(Long id);
+
+    @Transactional
+    SavingGoal getOwned(Long id);
 
     @Transactional
     void checkAllSavingGoals(Long userId);
