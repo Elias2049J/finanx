@@ -1,7 +1,7 @@
 package com.elias.mismonedas.insights.service.impl.analytics;
 
-import com.elias.mismonedas.accounts.domain.entity.Wallet;
-import com.elias.mismonedas.accounts.repository.WalletRepository;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.catalog.dto.category.CategorySummary;
 import com.elias.mismonedas.catalog.dto.reason.ReasonSummary;
 import com.elias.mismonedas.catalog.mapper.CategoryMapper;
