@@ -2,14 +2,15 @@ package com.elias.mismonedas.notifications.listener;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
 import com.elias.mismonedas.notifications.service.NotificationService;
 import com.elias.mismonedas.notifications.template.NotificationMessageFormatter;
+import com.elias.mismonedas.planning.domain.event.BudgetRegisteredEvent;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
-import com.elias.mismonedas.scheduling.domain.event.BudgetScheduleExecutedEvent;
-import com.elias.mismonedas.scheduling.domain.event.TransactionScheduleExecutedEvent;
 import com.elias.mismonedas.scheduling.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -21,11 +22,15 @@ public class ScheduleNotificationListener {
     private final NotificationService notificationService;
     private final NotificationMessageFormatter formatter;
     private final UserRepository userRepository;
-    private final ScheduleRepository scheduleRepository;
     private final BudgetRepository budgetRepository;
+    private final ScheduleRepository scheduleRepository;
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
-    public void onTransactionScheduleExecuted(TransactionScheduleExecutedEvent event) {
+    public void onTransactionRegistered(TransactionRegisteredEvent event) {
+        if (event.scheduleId() == null) {
+            return;
+        }
+
         User user = userRepository.getReferenceById(event.userId());
 
         notificationService.generate(builder -> builder
@@ -36,12 +41,11 @@ public class ScheduleNotificationListener {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
-    public void onBudgetScheduleExecuted(BudgetScheduleExecutedEvent event) {
+    public void onBudgetRegistered(BudgetRegisteredEvent event) {
         User user = userRepository.getReferenceById(event.userId());
 
         notificationService.generate(builder -> builder
                 .user(user)
-                .schedule(scheduleRepository.getReferenceById(event.scheduleId()))
                 .budget(budgetRepository.getReferenceById(event.budgetId()))
                 .type(NotificationType.INFO)
                 .message(formatter.budgetScheduleExecuted(event)));
