@@ -18,7 +18,7 @@ import com.elias.mismonedas.scheduling.mapper.ScheduleMapper;
 import com.elias.mismonedas.scheduling.repository.BudgetScheduleRepository;
 import com.elias.mismonedas.scheduling.repository.ScheduleRepository;
 import com.elias.mismonedas.scheduling.repository.TransactionScheduleRepository;
-import com.elias.mismonedas.scheduling.service.RecurrenceCalculatorService;
+import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,7 +58,7 @@ class ScheduleServiceImplBatchTest {
     @Mock private CategoryRepository categoryRepository;
     @Mock private ScheduleMapper tsMapper;
     @Mock private BudgetRepository budgetRepository;
-    @Mock private RecurrenceCalculatorService rcService;
+    @Mock private RecurrenceService rcService;
     @Mock private ReasonResolver reasonResolver;
     @Mock private RecurrenceService recurrenceService;
     @Mock private BudgetService budgetService;

@@ -67,7 +67,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final CategoryRepository categoryRepository;
     private final ScheduleMapper tsMapper;
     private final BudgetRepository budgetRepository;
-    private final RecurrenceCalculatorService rcService;
+    private final RecurrenceService rcService;
     private final ReasonResolver reasonResolver;
     private final RecurrenceService recurrenceService;
     private final BudgetService budgetService;

@@ -22,7 +22,7 @@ import com.elias.mismonedas.planning.service.BudgetService;
 import com.elias.mismonedas.planning.support.ConvertedAmounts;
 import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
-import com.elias.mismonedas.scheduling.service.RecurrenceCalculatorService;
+import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
@@ -55,7 +55,7 @@ public class BudgetServiceImpl implements BudgetService {
     private final BudgetMapper budgetMapper;
     private final RecurrenceService recurrenceService;
     private final TransactionRepository transactionRepository;
-    private final RecurrenceCalculatorService rcService;
+    private final RecurrenceService rcService;
     private final ApplicationEventPublisher eventPublisher;
     private final CurrencyConverter currencyConverter;
     private final SecurityService securityService;
