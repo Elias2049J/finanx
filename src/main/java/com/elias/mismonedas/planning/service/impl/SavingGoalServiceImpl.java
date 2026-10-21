@@ -142,7 +142,12 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     @Transactional
     @Override
     public SavingGoal getOwned(Long id) {
-        Long userId = securityService.getCurrentUser().getId();
+        return getOwned(id, securityService.getCurrentUser().getId());
+    }
+
+    @Transactional
+    @Override
+    public SavingGoal getOwned(Long id, Long userId) {
         return sgRepository.findByIdAndUser_Id(id, userId)
                 .orElseThrow(() -> new EntityNotFoundException("SavingGoal not found: " + id));
     }

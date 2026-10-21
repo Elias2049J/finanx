@@ -17,6 +17,8 @@ public interface WalletService {
 
     Wallet getOwned(Long id);
 
+    Wallet getOwned(Long id, Long userId);
+
     PageResponse<WalletResponse> list(Pageable pageable);
 
     void disable(Long id);

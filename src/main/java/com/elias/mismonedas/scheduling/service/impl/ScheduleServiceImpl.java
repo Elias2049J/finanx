@@ -327,7 +327,7 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         TransactionRequest txRequest = new TransactionRequest();
         txRequest.setWalletId(st.getWallet().getId());
-        txRequest.setCategoryId(st.getCategory() != null ? st.getCategory().getId() : null);
+        txRequest.setCategoryId(st.getCategory().getId());
         txRequest.setReasonId(st.getReason() != null ? st.getReason().getId() : null);
         txRequest.setDescription(null);
         txRequest.setSavingGoalId(null);

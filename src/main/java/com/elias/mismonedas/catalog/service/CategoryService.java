@@ -20,6 +20,8 @@ public interface CategoryService {
 
     Category getOwned(Long id);
 
+    Category getOwned(Long id, Long userId);
+
     List<CategoryResponse> findAllByUserAndActive(Long idUser, boolean active);
     List<CategoryResponse> findAllByUser(Long idUser);
     PageResponse<CategoryResponse> list(Boolean active, TransactionType type, String search, Pageable pageable);

@@ -8,6 +8,7 @@ import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
+import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -79,6 +80,19 @@ public class Transaction {
 
     @Column(name = "clave_idempotencia", unique = true)
     private String idempotencyKey;
+
+    public void assignSavingGoal(SavingGoal savingGoal) {
+        if (savingGoal == null) {
+            return;
+        }
+        if (type != TransactionType.INCOME) {
+            throw new IllegalArgumentException("Cannot associate a spent to a saving goal");
+        }
+        if (savingGoal.getState() != SavingGoalState.RUNNING) {
+            throw new IllegalArgumentException("Cannot associate a transaction to a completed or cancelled saving goal");
+        }
+        this.savingGoal = savingGoal;
+    }
 
     @PrePersist
     private void onCreate() {

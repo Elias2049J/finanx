@@ -93,4 +93,11 @@ public class Receipt {
     protected void onCreate() {
         if (createdAt == null) createdAt = OffsetDateTime.now(user.getTimeZone().toZoneId());
     }
+
+    public void linkTo(Transaction transaction) {
+        if (this.transaction != null) {
+            throw new IllegalArgumentException("Receipt is already linked to another transaction");
+        }
+        this.transaction = transaction;
+    }
 }

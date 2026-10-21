@@ -103,7 +103,12 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional(readOnly = true)
     public Category getOwned(Long id) {
-        Long userId = securityService.getCurrentUser().getId();
+        return getOwned(id, securityService.getCurrentUser().getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Category getOwned(Long id, Long userId) {
         return categoryRepository.findByIdAndUser_Id(id, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found: " + id));
     }

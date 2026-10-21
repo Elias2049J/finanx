@@ -25,6 +25,8 @@ public interface SavingGoalService {
     @Transactional
     SavingGoal getOwned(Long id);
 
+    SavingGoal getOwned(Long id, Long userId);
+
     @Transactional
     void checkAllSavingGoals(Long userId);
 }
