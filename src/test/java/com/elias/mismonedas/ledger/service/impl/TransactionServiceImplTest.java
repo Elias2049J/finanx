@@ -135,7 +135,7 @@ class TransactionServiceImplTest {
             when(categoryService.getOwned(100L)).thenReturn(category);
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRecorder.record(
-                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(recordedTransaction);
             when(transactionMapper.toResponse(recordedTransaction)).thenReturn(response);
 
@@ -147,7 +147,8 @@ class TransactionServiceImplTest {
             verify(transactionRecorder).record(
                     1L, 10L, 100L, 500L, null,
                     new BigDecimal("50.00"), TransactionType.SPENT,
-                    transaction.getCreatedAt(), null, null, null, null);
+                    transaction.getCreatedAt(), null, null, null, null,
+                    request.getPaymentMethod());
         }
 
         @Test
@@ -166,7 +167,7 @@ class TransactionServiceImplTest {
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(receiptScanService.getOwned(777L)).thenReturn(receipt);
             when(transactionRecorder.record(
-                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(recordedTransaction);
             when(transactionMapper.toResponse(recordedTransaction)).thenReturn(response);
 
@@ -195,7 +196,7 @@ class TransactionServiceImplTest {
             assertThat(result.getId()).isEqualTo(999L);
             verify(transactionRepository, never()).save(any());
             verify(transactionRecorder, never()).record(
-                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any());
+                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -233,7 +234,7 @@ class TransactionServiceImplTest {
             when(transactionRepository.findByIdempotencyKey("key-1"))
                     .thenReturn(Optional.empty(), Optional.of(existing));
             when(transactionRecorder.record(
-                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenThrow(new DataIntegrityViolationException("uq clave_idempotencia"));
             when(transactionMapper.toResponse(existing)).thenReturn(existingResponse);
 

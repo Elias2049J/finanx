@@ -15,6 +15,9 @@ import java.util.List;
 public interface TransactionService {
 
     TransactionResponse create(TransactionRequest request, String idempotencyKey) throws HttpException, IOException;
+
+    TransactionResponse create(Long userId, TransactionRequest request, String idempotencyKey) throws HttpException, IOException;
+
     TransactionResponse findById(Long id);
     PageResponse<TransactionResponse> list(
             Boolean active,

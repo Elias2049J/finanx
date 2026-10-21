@@ -15,7 +15,6 @@ import com.elias.mismonedas.catalog.repository.ReasonRepository;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.wallets.service.WalletService;
-import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +34,6 @@ public class TransactionRecorderImpl implements TransactionRecorder {
     private final CategoryRepository categoryRepository;
     private final ReasonRepository reasonRepository;
     private final SavingGoalRepository savingGoalRepository;
-    private final ReceiptRepository receiptRepository;
     private final WalletService walletService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -52,7 +50,8 @@ public class TransactionRecorderImpl implements TransactionRecorder {
             String idempotencyKey,
             Money convertedAmount,
             Long receiptId,
-            Long savingGoalId) {
+            Long savingGoalId,
+            PaymentMethod method) {
 
         User user = userRepository.getReferenceById(userId);
         Wallet wallet = walletRepository.findByIdAndUser_Id(walletId, userId)
@@ -72,11 +71,11 @@ public class TransactionRecorderImpl implements TransactionRecorder {
         transaction.setCategory(category);
         transaction.setReason(reasonId != null ? reasonRepository.getReferenceById(reasonId) : null);
         transaction.setSavingGoal(savingGoalId != null ? savingGoalRepository.getReferenceById(savingGoalId) : null);
-        transaction.setReceipt(receiptId != null ? receiptRepository.getReferenceById(receiptId) : null);
+
         transaction.setScheduleId(scheduleId);
         transaction.setAmount(recordedAmount);
         transaction.setType(type);
-        transaction.setPaymentMethod(PaymentMethod.CASH);
+        transaction.setPaymentMethod(method);
         transaction.setCreatedAt(createdAt);
         transaction.setIdempotencyKey(idempotencyKey);
         transaction.setActive(Boolean.TRUE);

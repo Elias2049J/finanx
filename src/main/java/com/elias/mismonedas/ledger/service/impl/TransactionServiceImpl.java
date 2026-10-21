@@ -68,11 +68,17 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(rollbackFor = Exception.class)
     public TransactionResponse create(TransactionRequest request, String idempotencyKey) throws HttpException, IOException {
         Long currentUserId = securityService.getCurrentUser().getId();
+        return create(currentUserId, request, idempotencyKey);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TransactionResponse create(Long userId, TransactionRequest request, String idempotencyKey) throws HttpException, IOException {
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             var existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
                 Transaction replayed = existing.get();
-                if (replayed.getUser() == null || !replayed.getUser().getId().equals(currentUserId)) {
+                if (replayed.getUser() == null || !replayed.getUser().getId().equals(userId)) {
                     throw new ConflictException("Idempotency-Key already used by another user");
                 }
                 log.info("Transaction replay ignored: idempotencyKey={} maps to transaction id={}",
@@ -102,7 +108,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         Reason reason = reasonResolver
-                .resolveOrCreate(currentUserId, request.getReasonId(), request.getDescription())
+                .resolveOrCreate(userId, request.getReasonId(), request.getDescription())
                 .orElseThrow();
         transaction.setReason(reason);
         String effectiveKey = idempotencyKey != null && !idempotencyKey.isBlank() ? idempotencyKey : null;
@@ -140,7 +146,7 @@ public class TransactionServiceImpl implements TransactionService {
         Transaction recorded;
         try {
             recorded = transactionRecorder.record(
-                    currentUserId,
+                    userId,
                     wallet.getId(),
                     category.getId(),
                     reason.getId(),
@@ -151,11 +157,12 @@ public class TransactionServiceImpl implements TransactionService {
                     effectiveKey,
                     converted,
                     receiptId,
-                    savingGoalId);
+                    savingGoalId,
+                    request.getPaymentMethod());
         } catch (DataIntegrityViolationException race) {
             Transaction existing = transactionRepository.findByIdempotencyKey(effectiveKey)
                     .orElseThrow(() -> race);
-            if (existing.getUser() == null || !existing.getUser().getId().equals(currentUserId)) {
+            if (existing.getUser() == null || !existing.getUser().getId().equals(userId)) {
                 throw new ConflictException("Idempotency-Key already used by another user");
             }
             log.info("Transaction replay on race: idempotencyKey={} maps to transaction id={}",

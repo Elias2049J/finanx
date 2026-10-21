@@ -5,7 +5,8 @@ import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.service.ReasonResolver;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
-import com.elias.mismonedas.ledger.service.TransactionRecorder;
+import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
+import com.elias.mismonedas.ledger.service.TransactionService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
 import com.elias.mismonedas.wallets.service.WalletService;
@@ -71,7 +72,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final BudgetService budgetService;
     private final SavingGoalService savingGoalService;
     private final ApplicationEventPublisher eventPublisher;
-    private final TransactionRecorder transactionRecorder;
+    private final TransactionService transactionService;
     private final EntityManager entityManager;
     private final WalletService walletService;
     private final TransactionTemplate transactionTemplate;
@@ -326,19 +327,23 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         st.setLastRunAt(executedAt);
 
-        transactionRecorder.record(
-                st.getUser().getId(),
-                st.getWallet().getId(),
-                st.getCategory() != null ? st.getCategory().getId() : null,
-                st.getReason() != null ? st.getReason().getId() : null,
-                st.getId(),
-                st.getAmount(),
-                st.getTransactionType(),
-                executedAt,
-                UUID.randomUUID().toString(),
-                null,
-                null,
-                null);
+        TransactionRequest txRequest = new TransactionRequest();
+        txRequest.setWalletId(st.getWallet().getId());
+        txRequest.setCategoryId(st.getCategory() != null ? st.getCategory().getId() : null);
+        txRequest.setReasonId(st.getReason() != null ? st.getReason().getId() : null);
+        txRequest.setDescription(null);
+        txRequest.setSavingGoalId(null);
+        txRequest.setReceiptId(null);
+        txRequest.setAmount(st.getAmount());
+        txRequest.setPaymentMethod(st.getPaymentMethod());
+        txRequest.setType(st.getTransactionType());
+        txRequest.setConvertCurrency(false);
+
+        try {
+            transactionService.create(st.getUser().getId(), txRequest, UUID.randomUUID().toString());
+        } catch (org.apache.http.HttpException | java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
 
         boolean hasNext = advanceOrFinalize(st);
 
