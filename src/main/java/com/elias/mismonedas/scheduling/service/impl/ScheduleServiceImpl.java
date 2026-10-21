@@ -69,8 +69,6 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final RecurrenceService rcService;
     private final ReasonResolver reasonResolver;
     private final RecurrenceService recurrenceService;
-    private final BudgetService budgetService;
-    private final SavingGoalService savingGoalService;
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionService transactionService;
     private final EntityManager entityManager;
@@ -217,7 +215,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .map(TransactionSchedule::getId)
                 .toList();
 
-        Long nextCursor = batch.size() < BATCH_SIZE ? null : batch.get(batch.size() - 1).getId();
+        Long nextCursor = batch.size() < BATCH_SIZE ? null : batch.getLast().getId();
         return new TransactionBatchPage(dueIds, nextCursor);
     }
 
@@ -340,7 +338,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         txRequest.setConvertCurrency(false);
 
         try {
-            transactionService.create(st.getUser().getId(), txRequest, UUID.randomUUID().toString());
+            transactionService.create(st.getUser().getId(), st.getId(), txRequest, UUID.randomUUID().toString());
         } catch (org.apache.http.HttpException | java.io.IOException e) {
             throw new RuntimeException(e);
         }

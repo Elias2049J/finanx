@@ -1,12 +1,13 @@
 package com.elias.mismonedas.ledger.service.impl;
 
 import com.elias.mismonedas.document.service.ReceiptScanService;
-import com.elias.mismonedas.planning.service.SavingGoalService;
+import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.wallets.service.WalletService;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.domain.entity.Reason;
-import com.elias.mismonedas.catalog.service.CategoryService;
+import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.service.ReasonResolver;
 import com.elias.mismonedas.document.domain.entity.Receipt;
 import com.elias.mismonedas.document.repository.ReceiptRepository;
@@ -15,22 +16,24 @@ import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.domain.event.TransactionDisabledEvent;
+import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
 import com.elias.mismonedas.ledger.repository.TransactionSpecifications;
-import com.elias.mismonedas.ledger.service.TransactionRecorder;
 import com.elias.mismonedas.ledger.service.TransactionService;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.planning.domain.enums.SavingGoalState;
 import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.shared.exception.ConflictException;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpException;
@@ -43,6 +46,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -53,27 +57,27 @@ import java.time.ZoneId;
 public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
     private final WalletService walletService;
-    private final CategoryService categoryService;
+    private final WalletRepository walletRepository;
+    private final CategoryRepository categoryRepository;
+    private final SavingGoalRepository savingGoalRepository;
     private final ReceiptRepository receiptRepository;
     private final TransactionMapper transactionMapper;
     private final ReasonResolver reasonResolver;
-    private final SavingGoalService savingGoalService;
     private final CurrencyConverter currencyConverter;
     private final SecurityService securityService;
     private final ApplicationEventPublisher eventPublisher;
-    private final TransactionRecorder transactionRecorder;
     private final ReceiptScanService receiptScanService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TransactionResponse create(TransactionRequest request, String idempotencyKey) throws HttpException, IOException {
         Long currentUserId = securityService.getCurrentUser().getId();
-        return create(currentUserId, request, idempotencyKey);
+        return create(currentUserId, null, request, idempotencyKey);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TransactionResponse create(Long userId, TransactionRequest request, String idempotencyKey) throws HttpException, IOException {
+    public TransactionResponse create(Long userId, Long scheduleId, TransactionRequest request, String idempotencyKey) throws HttpException, IOException {
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             var existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
@@ -88,8 +92,10 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         Transaction transaction = transactionMapper.toEntity(request);
-        Wallet wallet = walletService.getOwned(request.getWalletId());
-        Category category = categoryService.getOwned(request.getCategoryId());
+        Wallet wallet = walletRepository.findByIdAndUser_Id(request.getWalletId(), userId)
+                .orElseThrow(() -> new EntityNotFoundException("Wallet not found: " + request.getWalletId()));
+        Category category = categoryRepository.findByIdAndUser_Id(request.getCategoryId(), userId)
+                .orElseThrow(() -> new EntityNotFoundException("Category not found: " + request.getCategoryId()));
 
         transaction.setWallet(wallet);
         transaction.setUser(wallet.getUser());
@@ -99,7 +105,8 @@ public class TransactionServiceImpl implements TransactionService {
             if (transaction.getType() != TransactionType.INCOME) {
                 throw new IllegalArgumentException("Cannot associate a spent to a saving goal");
             }
-            SavingGoal sg = savingGoalService.getOwned(request.getSavingGoalId());
+            SavingGoal sg = savingGoalRepository.findByIdAndUser_Id(request.getSavingGoalId(), userId)
+                    .orElseThrow(() -> new EntityNotFoundException("Saving goal not found: " + request.getSavingGoalId()));
 
             if (sg.getState() != SavingGoalState.RUNNING) {
                 throw new IllegalArgumentException("Cannot associate a transaction to a completed or cancelled saving goal");
@@ -116,7 +123,6 @@ public class TransactionServiceImpl implements TransactionService {
 
         Long receiptId = null;
         Money converted = null;
-        Long savingGoalId = request.getSavingGoalId();
 
         if (request.getReceiptId() != null) {
             Receipt receipt = receiptScanService.getOwned(request.getReceiptId());
@@ -143,22 +149,13 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("The category transactionType must be the same as transaction");
         }
 
+        if (converted != null) {
+            transaction.setAmount(converted.amount());
+        }
+        transaction.setScheduleId(scheduleId);
         Transaction recorded;
         try {
-            recorded = transactionRecorder.record(
-                    userId,
-                    wallet.getId(),
-                    category.getId(),
-                    reason.getId(),
-                    null,
-                    transaction.getAmount(),
-                    transaction.getType(),
-                    transaction.getCreatedAt(),
-                    effectiveKey,
-                    converted,
-                    receiptId,
-                    savingGoalId,
-                    request.getPaymentMethod());
+            recorded = saveAndPost(transaction, userId);
         } catch (DataIntegrityViolationException race) {
             Transaction existing = transactionRepository.findByIdempotencyKey(effectiveKey)
                     .orElseThrow(() -> race);
@@ -177,6 +174,22 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         return transactionMapper.toResponse(recorded);
+    }
+
+    private Transaction saveAndPost(Transaction transaction, Long userId) {
+        Transaction saved = transactionRepository.save(transaction);
+
+        eventPublisher.publishEvent(new TransactionRegisteredEvent(
+                saved.getWallet().getId(),
+                saved.getAmount(),
+                saved.getId(),
+                userId,
+                saved.getType(),
+                saved.getScheduleId()));
+
+        walletService.updateBalance(userId, saved.getWallet().getId(), saved.getType(), saved.getAmount());
+
+        return saved;
     }
 
     @Transactional(readOnly = true)

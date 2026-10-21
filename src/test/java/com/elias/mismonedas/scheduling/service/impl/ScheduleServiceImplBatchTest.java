@@ -6,7 +6,7 @@ import com.elias.mismonedas.catalog.service.ReasonResolver;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
-import com.elias.mismonedas.ledger.service.TransactionRecorder;
+import com.elias.mismonedas.ledger.service.TransactionService;
 import com.elias.mismonedas.planning.domain.entity.Budget;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
 import com.elias.mismonedas.planning.service.BudgetService;
@@ -64,7 +64,7 @@ class ScheduleServiceImplBatchTest {
     @Mock private BudgetService budgetService;
     @Mock private SavingGoalService savingGoalService;
     @Mock private WalletService walletService;
-    @Mock private TransactionRecorder transactionRecorder;
+    @Mock private TransactionService transactionService;
     @Mock private EntityManager entityManager;
     @Mock private TransactionTemplate transactionTemplate;
 

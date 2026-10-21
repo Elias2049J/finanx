@@ -16,7 +16,7 @@ public interface TransactionService {
 
     TransactionResponse create(TransactionRequest request, String idempotencyKey) throws HttpException, IOException;
 
-    TransactionResponse create(Long userId, TransactionRequest request, String idempotencyKey) throws HttpException, IOException;
+    TransactionResponse create(Long userId, Long scheduleId, TransactionRequest request, String idempotencyKey) throws HttpException, IOException;
 
     TransactionResponse findById(Long id);
     PageResponse<TransactionResponse> list(

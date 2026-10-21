@@ -1,12 +1,13 @@
 package com.elias.mismonedas.ledger.service.impl;
 
 import com.elias.mismonedas.document.service.ReceiptScanService;
-import com.elias.mismonedas.planning.service.SavingGoalService;
+import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.wallets.service.WalletService;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.domain.entity.Reason;
-import com.elias.mismonedas.catalog.service.CategoryService;
+import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.service.ReasonResolver;
 import com.elias.mismonedas.document.domain.entity.Receipt;
 import com.elias.mismonedas.document.repository.ReceiptRepository;
@@ -15,13 +16,13 @@ import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
+import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
-import com.elias.mismonedas.ledger.service.TransactionRecorder;
 import com.elias.mismonedas.shared.exception.ConflictException;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
@@ -50,15 +52,15 @@ class TransactionServiceImplTest {
 
     @Mock private TransactionRepository transactionRepository;
     @Mock private WalletService walletService;
-    @Mock private CategoryService categoryService;
+    @Mock private WalletRepository walletRepository;
+    @Mock private CategoryRepository categoryRepository;
+    @Mock private SavingGoalRepository savingGoalRepository;
     @Mock private ReceiptRepository receiptRepository;
     @Mock private TransactionMapper transactionMapper;
     @Mock private ReasonResolver reasonResolver;
-    @Mock private SavingGoalService sgservice;
     @Mock private CurrencyConverter currencyConverter;
     @Mock private SecurityService securityService;
     @Mock private ApplicationEventPublisher eventPublisher;
-    @Mock private TransactionRecorder transactionRecorder;
     @Mock private ReceiptScanService receiptScanService;
 
     @Captor private ArgumentCaptor<Receipt> receiptCaptor;
@@ -77,9 +79,9 @@ class TransactionServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new TransactionServiceImpl(
-                transactionRepository, walletService, categoryService, receiptRepository,
-                transactionMapper, reasonResolver, sgservice,
-                currencyConverter, securityService, eventPublisher, transactionRecorder, receiptScanService);
+                transactionRepository, walletService, walletRepository, categoryRepository,
+                savingGoalRepository, receiptRepository, transactionMapper, reasonResolver,
+                currencyConverter, securityService, eventPublisher, receiptScanService);
 
         user = new User();
         user.setId(1L);
@@ -122,7 +124,7 @@ class TransactionServiceImplTest {
         response = new TransactionResponse();
         response.setId(999L);
 
-        when(securityService.getCurrentUser()).thenReturn(user);
+        lenient().when(securityService.getCurrentUser()).thenReturn(user);
     }
 
     @Nested
@@ -131,12 +133,10 @@ class TransactionServiceImplTest {
         @Test
         void shouldCreateTransactionWithoutReceipt() throws Exception {
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletService.getOwned(10L)).thenReturn(wallet);
-            when(categoryService.getOwned(100L)).thenReturn(category);
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
+            when(categoryRepository.findByIdAndUser_Id(100L, 1L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
-            when(transactionRecorder.record(
-                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                    .thenReturn(recordedTransaction);
+            when(transactionRepository.save(any(Transaction.class))).thenReturn(recordedTransaction);
             when(transactionMapper.toResponse(recordedTransaction)).thenReturn(response);
 
             TransactionResponse result = service.create(request, null);
@@ -144,11 +144,25 @@ class TransactionServiceImplTest {
             assertThat(result.getId()).isEqualTo(999L);
             verify(receiptRepository, never()).findByIdAndUser_Id(anyLong(), anyLong());
             verify(receiptRepository, never()).save(any());
-            verify(transactionRecorder).record(
-                    1L, 10L, 100L, 500L, null,
-                    new BigDecimal("50.00"), TransactionType.SPENT,
-                    transaction.getCreatedAt(), null, null, null, null,
-                    request.getPaymentMethod());
+            verify(walletService).updateBalance(1L, 10L, TransactionType.SPENT, new BigDecimal("50.00"));
+            verify(eventPublisher).publishEvent(isA(TransactionRegisteredEvent.class));
+        }
+
+        @Test
+        void shouldPropagateScheduleIdWhenCreatedByScheduler() throws Exception {
+            when(transactionMapper.toEntity(request)).thenReturn(transaction);
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
+            when(categoryRepository.findByIdAndUser_Id(100L, 1L)).thenReturn(Optional.of(category));
+            when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
+            when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            service.create(1L, 55L, request, "key-schedule");
+
+            assertThat(transaction.getScheduleId()).isEqualTo(55L);
+            ArgumentCaptor<TransactionRegisteredEvent> eventCaptor =
+                    ArgumentCaptor.forClass(TransactionRegisteredEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().scheduleId()).isEqualTo(55L);
         }
 
         @Test
@@ -162,13 +176,11 @@ class TransactionServiceImplTest {
                     .build();
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletService.getOwned(10L)).thenReturn(wallet);
-            when(categoryService.getOwned(100L)).thenReturn(category);
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
+            when(categoryRepository.findByIdAndUser_Id(100L, 1L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(receiptScanService.getOwned(777L)).thenReturn(receipt);
-            when(transactionRecorder.record(
-                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                    .thenReturn(recordedTransaction);
+            when(transactionRepository.save(any(Transaction.class))).thenReturn(recordedTransaction);
             when(transactionMapper.toResponse(recordedTransaction)).thenReturn(response);
 
             TransactionResponse result = service.create(request, null);
@@ -195,8 +207,6 @@ class TransactionServiceImplTest {
 
             assertThat(result.getId()).isEqualTo(999L);
             verify(transactionRepository, never()).save(any());
-            verify(transactionRecorder, never()).record(
-                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -228,13 +238,12 @@ class TransactionServiceImplTest {
             existingResponse.setId(777L);
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletService.getOwned(10L)).thenReturn(wallet);
-            when(categoryService.getOwned(100L)).thenReturn(category);
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
+            when(categoryRepository.findByIdAndUser_Id(100L, 1L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(transactionRepository.findByIdempotencyKey("key-1"))
                     .thenReturn(Optional.empty(), Optional.of(existing));
-            when(transactionRecorder.record(
-                    anyLong(), anyLong(), anyLong(), anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            when(transactionRepository.save(any(Transaction.class)))
                     .thenThrow(new DataIntegrityViolationException("uq clave_idempotencia"));
             when(transactionMapper.toResponse(existing)).thenReturn(existingResponse);
 
@@ -248,8 +257,8 @@ class TransactionServiceImplTest {
             request.setReceiptId(999L);
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletService.getOwned(10L)).thenReturn(wallet);
-            when(categoryService.getOwned(100L)).thenReturn(category);
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
+            when(categoryRepository.findByIdAndUser_Id(100L, 1L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(receiptScanService.getOwned(999L))
                     .thenThrow(new IllegalArgumentException("Recibo no encontrado: 999"));
@@ -271,8 +280,8 @@ class TransactionServiceImplTest {
                     .build();
 
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
-            when(walletService.getOwned(10L)).thenReturn(wallet);
-            when(categoryService.getOwned(100L)).thenReturn(category);
+            when(walletRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(wallet));
+            when(categoryRepository.findByIdAndUser_Id(100L, 1L)).thenReturn(Optional.of(category));
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
             when(receiptScanService.getOwned(777L)).thenReturn(linkedReceipt);
 
