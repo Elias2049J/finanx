@@ -3,6 +3,7 @@ package com.elias.mismonedas.billing.adapter.messaging;
 import com.elias.mismonedas.billing.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.retry.MessageRecoverer;
@@ -16,7 +17,7 @@ public class PaymentWebhookMessageRecoverer implements MessageRecoverer {
     private final PaymentService paymentService;
 
     @Override
-    public void recover(Message message, Throwable cause) {
+    public void recover(Message message, @NonNull Throwable cause) {
         String messageId = message.getMessageProperties().getMessageId();
         if (messageId != null) {
             log.error("Webhook processing retries exhausted; routing event id={} to DLQ", messageId, cause);
