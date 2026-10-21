@@ -1,10 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { parseArgs } = require('./lib/args');
 
 const qaDir = __dirname;
 const e2eDir = path.resolve(qaDir, 'e2e');
 const reportsDir = path.resolve(qaDir, 'reports');
+const { baseUrl } = parseArgs(process.argv.slice(2));
+const effectiveBaseUrl = baseUrl || process.env.BASE_URL;
 
 // Orden de ejecucion de la suite completa.
 const SUITE_ORDER = [
@@ -40,9 +43,17 @@ function runOne(script) {
   }
 
   console.log(`\n==================== e2e: ${script} ====================`);
+  if (effectiveBaseUrl) {
+    console.log(`Base URL: ${effectiveBaseUrl}`);
+  }
   const result = spawnSync(
     'k6',
-    ['run', '-e', `SUMMARY_FILE=reports/e2e_${script}_summary.json`, path.resolve('e2e', `${script}.js`)],
+    [
+      'run',
+      '-e', `SUMMARY_FILE=reports/e2e_${script}_summary.json`,
+      ...(effectiveBaseUrl ? ['-e', `BASE_URL=${effectiveBaseUrl}`] : []),
+      path.resolve('e2e', `${script}.js`),
+    ],
     { cwd: qaDir, stdio: 'inherit', shell: true }
   );
 
@@ -64,7 +75,7 @@ function runOne(script) {
 }
 
 function main() {
-  const arg = process.argv[2] || 'scheduling';
+  const arg = parseArgs(process.argv.slice(2)).positional[0] || 'scheduling';
 
   if (!fs.existsSync(reportsDir)) {
     fs.mkdirSync(reportsDir, { recursive: true });

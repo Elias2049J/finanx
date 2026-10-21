@@ -11,7 +11,42 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
 // modulo se limite a describir el flujo funcional que verifica.
 // ---------------------------------------------------------------------------
 
-export const BASE_URL = (__ENV.BASE_URL || 'http://localhost:8080') + '/api/v1';
+export const BASE_URL = resolveE2eBaseUrl(__ENV.BASE_URL);
+
+// Normaliza la URL base del backend y le anexa el prefijo /api/v1.
+//
+// Reglas:
+//   - Sin esquema -> http://
+//   - Host local (localhost / 127.0.0.1 / 0.0.0.0 / ::1) SIN puerto -> :8080
+//   - Otros hosts (ngrok, staging) se respetan tal cual (con o sin puerto).
+//   - Si la URL ya trae /api/v1, no se duplica.
+function resolveE2eBaseUrl(raw) {
+  const LOCAL_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1'];
+  let value = (raw || '').trim() || 'http://localhost:8080';
+
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(value)) {
+    value = `http://${value}`;
+  }
+  value = value.replace(/\/+$/, '');
+
+  const schemeEnd = value.indexOf('://') + 3;
+  const rest = value.slice(schemeEnd);
+  const slash = rest.indexOf('/');
+  const host = slash === -1 ? rest : rest.slice(0, slash);
+  const path = slash === -1 ? '' : rest.slice(slash);
+
+  const bare = host.replace(/:\d+$/, '').toLowerCase();
+  const hasPort = host.startsWith('[')
+    ? /^\[[^\]]+\]:\d+$/.test(host)
+    : /:\d+$/.test(host);
+
+  const normalized = LOCAL_HOSTS.includes(bare) && !hasPort
+    ? `${value.slice(0, schemeEnd)}${host}:8080${path}`
+    : value;
+
+  // Anexa /api/v1 solo si aun no esta presente.
+  return /\/api\/v1$/.test(normalized) ? normalized : `${normalized}/api/v1`;
+}
 
 // Offset horario por defecto (America/Lima = UTC-5) para calcular fechas
 // "hoy"/"ayer" alineadas con la zona del usuario sembrado en el backend.

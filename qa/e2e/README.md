@@ -23,14 +23,25 @@ npm run e2e:ledger     # un escenario puntual
 npm run e2e:scheduling # el e2e preexistente
 ```
 
-Apuntar a otro entorno:
+Apuntar a otro entorno (la URL va como argumento de `npm run`):
 
 ```bash
-$env:BASE_URL="https://staging.example.com"; npm run e2e
+npm run e2e -- https://a249-132-191-2-250.ngrok-free.app
+npm run e2e:ledger -- 127.0.0.1
+npm run e2e -- --base-url https://staging.example.com
 ```
 
-`BASE_URL` no incluye `/api/v1` (el helper lo añade). El offset horario para
-fechas se controla con `TZ_OFFSET_MINUTES` (default `-300`, America/Lima).
+La URL se normaliza antes de usarse:
+
+- Sin esquema (`127.0.0.1`) → se asume `http://`.
+- Host local (`localhost`, `127.0.0.1`, `0.0.0.0`, `::1`) **sin puerto** → se
+  agrega `:8080`.
+- Otros hosts (ngrok, staging, ...) se respetan tal cual, con o sin puerto.
+- El prefijo `/api/v1` lo añade el helper; no lo incluyas en `BASE_URL`.
+
+También se acepta la variable de entorno `BASE_URL` como alternativa al argumento.
+El offset horario para fechas se controla con `TZ_OFFSET_MINUTES` (default `-300`,
+America/Lima).
 
 ---
 

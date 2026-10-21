@@ -1,8 +1,9 @@
 ﻿import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
+import { resolveBaseUrl } from './lib/base-url.js';
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const BASE_URL = resolveBaseUrl(__ENV.BASE_URL);
 const SCENARIO = __ENV.SCENARIO || 'load';
 const WRITE_RATIO = parseFloat(__ENV.WRITE_RATIO || '0.4');
 const SLEEP = parseFloat(__ENV.SLEEP || '0');
@@ -20,22 +21,23 @@ function num(envKey, fallback) {
 
 const EP = {
   register: 'POST /auth/register',
-  prefs: 'POST /users/preferences',
-  wallets: 'POST /users/wallets',
+  me: 'GET /users/me',
+  prefs: 'POST /users/me/preferences',
+  wallets: 'POST /wallets',
+  listWallets: 'GET /wallets',
   createCategory: 'POST /categories',
   createReason: 'POST /reasons',
-  listTx: 'GET /transactions/user',
-  listTxActive: 'GET /transactions/user/active',
-  listCats: 'GET /categories/user',
-  listBudgets: 'GET /budgets/user',
-  listReasons: 'GET /reasons/user',
-  listSavings: 'GET /savings/user',
+  listTx: 'GET /transactions',
+  listTxActive: 'GET /transactions?active',
+  listCats: 'GET /categories',
+  listBudgets: 'GET /budgets',
+  listReasons: 'GET /reasons',
+  listSavings: 'GET /savings',
   analyticsBalance: 'POST /analytics/dashboard/balance',
   analyticsBudgets: 'POST /analytics/dashboard/budgets',
   createTx: 'POST /transactions',
-  getTx: 'GET /transactions/item',
-  updateTx: 'PUT /transactions/item',
-  deleteTx: 'DELETE /transactions/item',
+  getTx: 'GET /transactions/{id}',
+  deleteTx: 'DELETE /transactions/{id}',
 };
 
 const profiles = {
@@ -140,14 +142,14 @@ let vuCtx = null;
 
 function bootstrap() {
   const rnd = Math.random().toString(36).slice(2, 10);
+  const email = `qa_${rnd}@perf.local`;
 
   const register = http.post(
     `${BASE_URL}/auth/register`,
     JSON.stringify({
       name: 'QA',
       lastname: 'Load',
-      username: `qa_${rnd}`,
-      email: `qa_${rnd}@perf.local`,
+      email,
       password: 'Password123!',
     }),
     {
@@ -158,11 +160,16 @@ function bootstrap() {
   if (register.status !== 200 && register.status !== 201) {
     throw new Error(`vu bootstrap register fallo: ${register.status} ${register.body}`);
   }
-  const token = register.json('token');
-  const userId = register.json('user.id');
+  const token = register.json('accessToken');
+
+  const me = http.get(`${BASE_URL}/users/me`, paramsFor(token, EP.me, 'read', 'vu_setup'));
+  if (me.status !== 200) {
+    throw new Error(`vu bootstrap users/me fallo: ${me.status} ${me.body}`);
+  }
+  const userId = me.json('id');
 
   const prefs = http.post(
-    `${BASE_URL}/users/${userId}/preferences`,
+    `${BASE_URL}/users/me/preferences`,
     JSON.stringify({ timeZone: 'AMERICA_LIMA', currencyCode: 'PEN', emailNotifications: true }),
     paramsFor(token, EP.prefs, 'write', 'vu_setup')
   );
@@ -171,7 +178,7 @@ function bootstrap() {
   }
 
   const wallet = http.post(
-    `${BASE_URL}/users/${userId}/wallets`,
+    `${BASE_URL}/wallets`,
     JSON.stringify({ currencyCode: 'PEN', primary: true }),
     paramsFor(token, EP.wallets, 'write', 'vu_setup')
   );
@@ -218,16 +225,17 @@ function readRequest(method, url, body, token, endpoint) {
 }
 
 function readFlow(data) {
-  const { token, userId } = ctx();
+  const { token } = ctx();
   const requests = [
-    readRequest('GET', `${BASE_URL}/transactions/user/${userId}`, null, token, EP.listTx),
-    readRequest('GET', `${BASE_URL}/transactions/user/${userId}/active`, null, token, EP.listTxActive),
-    readRequest('GET', `${BASE_URL}/categories/user/${userId}`, null, token, EP.listCats),
-    readRequest('GET', `${BASE_URL}/budgets/user/${userId}`, null, token, EP.listBudgets),
-    readRequest('GET', `${BASE_URL}/reasons/user/${userId}`, null, token, EP.listReasons),
-    readRequest('GET', `${BASE_URL}/savings/user/${userId}`, null, token, EP.listSavings),
-    readRequest('POST', `${BASE_URL}/analytics/dashboard/balance`, { start: data.start, end: data.end, userId }, token, EP.analyticsBalance),
-    readRequest('POST', `${BASE_URL}/analytics/dashboard/budgets`, { start: data.start, end: data.end, userId }, token, EP.analyticsBudgets),
+    readRequest('GET', `${BASE_URL}/transactions?page=0&size=20`, null, token, EP.listTx),
+    readRequest('GET', `${BASE_URL}/transactions?active=true&page=0&size=20`, null, token, EP.listTxActive),
+    readRequest('GET', `${BASE_URL}/wallets?page=0&size=50`, null, token, EP.listWallets),
+    readRequest('GET', `${BASE_URL}/categories?page=0&size=100`, null, token, EP.listCats),
+    readRequest('GET', `${BASE_URL}/budgets?page=0&size=50`, null, token, EP.listBudgets),
+    readRequest('GET', `${BASE_URL}/reasons?page=0&size=100`, null, token, EP.listReasons),
+    readRequest('GET', `${BASE_URL}/savings?page=0&size=50`, null, token, EP.listSavings),
+    readRequest('POST', `${BASE_URL}/analytics/dashboard/balance`, { start: data.start, end: data.end }, token, EP.analyticsBalance),
+    readRequest('POST', `${BASE_URL}/analytics/dashboard/budgets`, { start: data.start, end: data.end }, token, EP.analyticsBudgets),
   ];
 
   const responses = http.batch(requests);
@@ -238,7 +246,7 @@ function readFlow(data) {
 }
 
 function crudFlow() {
-  const { token, userId, walletId, categoryId, reasonId } = ctx();
+  const { token, walletId, categoryId, reasonId } = ctx();
 
   const body = {
     walletId,
@@ -265,14 +273,6 @@ function crudFlow() {
     const get = http.get(`${BASE_URL}/transactions/${id}`, paramsFor(token, EP.getTx, 'write'));
     check(get, { 'get tx 200': (r) => r.status === 200 });
     crudDuration.add(get.timings.duration);
-
-    const update = http.put(
-      `${BASE_URL}/transactions/${id}`,
-      JSON.stringify({ ...body, amount: 99.9, description: 'perf tx updated' }),
-      paramsFor(token, EP.updateTx, 'write')
-    );
-    check(update, { 'update tx 200': (r) => r.status === 200 });
-    crudDuration.add(update.timings.duration);
 
     const del = http.del(`${BASE_URL}/transactions/${id}`, null, paramsFor(token, EP.deleteTx, 'write'));
     const deleted = check(del, { 'delete tx 204': (r) => r.status === 204 });

@@ -10,6 +10,8 @@
     "stress:breakpoint": "node run-stress.js breakpoint",
     "stress:spike": "node run-stress.js spike",
     "stress:soak": "node run-stress.js soak",
+    "stress:contention": "node run-stress.js contention",
+    "stress:concurrency": "node run-stress.js concurrency",
     "e2e": "node run-e2e.js all",
     "e2e:all": "node run-e2e.js all",
     "e2e:list": "node run-e2e.js list",
