@@ -2,6 +2,7 @@
 import { check, group, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 import { resolveBaseUrl } from './lib/base-url.js';
+import { sanitizeSummary } from '../lib/sanitize-summary.js';
 
 const BASE_URL = resolveBaseUrl(__ENV.BASE_URL);
 const SCENARIO = __ENV.SCENARIO || 'load';
@@ -338,7 +339,7 @@ export default function (data) {
 export function handleSummary(data) {
   const jsonPath = __ENV.SUMMARY_FILE || `reports/${SCENARIO}_summary.json`;
   return {
-    [jsonPath]: JSON.stringify(data),
+    [jsonPath]: JSON.stringify(sanitizeSummary(data)),
     stdout: textSummary(data),
   };
 }

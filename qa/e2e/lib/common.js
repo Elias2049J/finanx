@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check, fail, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
+import { sanitizeSummary } from '../../lib/sanitize-summary.js';
 
 // ---------------------------------------------------------------------------
 // Libreria compartida de los e2e k6.
@@ -308,7 +309,7 @@ export function e2eOptions(endpoints, { maxDuration = '5m', label = 'e2e', laten
 export function handleSummary(data) {
   const jsonPath = __ENV.SUMMARY_FILE || 'reports/e2e_summary.json';
   return {
-    [jsonPath]: JSON.stringify(data),
+    [jsonPath]: JSON.stringify(sanitizeSummary(data)),
     stdout: textSummary(data, { indent: ' ', enableColors: true }),
   };
 }

@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { Trend, Rate, Counter, Gauge } from 'k6/metrics';
 import { resolveBaseUrl } from './lib/base-url.js';
+import { sanitizeSummary } from '../lib/sanitize-summary.js';
 
 // ============================================================================
 // Escenario de CONCURRENCIA DE USUARIOS A TASA BAJA FIJA.
@@ -362,7 +363,7 @@ export function handleSummary(data) {
   const pick = (key, field) => (m[key] && m[key].values[field] !== undefined ? m[key].values[field] : 'n/a');
 
   return {
-    [jsonPath]: JSON.stringify(data),
+    [jsonPath]: JSON.stringify(sanitizeSummary(data)),
     stdout: `\n=== Resumen [concurrency @ ${REQ_PER_S} req/s total (~${CYCLE_RATE} ciclos/s)] ===
   usuarios en pool:                ${pick('users_in_pool', 'value')}
   usuarios concurrentes (vus_max): ${pick('vus_max', 'max')}

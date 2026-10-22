@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { resolveBaseUrl } from './lib/base-url.js';
+import { sanitizeSummary } from '../lib/sanitize-summary.js';
 
 const BASE_URL = resolveBaseUrl(__ENV.BASE_URL);
 
@@ -217,7 +218,7 @@ export function handleSummary(data) {
   const passes = checks.passes !== undefined ? checks.passes : 'n/a';
   const fails = checks.fails !== undefined ? checks.fails : 'n/a';
   return {
-    [jsonPath]: JSON.stringify(data),
+    [jsonPath]: JSON.stringify(sanitizeSummary(data)),
     stdout: `\n=== Verificacion recalcado asincrono de planning ===
   checks pasados: ${passes}
   checks fallados: ${fails}
