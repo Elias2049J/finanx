@@ -1,6 +1,5 @@
 package com.elias.mismonedas.insights.dto.analytics.component;
 
-import com.elias.mismonedas.shared.dto.date.PeriodResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class TimeBoundList<T> {
 
-    private PeriodResponse periodResponse;
+    private String dateRangeLabel;
 
     private List<T> items;
 

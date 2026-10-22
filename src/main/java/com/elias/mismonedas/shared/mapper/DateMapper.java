@@ -2,8 +2,7 @@ package com.elias.mismonedas.shared.mapper;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
-import com.elias.mismonedas.shared.dto.date.PeriodResponse;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -15,9 +14,6 @@ import java.util.Locale;
 
 @Mapper(componentModel = "spring")
 public interface DateMapper {
-    @Mapping(target = "readableString", expression = ("java(toStringES(request))"))
-    @Mapping(target = "userId", ignore = true)
-    PeriodResponse toResponse(PeriodRequest request);
 
     @Named("OffsetToZoned")
     default ZonedDateTime offsetToZoned(OffsetDateTime value, ZoneId zoneId) {
@@ -43,11 +39,11 @@ public interface DateMapper {
         return value.atZoneSameInstant(user.getTimeZone().toZoneId()).toLocalDateTime();
     }
 
-    @Named("PeriodToStringES")
-    default String toStringES(PeriodRequest request) {
-        return toStringES(request.getStart()) +
+    @Named("DateRangeLabel")
+    default String dateRangeLabel(DateRange request) {
+        return toStringES(request.from()) +
                 " a " +
-                toStringES(request.getEnd());
+                toStringES(request.to());
     }
 
     @Named("LocalDateToStringES")

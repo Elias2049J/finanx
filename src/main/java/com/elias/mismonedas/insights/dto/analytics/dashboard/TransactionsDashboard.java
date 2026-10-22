@@ -25,6 +25,9 @@ public class TransactionsDashboard extends DashboardResponse {
     @Schema(description = "Balance del periodo")
     private BigDecimal balance;
 
+    @Schema(description = "Moneda base del consolidado (preferencia del usuario)", example = "PEN")
+    private String currencyCode;
+
     @Schema(
             description = "Ranking de categorias con metricas resumidas"
     )

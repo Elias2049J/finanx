@@ -4,7 +4,6 @@ import com.elias.mismonedas.insights.dto.analytics.dashboard.BudgetsDashboard;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.SavingGoalsDashboard;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.TSchedulesDashboard;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.TransactionsDashboard;
-import com.elias.mismonedas.shared.dto.date.PeriodResponse;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.AllArgsConstructor;
@@ -28,7 +27,7 @@ import java.time.LocalDateTime;
         @JsonSubTypes.Type(value = BudgetsDashboard.class, name = "BUDGETS")
 })
 public abstract class Report {
-    private PeriodResponse periodResponse;
+    private String dateRangeLabel;
     private Long userId;
     private LocalDateTime createdAt;
 }

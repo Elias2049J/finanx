@@ -17,7 +17,6 @@ import com.elias.mismonedas.planning.repository.BudgetRepository;
 import com.elias.mismonedas.planning.repository.BudgetSpecifications;
 import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
@@ -60,9 +59,8 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
         this.currencyConverter = currencyConverter;
     }
 
-    private List<Budget> findBudgets(PeriodRequest request, Long userId) {
+    private List<Budget> findBudgets(DateRange range, Long userId) {
         ZoneId zoneId = this.getUser(userId).getTimeZone().toZoneId();
-        DateRange range = new DateRange(request.getStart(), request.getEnd());
         return bRepository.findAll(BudgetSpecifications.list(
                 userId,
                 true,
@@ -75,7 +73,7 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
 
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request, Long userId) {
+    public DashboardResponse buildDashboard(DateRange request, Long userId) {
         List<Budget> budgets = findBudgets(request, userId);
         User user = getUser(userId);
         String baseCurrency = user.getPreferences().getCurrencyCode();
@@ -103,6 +101,7 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
                 .toList();
 
         BudgetsDashboard result = new BudgetsDashboard();
+        result.setDateRangeLabel(dateMapper.dateRangeLabel(request));
         result.setTotalBudgetLimitAmount(totalBudgetLimitAmount);
         result.setTotalBudgetRemainingAmount(totalBudgetRemainingAmount);
         result.setTotalBudgetSpentAmount(totalBudgetSpentAmount);

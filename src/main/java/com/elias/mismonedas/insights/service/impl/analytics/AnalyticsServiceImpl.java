@@ -6,8 +6,7 @@ import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.dto.analytics.component.*;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.DashboardResponse;
 import com.elias.mismonedas.insights.service.analytics.AnalyticsService;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
-import com.elias.mismonedas.shared.dto.date.PeriodResponse;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
@@ -40,13 +39,13 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
 
     @Transactional(readOnly = true)
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request) throws HttpException, IOException {
+    public DashboardResponse buildDashboard(DateRange request) throws HttpException, IOException {
         return buildDashboard(request, securityService.getCurrentUser().getId());
     }
 
     @Transactional(readOnly = true)
     @Override
-    public abstract DashboardResponse buildDashboard(PeriodRequest request, Long userId) throws HttpException, IOException;
+    public abstract DashboardResponse buildDashboard(DateRange request, Long userId) throws HttpException, IOException;
 
     protected Aggregate buildAggregate(
             String title,
@@ -151,7 +150,7 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
 
 
     protected <T> com.elias.mismonedas.insights.dto.analytics.component.TimeLine<T> buildTimeLine(
-            PeriodRequest dateRange,
+            DateRange dateRange,
             String title,
             List<T> items,
             Function<T, LocalDate> dateResolver,
@@ -182,12 +181,11 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
                 .toList();
 
         Aggregate summary = buildAggregate(title, allAmounts);
-        PeriodResponse periodResponse = dateMapper.toResponse(dateRange);
 
         com.elias.mismonedas.insights.dto.analytics.component.TimeLine<T> timeLine = new com.elias.mismonedas.insights.dto.analytics.component.TimeLine<>();
         timeLine.setAggregate(summary);
         timeLine.setTitle(title);
-        timeLine.setPeriodResponse(periodResponse);
+        timeLine.setDateRangeLabel(dateMapper.dateRangeLabel(dateRange));
         timeLine.setPoints(points);
         timeLine.setCount(points.size());
         return timeLine;
@@ -195,11 +193,11 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
 
 
 
-    protected <T> TimeBoundList<T> buildTimeBound(List<T> items, PeriodRequest request) {
+    protected <T> TimeBoundList<T> buildTimeBound(List<T> items, DateRange request) {
         TimeBoundList<T> tb = new TimeBoundList<>();
         tb.setCount(items.size());
         tb.setItems(items);
-        tb.setPeriodResponse(dateMapper.toResponse(request));
+        tb.setDateRangeLabel(dateMapper.dateRangeLabel(request));
         return tb;
     }
 

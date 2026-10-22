@@ -20,8 +20,6 @@ import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
 import com.elias.mismonedas.ledger.repository.TransactionSpecifications;
 import com.elias.mismonedas.scheduling.domain.enums.RecurrenceType;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
-import com.elias.mismonedas.shared.dto.date.PeriodResponse;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import org.springframework.stereotype.Service;
@@ -63,7 +61,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
     }
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request, Long userId) {
+    public DashboardResponse buildDashboard(DateRange request, Long userId) {
         TransactionsDashboard td = new TransactionsDashboard();
 
         int topN = 5;
@@ -74,7 +72,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
 
         User u = this.getUser(userId);
         ZoneId zoneId = u.getTimeZone().toZoneId();
-        DateRange period = new DateRange(request.getStart(), request.getEnd()).coveringMonths();
+        DateRange period = request.coveringMonths();
         var periodStart = period.startInclusive(zoneId);
         var periodEnd = period.endExclusive(zoneId);
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
@@ -87,8 +85,8 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
                 .toList();
 
 
-        PeriodResponse pr = dateMapper.toResponse(request);
-        td.setPeriodResponse(pr);
+        String dateRangeLabel = dateMapper.dateRangeLabel(request);
+        td.setDateRangeLabel(dateRangeLabel);
 
         List<TransactionResponse> income = new ArrayList<>();
         List<TransactionResponse> spent = new ArrayList<>();
@@ -102,7 +100,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
 
         TimeLine<TransactionResponse> expenses = this.buildTimeLine(
                 request,
-                "Gastos del periodo :"+ pr.getReadableString(),
+                "Gastos del periodo :"+ dateRangeLabel,
                 spent,
                 t -> t.getCreatedAt().toLocalDate(),
                 TransactionResponse::getAmount,
@@ -110,7 +108,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
 
         TimeLine<TransactionResponse> incomes = this.buildTimeLine(
                 request,
-                "Ingresos del periodo :"+ pr.getReadableString(),
+                "Ingresos del periodo :"+ dateRangeLabel,
                 income,
                 t -> t.getCreatedAt().toLocalDate(),
                 TransactionResponse::getAmount,
@@ -218,7 +216,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
         );
 
         Aggregate generalAggregate = buildAggregate(
-                "Resumen general de movimientos del periodo: " + pr.getReadableString(),
+                "Resumen general de movimientos del periodo: " + dateRangeLabel,
                 all.stream().map(TransactionResponse::getAmount).toList()
         );
 
@@ -226,7 +224,6 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
         td.setCreatedAt(createdAt);
         td.setDailyExpenses(expenses);
         td.setDailyIncome(incomes);
-        td.setPeriodResponse(dateMapper.toResponse(request));
         td.setTopSpentReasons(rsRanking);
         td.setTopIncomeReasons(riRanking);
         td.setTopCategories(cRanking);
@@ -247,20 +244,20 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
         return "";
     }
 
-    private Long getTransactionAggregatesByPaymentMethod(Long userId, PeriodResponse periodResponse) {
+    private Long getTransactionAggregatesByPaymentMethod(Long userId, String dateRangeLabel) {
         return null;
     }
 
-    private Long getTransactionAggregatesByType(Long userId, PeriodResponse periodResponse) {
+    private Long getTransactionAggregatesByType(Long userId, String dateRangeLabel) {
         return null;
     }
 
 
-    private InsightSummary getTransactionInsights(PeriodRequest request) {
+    private InsightSummary getTransactionInsights(DateRange request) {
         return null;
     }
 
-    private PaymentMethod getMostUsedPaymentMethod(Long userId, PeriodResponse periodResponse) {
+    private PaymentMethod getMostUsedPaymentMethod(Long userId, String dateRangeLabel) {
         return null;
     }
 

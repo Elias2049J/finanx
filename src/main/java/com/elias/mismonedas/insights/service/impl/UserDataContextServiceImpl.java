@@ -6,7 +6,7 @@ import com.elias.mismonedas.insights.domain.entity.UserDataContext;
 import com.elias.mismonedas.insights.repository.UserDataContextRepository;
 import com.elias.mismonedas.insights.service.UserDataContextService;
 import com.elias.mismonedas.insights.service.analytics.AnalyticsService;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
 import org.apache.http.HttpException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -35,13 +35,10 @@ public class UserDataContextServiceImpl implements UserDataContextService {
         LocalDate currentDate = LocalDate.now();
         LocalDate previousMonth = currentDate.minusMonths(1);
 
-        PeriodRequest currentPeriod = new PeriodRequest();
-        currentPeriod.setStart(currentDate.withDayOfMonth(1));
-        currentPeriod.setEnd(currentDate);
-
-        PeriodRequest previousPeriod = new PeriodRequest();
-        previousPeriod.setStart(previousMonth.withDayOfMonth(1));
-        previousPeriod.setEnd(previousMonth.withDayOfMonth(previousMonth.lengthOfMonth()));
+        DateRange currentPeriod = new DateRange(currentDate.withDayOfMonth(1), currentDate);
+        DateRange previousPeriod = new DateRange(
+                previousMonth.withDayOfMonth(1),
+                previousMonth.withDayOfMonth(previousMonth.lengthOfMonth()));
 
         Optional<UserDataContext> context = userDataContextRepository.findByUser_Id(userId);
         User u = userRepository.findById(userId).orElseThrow();

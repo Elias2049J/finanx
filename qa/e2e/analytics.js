@@ -30,9 +30,9 @@ const EP = {
   listCategories: 'GET /categories',
   createTx: 'POST /transactions',
   createBudget: 'POST /budgets',
-  dashboardBalance: 'POST /analytics/dashboard/balance',
-  dashboardBudgets: 'POST /analytics/dashboard/budgets',
-  budgetExecution: 'POST /analytics/budgets/{id}/execution',
+  dashboardBalance: 'GET /analytics/dashboard/balance',
+  dashboardBudgets: 'GET /analytics/dashboard/budgets',
+  budgetExecution: 'GET /analytics/budgets/{id}/execution',
   budgetExecutions: 'GET /analytics/budgets/executions',
 };
 
@@ -91,26 +91,42 @@ export function setup() {
 
 export default function (data) {
   const { token } = data;
-  const period = { start: daysAgo(30), end: today() };
+  const query = `from=${daysAgo(30)}&to=${today()}`;
 
   group('dashboard de balance', () => {
-    const res = http.post(
-      `${BASE_URL}/analytics/dashboard/balance`,
-      JSON.stringify(period),
+    const res = http.get(
+      `${BASE_URL}/analytics/dashboard/balance?${query}`,
       params(token, EP.dashboardBalance)
     );
     statusOk('dashboard balance', res, 200);
     const body = res.json();
     assert('tiene type BALANCE', body.type === 'BALANCE', body.type);
-    assert('tiene periodo', !!body.periodResponse, JSON.stringify(body.periodResponse));
+    assert('tiene periodo', !!body.dateRangeLabel, JSON.stringify(body.dateRangeLabel));
+    assert('expone moneda base', body.currencyCode === data.currencyCode, `${body.currencyCode} vs ${data.currencyCode}`);
     assert('balance = 600 (800-200)', Number(body.balance) === 600, `balance=${body.balance}`);
     assert('tiene ranking por categoria', !!body.summaryByCategory, 'sin summaryByCategory');
   });
 
+  group('dashboard de balance filtrado por billetera', () => {
+    const filtered = http.get(
+      `${BASE_URL}/analytics/dashboard/balance?${query}&walletId=${data.walletId}`,
+      params(token, EP.dashboardBalance)
+    );
+    statusOk('balance por billetera', filtered, 200);
+    const body = filtered.json();
+    assert('filtrado mantiene moneda base', body.currencyCode === data.currencyCode, `${body.currencyCode}`);
+    assert('balance filtrado = 600', Number(body.balance) === 600, `balance=${body.balance}`);
+
+    const foreign = http.get(
+      `${BASE_URL}/analytics/dashboard/balance?${query}&walletId=999999999`,
+      params(token, EP.dashboardBalance, 404)
+    );
+    assert('billetera ajena -> 404', foreign.status === 404, `${foreign.status} ${foreign.body}`);
+  });
+
   group('dashboard de presupuestos', () => {
-    const res = http.post(
-      `${BASE_URL}/analytics/dashboard/budgets`,
-      JSON.stringify(period),
+    const res = http.get(
+      `${BASE_URL}/analytics/dashboard/budgets?${query}`,
       params(token, EP.dashboardBudgets)
     );
     statusOk('dashboard budgets', res, 200);
@@ -120,9 +136,8 @@ export default function (data) {
   });
 
   group('ejecucion de presupuesto por id', () => {
-    const res = http.post(
+    const res = http.get(
       `${BASE_URL}/analytics/budgets/${data.budgetId}/execution`,
-      null,
       params(token, EP.budgetExecution)
     );
     statusOk('ejecucion presupuesto', res, 200);
@@ -141,9 +156,8 @@ export default function (data) {
   });
 
   group('validaciones de entrada -> 400', () => {
-    const noPeriod = http.post(
+    const noPeriod = http.get(
       `${BASE_URL}/analytics/dashboard/balance`,
-      JSON.stringify({}),
       params(token, EP.dashboardBalance, 400)
     );
     assert('sin periodo -> 400', noPeriod.status === 400, `${noPeriod.status} ${noPeriod.body}`);

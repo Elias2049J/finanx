@@ -34,8 +34,8 @@ const EP = {
   listBudgets: 'GET /budgets',
   listReasons: 'GET /reasons',
   listSavings: 'GET /savings',
-  analyticsBalance: 'POST /analytics/dashboard/balance',
-  analyticsBudgets: 'POST /analytics/dashboard/budgets',
+  analyticsBalance: 'GET /analytics/dashboard/balance',
+  analyticsBudgets: 'GET /analytics/dashboard/budgets',
   createTx: 'POST /transactions',
   getTx: 'GET /transactions/{id}',
   deleteTx: 'DELETE /transactions/{id}',
@@ -268,8 +268,8 @@ function readFlow(data) {
     readRequest('GET', `${BASE_URL}/budgets?page=0&size=50`, null, token, EP.listBudgets),
     readRequest('GET', `${BASE_URL}/reasons?page=0&size=100`, null, token, EP.listReasons),
     readRequest('GET', `${BASE_URL}/savings?page=0&size=50`, null, token, EP.listSavings),
-    readRequest('POST', `${BASE_URL}/analytics/dashboard/balance`, { start: data.start, end: data.end }, token, EP.analyticsBalance),
-    readRequest('POST', `${BASE_URL}/analytics/dashboard/budgets`, { start: data.start, end: data.end }, token, EP.analyticsBudgets),
+    readRequest('GET', `${BASE_URL}/analytics/dashboard/balance?from=${data.start}&to=${data.end}&walletId=${data.walletId}`, null, token, EP.analyticsBalance),
+    readRequest('GET', `${BASE_URL}/analytics/dashboard/budgets?from=${data.start}&to=${data.end}`, null, token, EP.analyticsBudgets),
   ];
 
   const responses = http.batch(requests);

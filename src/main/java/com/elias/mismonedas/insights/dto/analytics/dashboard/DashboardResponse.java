@@ -2,7 +2,6 @@ package com.elias.mismonedas.insights.dto.analytics.dashboard;
 
 import com.elias.mismonedas.insights.dto.analytics.component.Aggregate;
 import com.elias.mismonedas.insights.dto.analytics.component.InsightSummary;
-import com.elias.mismonedas.shared.dto.date.PeriodResponse;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -29,10 +28,10 @@ import java.time.LocalDateTime;
 public abstract class DashboardResponse {
 
     @Schema(
-            description = "Periodo de referencia del dashboard",
-            implementation = PeriodResponse.class
+            description = "Periodo de referencia del dashboard en texto legible",
+            example = "01 de junio de 2026 a 30 de junio de 2026"
     )
-    private PeriodResponse periodResponse;
+    private String dateRangeLabel;
 
     @Schema(
             description = "Titulo descriptivo del dashboard",

@@ -6,7 +6,7 @@ import com.elias.mismonedas.insights.dto.analytics.dashboard.TransactionsDashboa
 import com.elias.mismonedas.insights.service.analytics.BudgetAnalyticsService;
 import com.elias.mismonedas.insights.service.analytics.TransactionAnalyticsService;
 import com.elias.mismonedas.planning.dto.budget.BudgetExecutionResponse;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
+import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.apache.http.HttpException;
@@ -47,11 +46,16 @@ public class AnalyticsController {
                     @ApiResponse(responseCode = "400", description = "Request invalido")
             }
     )
-    @PostMapping("/dashboard/balance")
+    @GetMapping("/dashboard/balance")
     public ResponseEntity<DashboardResponse> balance(
-            @Parameter(description = "Periodo") @Valid @RequestBody PeriodRequest request)
+            @Parameter(description = "Fecha de inicio del periodo (yyyy-MM-dd)", example = "2026-06-01")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @Parameter(description = "Fecha de fin del periodo (yyyy-MM-dd)", example = "2026-06-30")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @Parameter(description = "ID de billetera para filtrar (opcional). Sin valor consolida todas las billeteras.", example = "1")
+            @RequestParam(required = false) Long walletId)
             throws HttpException, IOException {
-        return ResponseEntity.ok(tas.buildDashboard(request));
+        return ResponseEntity.ok(tas.buildBalanceDashboard(new DateRange(from, to), walletId));
     }
 
     @Operation(
@@ -65,11 +69,14 @@ public class AnalyticsController {
                     @ApiResponse(responseCode = "400", description = "Request invalido")
             }
     )
-    @PostMapping("/dashboard/budgets")
+    @GetMapping("/dashboard/budgets")
     public ResponseEntity<DashboardResponse> budgets(
-            @Valid @RequestBody PeriodRequest request)
+            @Parameter(description = "Fecha de inicio del periodo (yyyy-MM-dd)", example = "2026-06-01")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @Parameter(description = "Fecha de fin del periodo (yyyy-MM-dd)", example = "2026-06-30")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to)
             throws HttpException, IOException {
-        return ResponseEntity.ok(bas.buildDashboard(request));
+        return ResponseEntity.ok(bas.buildDashboard(new DateRange(from, to)));
     }
 
     @Operation(
@@ -82,7 +89,7 @@ public class AnalyticsController {
                     @ApiResponse(responseCode = "404", description = "No encontrado")
             }
     )
-    @PostMapping("/budgets/{id}/execution")
+    @GetMapping("/budgets/{id}/execution")
     public ResponseEntity<BudgetExecutionResponse> getExecution(
             @Parameter(description = "ID presupuesto") @PathVariable Long id) {
         return ResponseEntity.ok(bas.getBudgetExecution(id));

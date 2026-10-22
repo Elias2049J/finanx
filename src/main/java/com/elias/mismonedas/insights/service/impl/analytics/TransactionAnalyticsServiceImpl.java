@@ -1,6 +1,5 @@
 package com.elias.mismonedas.insights.service.impl.analytics;
 
-import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.catalog.dto.category.CategorySummary;
 import com.elias.mismonedas.catalog.dto.reason.ReasonSummary;
@@ -23,12 +22,14 @@ import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
 import com.elias.mismonedas.ledger.repository.TransactionSpecifications;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
-import com.elias.mismonedas.shared.dto.date.PeriodRequest;
-import com.elias.mismonedas.shared.dto.date.PeriodResponse;
+import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.mapper.DateMapper;
+import com.elias.mismonedas.shared.money.CurrencyConverter;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -50,6 +51,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
     protected final ReasonMapper reasonMapper;
     protected final CategoryMapper categoryMapper;
     protected final WalletRepository walletRepository;
+    protected final CurrencyConverter currencyConverter;
 
     public TransactionAnalyticsServiceImpl(
             DateMapper dateMapper,
@@ -61,6 +63,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
             ReasonMapper reasonMapper,
             CategoryMapper categoryMapper,
             WalletRepository walletRepository,
+            CurrencyConverter currencyConverter,
             SecurityService securityService) {
         super(dateMapper, userRepository, securityService);
         this.transactionRepository = transactionRepository;
@@ -70,10 +73,22 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         this.reasonMapper = reasonMapper;
         this.categoryMapper = categoryMapper;
         this.walletRepository = walletRepository;
+        this.currencyConverter = currencyConverter;
     }
 
     @Override
-    public DashboardResponse buildDashboard(PeriodRequest request, Long userId) throws HttpException, IOException {
+    public DashboardResponse buildDashboard(DateRange request, Long userId) throws HttpException, IOException {
+        return buildBalanceDashboard(request, userId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DashboardResponse buildBalanceDashboard(DateRange period, Long walletId) throws HttpException, IOException {
+        return buildBalanceDashboard(period, securityService.getCurrentUser().getId(), walletId);
+    }
+
+    @Override
+    public DashboardResponse buildBalanceDashboard(DateRange request, Long userId, Long walletId) throws HttpException, IOException {
         TransactionsDashboard td = new TransactionsDashboard();
         PromptRequest promptRequest = new PromptRequest();
 
@@ -85,37 +100,32 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
 
         User u = this.getUser(userId);
         ZoneId zoneId = u.getTimeZone().toZoneId();
-        DateRange period = new DateRange(request.getStart(), request.getEnd()).coveringMonths();
-        var periodStart = period.startInclusive(zoneId);
-        var periodEnd = period.endExclusive(zoneId);
+        DateRange coveredPeriod = request.coveringMonths();
+        var periodStart = coveredPeriod.startInclusive(zoneId);
+        var periodEnd = coveredPeriod.endExclusive(zoneId);
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
+        String baseCurrency = u.getPreferences().getCurrencyCode();
 
-        Wallet primaryWallet = walletRepository.findByUserIdAndPrimaryTrue(userId)
-                .orElse(null);
-
-        List<TransactionResponse> all;
-        if (primaryWallet != null) {
-            Long walletId = primaryWallet.getId();
-            all = transactionRepository.findAll(TransactionSpecifications.list(
-                            userId, true, null, walletId, null, periodStart, periodEnd, null))
-                    .stream()
-                    .map(tMapper::toResponse)
-                    .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())
-                    .toList();
-        } else {
-            all = List.of();
+        if (walletId != null) {
+            walletRepository.findByIdAndUser_Id(walletId, userId)
+                    .orElseThrow(() -> new EntityNotFoundException("Wallet not found: " + walletId));
         }
+
+        List<TransactionResponse> all = transactionRepository.findAll(TransactionSpecifications.list(
+                        userId, true, null, walletId, null, periodStart, periodEnd, null))
+                .stream()
+                .map(tMapper::toResponse)
+                .map(t -> convertToBase(t, baseCurrency))
+                .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())
+                .toList();
 
         log.info("Period for query: {} to {}", periodStart, periodEnd);
 
         BigDecimal balance = BigDecimal.ZERO;
 
-        PeriodResponse pr = dateMapper.toResponse(
-                new PeriodRequest(
-                        period.from(),
-                        period.to()
-                ));
-        td.setPeriodResponse(pr);
+        String dateRangeLabel = dateMapper.dateRangeLabel(coveredPeriod);
+        td.setDateRangeLabel(dateRangeLabel);
+        td.setCurrencyCode(baseCurrency);
 
         List<TransactionResponse> income = new ArrayList<>();
         List<TransactionResponse> spent = new ArrayList<>();
@@ -132,7 +142,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
 
         com.elias.mismonedas.insights.dto.analytics.component.TimeLine<TransactionResponse> expenses = this.buildTimeLine(
                 request,
-                "Gastos del periodo :" + pr.getReadableString(),
+                "Gastos del periodo :" + dateRangeLabel,
                 spent,
                 t -> t.getCreatedAt().toLocalDate(),
                 TransactionResponse::getAmount,
@@ -140,7 +150,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
 
         com.elias.mismonedas.insights.dto.analytics.component.TimeLine<TransactionResponse> incomes = this.buildTimeLine(
                 request,
-                "Ingresos del periodo :" + pr.getReadableString(),
+                "Ingresos del periodo :" + dateRangeLabel,
                 income,
                 t -> t.getCreatedAt().toLocalDate(),
                 TransactionResponse::getAmount,
@@ -248,7 +258,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         );
 
         Aggregate generalAggregate = buildAggregate(
-                "Resumen general de movimientos del periodo: " + pr.getReadableString(),
+                "Resumen general de movimientos del periodo: " + dateRangeLabel,
                 all.stream().map(TransactionResponse::getAmount).toList()
         );
 
@@ -257,7 +267,6 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         td.setBalance(balance);
         td.setDailyExpenses(expenses);
         td.setDailyIncome(incomes);
-        td.setPeriodResponse(pr);
         td.setTopSpentReasons(rsRanking);
         td.setTopIncomeReasons(riRanking);
         td.setTopCategories(cRanking);
@@ -268,6 +277,18 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         td.setInsightSummary(this.generateDefaultInsightSummary(td, 2));
 
         return td;
+    }
+
+    private TransactionResponse convertToBase(TransactionResponse transaction, String baseCurrency) {
+        if (transaction.getAmount() == null) {
+            return transaction;
+        }
+        Money converted = currencyConverter.convert(
+                Money.of(transaction.getAmount(), transaction.getWalletCurrency()),
+                baseCurrency);
+        transaction.setAmount(converted.amount());
+        transaction.setWalletCurrency(baseCurrency);
+        return transaction;
     }
 
     @Override
@@ -308,7 +329,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
             === DISTRIBUCIÓN POR MÉTODO DE PAGO ===
             %s
             """.formatted(
-                td.getPeriodResponse().getReadableString(),
+                td.getDateRangeLabel(),
                 general.getTotalAmount(),
                 general.getOccurrenceCount(),
                 general.getAverageAmount(),
