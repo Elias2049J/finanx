@@ -37,8 +37,10 @@ build/
 /secrets/
 
 src/main/resources/application.yml
-application.yml
 application-dev.yml
+# Red de seguridad: la configuracion por entorno vive en .env y su plantilla
+# en .env.example. Estos archivos ya no se usan, pero si alguien los recrea no
+# deben poder terminar en el repo.
 application-secrets.yml
 application-secrets.yaml
 /claude/

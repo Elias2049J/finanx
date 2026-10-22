@@ -4,6 +4,59 @@ Aplicación de finanzas personales con soporte multi-moneda, programación recur
 
 ---
 
+## Puesta en marcha
+
+Toda la configuracion por entorno vive en **`.env`**, que no se versiona. Su
+plantilla versionada es **`.env.example`**, y solo contiene valores de ejemplo.
+
+```bash
+cp .env.example .env
+# rellena los valores marcados como REEMPLAZAR
+docker compose up -d --build
+```
+
+### Que hay que rellenar
+
+| Variable | Que es |
+|----------|--------|
+| `DB_PASSWORD` | contrasena de PostgreSQL |
+| `JWT_SECRET` | secreto de firma (genera uno largo y aleatorio) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | credenciales de OAuth de Google |
+| `GEMINI_API_KEY` | clave de la API de Gemini |
+| `CURRENCYBEACON_API_KEY` | clave de Currency Beacon |
+| `GMAIL_APP_PASSWORD` | *app-password* de Google (no la contrasena de la cuenta) |
+| `SEAWEEDFS_SECRET_KEY` | secreto del bucket de imagenes |
+| `RABBITMQ_PASSWORD` | contrasena de RabbitMQ |
+
+El resto de variables ya vienen con un valor valido en `.env.example`: son
+constantes tecnicas (puertos, rutas, endpoints publicos, timeouts) que no
+dependen del despliegue.
+
+### Service account de Firebase
+
+Las notificaciones push (FCM) necesitan el service account JSON de Firebase.
+El archivo **no** se versiona: va en `secrets/`, y su ruta se configura con
+`FCM_CREDENTIALS_PATH`. En Docker el compose lo monta como secreto en
+`/run/secrets/firebase-sa` (ver `docker-compose.yml`).
+
+### Como se carga la configuracion
+
+- **Spring** la lee como un archivo de properties:
+  `spring.config.import=optional:file:./.env[.properties]` (en
+  `application.yml`). Asi el backend funciona en local sin tener que configurar
+  las variables en el IDE.
+- **Docker Compose** la carga con `env_file: .env`, y su bloque `environment:`
+  sobreescribe lo que depende del host (URL de Postgres, ruta del service
+  account).
+
+`application.yml` **si** esta versionado y no contiene ningun valor: solo
+placeholders `${VARIABLE}`. Los valores concretos viven unicamente en `.env`.
+
+> No pongas comillas alrededor de los valores en `.env`: Spring no las quita
+> al leerlos como properties.
+
+---
+
 ## Features
 
 ### FREE
