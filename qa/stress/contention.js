@@ -1,5 +1,5 @@
 import http from 'k6/http';
-import { check, group } from 'k6';
+import { check, group, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 import { resolveBaseUrl } from './lib/base-url.js';
 
@@ -71,50 +71,79 @@ function jsonHeaders(token, extra) {
   );
 }
 
+// Reintento con backoff para el bootstrap (no forma parte de la medicion).
+const PROVISION_RETRIES = parseInt(__ENV.PROVISION_RETRIES || '6', 10);
+const PROVISION_BACKOFF_MS = parseInt(__ENV.PROVISION_BACKOFF_MS || '1000', 10);
+
+function withRetry(label, fn) {
+  let last;
+  for (let attempt = 0; attempt <= PROVISION_RETRIES; attempt++) {
+    last = fn();
+    const retriable = last.status === 429 || last.status >= 500;
+    if (!retriable) return last;
+    if (attempt < PROVISION_RETRIES) {
+      const wait = PROVISION_BACKOFF_MS * Math.pow(2, attempt);
+      console.warn(`${label}: status=${last.status}, reintento en ${wait} ms`);
+      sleep(wait / 1000);
+    }
+  }
+  return last;
+}
+
 function bootstrapShared() {
   const rnd = Math.random().toString(36).slice(2, 10);
   const email = `qa_cont_${rnd}@perf.local`;
 
-  const register = http.post(
-    `${BASE_URL}/auth/register`,
-    JSON.stringify({
-      name: 'QA',
-      lastname: 'Contention',
-      email,
-      password: 'Password123!',
-    }),
-    { headers: { 'Content-Type': 'application/json' } }
+  const register = withRetry('register', () =>
+    http.post(
+      `${BASE_URL}/auth/register`,
+      JSON.stringify({
+        name: 'QA',
+        lastname: 'Contention',
+        email,
+        password: 'Password123!',
+      }),
+      { headers: { 'Content-Type': 'application/json' } }
+    )
   );
   if (register.status !== 200 && register.status !== 201) {
     throw new Error(`register fallo: ${register.status} ${register.body}`);
   }
   const token = register.json('accessToken');
 
-  const me = http.get(`${BASE_URL}/users/me`, { headers: jsonHeaders(token) });
+  const me = withRetry('users/me', () =>
+    http.get(`${BASE_URL}/users/me`, { headers: jsonHeaders(token) })
+  );
   if (me.status !== 200) {
     throw new Error(`users/me fallo: ${me.status} ${me.body}`);
   }
   const userId = me.json('id');
 
-  http.post(
-    `${BASE_URL}/users/me/preferences`,
-    JSON.stringify({ timeZone: 'AMERICA_LIMA', currencyCode: 'PEN', emailNotifications: false }),
-    { headers: jsonHeaders(token) }
+  withRetry('preferences', () =>
+    http.post(
+      `${BASE_URL}/users/me/preferences`,
+      JSON.stringify({ timeZone: 'AMERICA_LIMA', currencyCode: 'PEN', emailNotifications: false }),
+      { headers: jsonHeaders(token) }
+    )
   );
 
-  const wallet = http.post(
-    `${BASE_URL}/wallets`,
-    JSON.stringify({ currencyCode: 'PEN', primary: true }),
-    { headers: jsonHeaders(token) }
+  const wallet = withRetry('wallets', () =>
+    http.post(
+      `${BASE_URL}/wallets`,
+      JSON.stringify({ currencyCode: 'PEN', primary: true }),
+      { headers: jsonHeaders(token) }
+    )
   );
   if (wallet.status !== 201) {
     throw new Error(`wallet fallo: ${wallet.status} ${wallet.body}`);
   }
 
-  const category = http.post(
-    `${BASE_URL}/categories`,
-    JSON.stringify({ name: `QA Cont ${rnd}`, description: 'contencion', userId, type: 'SPENT' }),
-    { headers: jsonHeaders(token) }
+  const category = withRetry('categories', () =>
+    http.post(
+      `${BASE_URL}/categories`,
+      JSON.stringify({ name: `QA Cont ${rnd}`, description: 'contencion', userId, type: 'SPENT' }),
+      { headers: jsonHeaders(token) }
+    )
   );
   if (category.status !== 201) {
     throw new Error(`category fallo: ${category.status} ${category.body}`);

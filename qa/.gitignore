@@ -1,2 +1,10 @@
 node_modules/
-reports/
+
+# Los reportes SI se versionan (son la evidencia de las corridas de performance):
+#   - reports/*_summary.json  -> resumen crudo de k6 (metricas y thresholds)
+#   - reports/<escenario>/report.html -> reporte legible generado por generate-report.js
+# Lo que NO se versiona:
+#   - reports/*.log            -> consola cruda de k6 (el de bisect pesa ~70 MB)
+#   - reports/*/k6-html/       -> reporte de k6-html-reporter (duplica el JSON)
+reports/*.log
+reports/*/k6-html/

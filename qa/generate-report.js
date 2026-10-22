@@ -36,7 +36,25 @@ for (const key of Object.keys(metrics)) {
   else if ((m = key.match(/^http_req_failed\{endpoint:(.+)\}$/))) epFail[m[1]] = metrics[key];
   else if ((m = key.match(/^http_reqs\{endpoint:(.+)\}$/))) epReqs[m[1]] = metrics[key];
 }
-const endpoints = Object.keys(epDur).sort((a, b) => a.localeCompare(b));
+
+// Un endpoint se considera "vacio" cuando no se ejercito: sin reqs y sin
+// latencia real (todo 0/null). Ocurre cuando un endpoint esta declarado como
+// threshold pero su peso es 0, o cuando el escenario no llego a ejecutarse.
+// Excluirlos evita filas con "0.00 ms" que parecen un exito y no lo son.
+const isEmptyEndpoint = (ep) => {
+  const d = epDur[ep];
+  const r = epReqs[ep];
+  const count = value(r, 'count');
+  const max = value(d, 'max');
+  const avg = value(d, 'avg');
+  const zeroish = (v) => v === null || Number(v) === 0;
+  const noReqs = count === null || Number(count) === 0;
+  return noReqs && zeroish(max) && zeroish(avg);
+};
+
+const endpoints = Object.keys(epDur)
+  .filter((ep) => !isEmptyEndpoint(ep))
+  .sort((a, b) => a.localeCompare(b));
 
 const SLO_P95 = 800;
 

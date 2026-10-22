@@ -140,65 +140,98 @@ function paramsFor(token, endpoint, type, phase) {
 
 let vuCtx = null;
 
+// Reintento con backoff para el bootstrap de cada VU (no forma parte de la
+// medicion util: el primer ciclo es de setup). Absorbe 429 de proxies (ngrok) y
+// 5xx transitorios.
+const PROVISION_RETRIES = parseInt(__ENV.PROVISION_RETRIES || '6', 10);
+const PROVISION_BACKOFF_MS = parseInt(__ENV.PROVISION_BACKOFF_MS || '1000', 10);
+
+function withRetry(label, fn) {
+  let last;
+  for (let attempt = 0; attempt <= PROVISION_RETRIES; attempt++) {
+    last = fn();
+    const retriable = last.status === 429 || last.status >= 500;
+    if (!retriable) return last;
+    if (attempt < PROVISION_RETRIES) {
+      const wait = PROVISION_BACKOFF_MS * Math.pow(2, attempt);
+      console.warn(`${label}: status=${last.status}, reintento en ${wait} ms`);
+      sleep(wait / 1000);
+    }
+  }
+  return last;
+}
+
 function bootstrap() {
   const rnd = Math.random().toString(36).slice(2, 10);
   const email = `qa_${rnd}@perf.local`;
 
-  const register = http.post(
-    `${BASE_URL}/auth/register`,
-    JSON.stringify({
-      name: 'QA',
-      lastname: 'Load',
-      email,
-      password: 'Password123!',
-    }),
-    {
-      headers: { 'Content-Type': 'application/json' },
-      tags: { phase: 'vu_setup', endpoint: EP.register },
-    }
+  const register = withRetry('register', () =>
+    http.post(
+      `${BASE_URL}/auth/register`,
+      JSON.stringify({
+        name: 'QA',
+        lastname: 'Load',
+        email,
+        password: 'Password123!',
+      }),
+      {
+        headers: { 'Content-Type': 'application/json' },
+        tags: { phase: 'vu_setup', endpoint: EP.register },
+      }
+    )
   );
   if (register.status !== 200 && register.status !== 201) {
     throw new Error(`vu bootstrap register fallo: ${register.status} ${register.body}`);
   }
   const token = register.json('accessToken');
 
-  const me = http.get(`${BASE_URL}/users/me`, paramsFor(token, EP.me, 'read', 'vu_setup'));
+  const me = withRetry('users/me', () =>
+    http.get(`${BASE_URL}/users/me`, paramsFor(token, EP.me, 'read', 'vu_setup'))
+  );
   if (me.status !== 200) {
     throw new Error(`vu bootstrap users/me fallo: ${me.status} ${me.body}`);
   }
   const userId = me.json('id');
 
-  const prefs = http.post(
-    `${BASE_URL}/users/me/preferences`,
-    JSON.stringify({ timeZone: 'AMERICA_LIMA', currencyCode: 'PEN', emailNotifications: true }),
-    paramsFor(token, EP.prefs, 'write', 'vu_setup')
+  const prefs = withRetry('preferences', () =>
+    http.post(
+      `${BASE_URL}/users/me/preferences`,
+      JSON.stringify({ timeZone: 'AMERICA_LIMA', currencyCode: 'PEN', emailNotifications: true }),
+      paramsFor(token, EP.prefs, 'write', 'vu_setup')
+    )
   );
   if (prefs.status !== 201) {
     throw new Error(`vu bootstrap preferences fallo: ${prefs.status} ${prefs.body}`);
   }
 
-  const wallet = http.post(
-    `${BASE_URL}/wallets`,
-    JSON.stringify({ currencyCode: 'PEN', primary: true }),
-    paramsFor(token, EP.wallets, 'write', 'vu_setup')
+  const wallet = withRetry('wallets', () =>
+    http.post(
+      `${BASE_URL}/wallets`,
+      JSON.stringify({ currencyCode: 'PEN', primary: true }),
+      paramsFor(token, EP.wallets, 'write', 'vu_setup')
+    )
   );
   if (wallet.status !== 201) {
     throw new Error(`vu bootstrap wallet fallo: ${wallet.status} ${wallet.body}`);
   }
 
-  const category = http.post(
-    `${BASE_URL}/categories`,
-    JSON.stringify({ name: `QA Cat ${rnd}`, description: 'categoria perf', userId, type: 'SPENT' }),
-    paramsFor(token, EP.createCategory, 'write', 'vu_setup')
+  const category = withRetry('categories', () =>
+    http.post(
+      `${BASE_URL}/categories`,
+      JSON.stringify({ name: `QA Cat ${rnd}`, description: 'categoria perf', userId, type: 'SPENT' }),
+      paramsFor(token, EP.createCategory, 'write', 'vu_setup')
+    )
   );
   if (category.status !== 201) {
     throw new Error(`vu bootstrap category fallo: ${category.status} ${category.body}`);
   }
 
-  const reason = http.post(
-    `${BASE_URL}/reasons`,
-    JSON.stringify({ description: `motivo perf ${rnd}`, userId }),
-    paramsFor(token, EP.createReason, 'write', 'vu_setup')
+  const reason = withRetry('reasons', () =>
+    http.post(
+      `${BASE_URL}/reasons`,
+      JSON.stringify({ description: `motivo perf ${rnd}`, userId }),
+      paramsFor(token, EP.createReason, 'write', 'vu_setup')
+    )
   );
 
   vuCtx = {

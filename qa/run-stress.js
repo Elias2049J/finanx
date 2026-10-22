@@ -10,6 +10,8 @@ const scenario = positional[0] || process.env.SCENARIO || 'load';
 const DEDICATED = {
   contention: 'stress/contention.js',
   concurrency: 'stress/concurrency-low-rate.js',
+  saturation: 'stress/saturation.js',
+  'verify-planning': 'stress/verify-planning.js',
 };
 const isContention = scenario === 'contention';
 const script = process.env.STRESS_SCRIPT || DEDICATED[scenario] || 'stress/main.js';

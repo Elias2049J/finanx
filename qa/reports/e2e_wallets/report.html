@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reporte k6 - e2e_wallets</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #f5f6f8; color: #1f2933; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 34px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #e3e8ee; }
+  .sub { color: #62717f; margin: 0 0 20px; }
+  .cards { display: flex; flex-wrap: wrap; gap: 14px; margin: 18px 0 6px; }
+  .card { flex: 1 1 150px; background: #fff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 14px 16px; }
+  .card .k { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #7b8794; }
+  .card .v { font-size: 24px; font-weight: 700; margin-top: 6px; }
+  .banner { border-radius: 10px; padding: 14px 18px; font-weight: 600; margin-top: 8px; }
+  .ok { background: #d7f0dd; color: #1d6b33; }
+  .ko { background: #f8d7da; color: #9b1c24; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e3e8ee; border-radius: 10px; overflow: hidden; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid #eef1f4; white-space: nowrap; }
+  th { background: #eef2f6; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: #52606d; text-align: right; }
+  th:nth-child(2), td.ep { text-align: left; }
+  td.ep { font-family: ui-monospace, Consolas, monospace; color: #243b53; }
+  tr.fail td { background: #fdecee; }
+  td.bad { color: #9b1c24; }
+  tr:last-child td { border-bottom: none; }
+  .muted { color: #7b8794; font-size: 12px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Reporte de performance k6</h1>
+  <p class="sub">Escenario: <b>e2e_wallets</b> &nbsp;|&nbsp; Generado: 20/10/2026, 1:23:17 a. m. &nbsp;|&nbsp; SLO p95 &lt; 800 ms &amp; errores &lt; 1%</p>
+
+  <div class="banner ko">1 threshold(s) NO se cumplieron</div>
+
+  <div class="cards">
+    <div class="card"><div class="k">p95 global</div><div class="v">79.24 ms</div></div>
+    <div class="card"><div class="k">Errores</div><div class="v">0.00%</div></div>
+    <div class="card"><div class="k">req/s</div><div class="v">13.459058888766261</div></div>
+    <div class="card"><div class="k">Iteraciones</div><div class="v">-</div></div>
+    <div class="card"><div class="k">VUs max</div><div class="v">-</div></div>
+    <div class="card"><div class="k">Peticiones</div><div class="v">2</div></div>
+  </div>
+
+  <h2>Por endpoint</h2>
+  <table>
+    <thead><tr><th>#</th><th>endpoint</th><th>reqs</th><th>err%</th><th>avg</th><th>min</th><th>med</th><th>p90</th><th>p95</th><th>p99</th><th>max</th><th>estado</th></tr></thead>
+    <tbody>
+<tr class="">
+      <td>1</td>
+      <td class="ep">GET /users/me</td>
+      <td>-</td>
+      <td>0.00%</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td class=""><b>0.00</b></td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>OK</td>
+    </tr>
+<tr class="">
+      <td>2</td>
+      <td class="ep">GET /wallets</td>
+      <td>-</td>
+      <td>0.00%</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td class=""><b>0.00</b></td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>OK</td>
+    </tr>
+<tr class="">
+      <td>3</td>
+      <td class="ep">GET /wallets/{id}</td>
+      <td>-</td>
+      <td>0.00%</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td class=""><b>0.00</b></td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>OK</td>
+    </tr>
+<tr class="">
+      <td>4</td>
+      <td class="ep">POST /auth/login</td>
+      <td>-</td>
+      <td>0.00%</td>
+      <td>64.83</td>
+      <td>64.83</td>
+      <td>64.83</td>
+      <td>64.83</td>
+      <td class=""><b>64.83</b></td>
+      <td>64.83</td>
+      <td>64.83</td>
+      <td>OK</td>
+    </tr>
+<tr class="">
+      <td>5</td>
+      <td class="ep">POST /auth/register</td>
+      <td>-</td>
+      <td>0.00%</td>
+      <td>80.00</td>
+      <td>80.00</td>
+      <td>80.00</td>
+      <td>80.00</td>
+      <td class=""><b>80.00</b></td>
+      <td>80.00</td>
+      <td>80.00</td>
+      <td>OK</td>
+    </tr>
+<tr class="">
+      <td>6</td>
+      <td class="ep">POST /users/me/preferences</td>
+      <td>-</td>
+      <td>0.00%</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td class=""><b>0.00</b></td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>OK</td>
+    </tr>
+<tr class="">
+      <td>7</td>
+      <td class="ep">POST /wallets</td>
+      <td>-</td>
+      <td>0.00%</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td class=""><b>0.00</b></td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>OK</td>
+    </tr>
+    </tbody>
+  </table>
+  <p class="muted">Tiempos en ms. err% = http_req_failed. estado eval&uacute;a p95 &lt; 800 ms y error &lt; 1%.</p>
+
+  <h2>Thresholds</h2>
+  <table>
+    <thead><tr><th>m&eacute;trica</th><th>umbral</th><th>resultado</th></tr></thead>
+    <tbody>
+<tr class=""><td class="ep">http_req_failed{endpoint:POST /auth/register}</td><td>rate&lt;0.01</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_duration{endpoint:GET /users/me}</td><td>p(95)&lt;1000</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_duration{endpoint:POST /users/me/preferences}</td><td>p(95)&lt;1000</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_failed{endpoint:GET /users/me}</td><td>rate&lt;0.01</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_failed{endpoint:GET /wallets/{id}}</td><td>rate&lt;0.01</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_failed{endpoint:GET /wallets}</td><td>rate&lt;0.01</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_duration{endpoint:POST /auth/register}</td><td>p(95)&lt;1000</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_failed{endpoint:POST /auth/login}</td><td>rate&lt;0.01</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_failed{endpoint:POST /wallets}</td><td>rate&lt;0.01</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_duration{endpoint:POST /auth/login}</td><td>p(95)&lt;1000</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_duration{endpoint:GET /wallets/{id}}</td><td>p(95)&lt;1000</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_failed{endpoint:POST /users/me/preferences}</td><td>rate&lt;0.01</td><td>OK</td></tr>
+<tr class=""><td class="ep">http_req_duration{endpoint:POST /wallets}</td><td>p(95)&lt;1000</td><td>OK</td></tr>
+<tr class="fail"><td class="ep">e2e_failed</td><td>rate==0</td><td>FALLA</td></tr>
+<tr class=""><td class="ep">http_req_duration{endpoint:GET /wallets}</td><td>p(95)&lt;1000</td><td>OK</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Checks</h2>
+  <table>
+    <thead><tr><th>check</th><th>passes</th><th>fails</th></tr></thead>
+    <tbody>
+<tr class=""><td class="ep">setup ⇀ register [200/201]</td><td>1</td><td>0</td></tr>
+<tr class=""><td class="ep">setup ⇀ login [200]</td><td>1</td><td>0</td></tr>
+<tr class="fail"><td class="ep">setup ⇀ login devuelve accessToken</td><td>0</td><td>1</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

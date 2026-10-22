@@ -3,6 +3,11 @@ services:
   mismonedas:
     build: .
     container_name: spring_app
+    # Puerto SOLO para QA/stress: expone el backend directo al host (127.0.0.1)
+    # para saltar el rate limit de nginx en /api/v1/auth/ (rate=10r/m).
+    # Bind a loopback para no exponer el backend a la red.
+    ports:
+      - "127.0.0.1:8082:8080"
     env_file:
       - .env
     depends_on:
