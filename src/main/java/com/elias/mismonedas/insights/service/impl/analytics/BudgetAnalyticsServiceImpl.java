@@ -76,7 +76,7 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
     public DashboardResponse buildDashboard(DateRange request, Long userId) {
         List<Budget> budgets = findBudgets(request, userId);
         User user = getUser(userId);
-        String baseCurrency = user.getPreferences().getCurrencyCode();
+        String baseCurrency = resolveBaseCurrency(user);
 
         BigDecimal totalBudgetLimitAmount = budgets
                 .stream()

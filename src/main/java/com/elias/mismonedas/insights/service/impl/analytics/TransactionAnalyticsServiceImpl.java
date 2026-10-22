@@ -104,7 +104,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         var periodStart = coveredPeriod.startInclusive(zoneId);
         var periodEnd = coveredPeriod.endExclusive(zoneId);
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
-        String baseCurrency = u.getPreferences().getCurrencyCode();
+        String baseCurrency = resolveBaseCurrency(u);
 
         if (walletId != null) {
             walletRepository.findByIdAndUser_Id(walletId, userId)

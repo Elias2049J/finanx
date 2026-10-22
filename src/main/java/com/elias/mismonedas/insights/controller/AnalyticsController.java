@@ -37,13 +37,14 @@ public class AnalyticsController {
 
     @Operation(
             summary = "Dashboard de balance",
-            description = "Genera el dashboard de balance basado en un periodo y un prompt opcional.",
+            description = "Genera el dashboard de balance del periodo. Sin walletId consolida todas las billeteras del usuario en su moneda base.",
             operationId = "getBalanceDashboard",
             tags = {"Analytics"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Dashboard generado",
                             content = @Content(schema = @Schema(implementation = TransactionsDashboard.class))),
-                    @ApiResponse(responseCode = "400", description = "Request invalido")
+                    @ApiResponse(responseCode = "400", description = "Request invalido"),
+                    @ApiResponse(responseCode = "404", description = "Billetera no encontrada")
             }
     )
     @GetMapping("/dashboard/balance")

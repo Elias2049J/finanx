@@ -205,6 +205,10 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
         return userRepository.findById(id).orElseThrow();
     }
 
+    protected String resolveBaseCurrency(User user) {
+        return user.getPreferences() != null ? user.getPreferences().getCurrencyCode() : null;
+    }
+
     protected BigDecimal getPercentageOfTotal(BigDecimal value, BigDecimal total) {
         return value
                 .divide(total, 4, HALF_UP)
