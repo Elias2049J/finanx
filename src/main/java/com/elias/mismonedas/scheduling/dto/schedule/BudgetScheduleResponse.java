@@ -34,6 +34,12 @@ public class BudgetScheduleResponse extends ScheduleResponse {
     private BigDecimal limitAmount;
 
     @Schema(
+            description = "Codigo de moneda (ISO 4217) con el que se creara el presupuesto",
+            example = "PEN"
+    )
+    private String currencyCode;
+
+    @Schema(
             description = "Descripcion del presupuesto",
             example = "Presupuesto mensual de alimentacion"
     )
