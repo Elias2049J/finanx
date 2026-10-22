@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   mismonedas:
     build: .
@@ -143,7 +142,10 @@ networks:
 
 secrets:
   firebase-sa:
-    file: ./secrets/mis-monedas-9a83a-firebase-adminsdk-fbsvc-f5bbb1549d.json
+    # Service account de Firebase en el HOST. Se monta dentro del contenedor en
+    # /run/secrets/firebase-sa (ver FCM_CREDENTIALS_PATH en environment:).
+    # Ajusta FCM_CREDENTIALS_FILE en tu .env si tu archivo se llama distinto.
+    file: ${FCM_CREDENTIALS_FILE:-./secrets/firebase-service-account.json}
 
 volumes:
   postgres_data:

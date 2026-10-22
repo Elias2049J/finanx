@@ -35,9 +35,11 @@ dependen del despliegue.
 ### Service account de Firebase
 
 Las notificaciones push (FCM) necesitan el service account JSON de Firebase.
-El archivo **no** se versiona: va en `secrets/`, y su ruta se configura con
-`FCM_CREDENTIALS_PATH`. En Docker el compose lo monta como secreto en
-`/run/secrets/firebase-sa` (ver `docker-compose.yml`).
+El archivo **no** se versiona: va en `secrets/firebase-service-account.json`
+(si el tuyo se llama distinto, ajusta `FCM_CREDENTIALS_FILE`). El backend lee
+su ruta de `FCM_CREDENTIALS_PATH`, y docker compose usa `FCM_CREDENTIALS_FILE`
+para montarlo como secreto en `/run/secrets/firebase-sa` (ver
+`docker-compose.yml`).
 
 ### Como se carga la configuracion
 
