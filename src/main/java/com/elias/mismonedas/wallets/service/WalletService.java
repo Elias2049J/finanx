@@ -23,6 +23,8 @@ public interface WalletService {
 
     void disable(Long id);
 
+    WalletResponse setPrimary(Long id);
+
     WalletResponse getOrCreatePrimary(Long userId, String currencyCode);
 
     void updateBalance(Long userId, Long walletId, TransactionType type, BigDecimal amount);

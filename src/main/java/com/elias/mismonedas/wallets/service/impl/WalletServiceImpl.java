@@ -109,6 +109,27 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
+    public WalletResponse setPrimary(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        Wallet wallet = getOwned(id, userId);
+
+        // Idempotente: si ya es la principal no hay nada que mover.
+        if (wallet.isPrimary()) {
+            return walletMapper.toResponse(wallet);
+        }
+
+        walletRepository.findByUserIdAndPrimaryTrue(userId)
+                .ifPresent(current -> {
+                    current.setPrimary(false);
+                    walletRepository.save(current);
+                });
+
+        wallet.setPrimary(true);
+        return walletMapper.toResponse(walletRepository.save(wallet));
+    }
+
+    @Override
+    @Transactional
     public WalletResponse getOrCreatePrimary(Long userId, String currencyCode) {
         return walletRepository.findByUserIdAndPrimaryTrue(userId)
                 .map(walletMapper::toResponse)

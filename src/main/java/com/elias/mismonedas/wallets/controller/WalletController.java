@@ -44,4 +44,14 @@ public class WalletController {
         WalletResponse saved = walletService.create(request);
         return ResponseEntity.created(URI.create("/api/v1/wallets/" + saved.getId())).body(saved);
     }
+
+    @Operation(
+            summary = "Marcar billetera como principal",
+            description = "Promueve la billetera a principal y desmarca la anterior. Idempotente: si ya es la principal, responde 200 sin cambios.",
+            operationId = "setPrimaryWallet",
+            tags = {"Wallets"})
+    @PostMapping("/{id}/primary")
+    public ResponseEntity<WalletResponse> setPrimary(@PathVariable Long id) {
+        return ResponseEntity.ok(walletService.setPrimary(id));
+    }
 }
