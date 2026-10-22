@@ -11,5 +11,7 @@ public record TransactionRegisteredEvent(
         Long transactionId,
         Long userId,
         TransactionType type,
-        Long scheduleId) {
+        Long scheduleId,
+        Long categoryId,
+        Long savingGoalId) {
 }

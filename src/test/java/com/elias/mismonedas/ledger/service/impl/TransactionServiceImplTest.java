@@ -14,6 +14,7 @@ import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
+import com.elias.mismonedas.ledger.domain.event.TransactionDisabledEvent;
 import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
@@ -283,6 +284,79 @@ class TransactionServiceImplTest {
             assertThatThrownBy(() -> service.create(request, null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("already linked");
+        }
+    }
+
+    @Nested
+    class DisableTest {
+
+        private Transaction activeTransaction;
+
+        @BeforeEach
+        void setUpTransaction() {
+            activeTransaction = new Transaction();
+            activeTransaction.setId(999L);
+            activeTransaction.setUser(user);
+            activeTransaction.setWallet(wallet);
+            activeTransaction.setType(TransactionType.SPENT);
+            activeTransaction.setAmount(new BigDecimal("50.00"));
+            activeTransaction.setActive(true);
+        }
+
+        @Test
+        void shouldDeactivateAndReverseBalanceForSpentTransaction() {
+            when(transactionRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.of(activeTransaction));
+            when(transactionRepository.save(any(Transaction.class))).thenReturn(activeTransaction);
+
+            service.disable(999L);
+
+            assertThat(activeTransaction.getActive()).isFalse();
+            assertThat(activeTransaction.getDisabledAt()).isNotNull();
+            // Un gasto se revierte como ingreso.
+            verify(walletService).updateBalance(1L, 10L, TransactionType.INCOME, new BigDecimal("50.00"));
+            verify(eventPublisher).publishEvent(isA(TransactionDisabledEvent.class));
+        }
+
+        @Test
+        void shouldReverseIncomeAsSpent() {
+            activeTransaction.setType(TransactionType.INCOME);
+            when(transactionRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.of(activeTransaction));
+            when(transactionRepository.save(any(Transaction.class))).thenReturn(activeTransaction);
+
+            service.disable(999L);
+
+            verify(walletService).updateBalance(1L, 10L, TransactionType.SPENT, new BigDecimal("50.00"));
+        }
+
+        @Test
+        void shouldBeIdempotentWhenAlreadyDisabled() {
+            // Un segundo DELETE no debe revertir el saldo otra vez: la
+            // reversion vive en el servicio, no en un listener que se dispare
+            // por cada evento.
+            activeTransaction.setActive(false);
+            when(transactionRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.of(activeTransaction));
+
+            service.disable(999L);
+
+            verify(transactionRepository, never()).save(any());
+            verify(walletService, never()).updateBalance(anyLong(), anyLong(), any(), any());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
+
+        @Test
+        void shouldPublishDisabledEventWithOriginalType() {
+            when(transactionRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.of(activeTransaction));
+            when(transactionRepository.save(any(Transaction.class))).thenReturn(activeTransaction);
+
+            service.disable(999L);
+
+            ArgumentCaptor<TransactionDisabledEvent> eventCaptor =
+                    ArgumentCaptor.forClass(TransactionDisabledEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().transactionId()).isEqualTo(999L);
+            assertThat(eventCaptor.getValue().userId()).isEqualTo(1L);
+            assertThat(eventCaptor.getValue().walletId()).isEqualTo(10L);
+            assertThat(eventCaptor.getValue().type()).isEqualTo(TransactionType.SPENT);
         }
     }
 }

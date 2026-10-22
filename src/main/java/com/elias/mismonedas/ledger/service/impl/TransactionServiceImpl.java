@@ -39,6 +39,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -150,7 +151,9 @@ public class TransactionServiceImpl implements TransactionService {
                     saved.getId(),
                     userId,
                     saved.getType(),
-                    saved.getScheduleId()));
+                    saved.getScheduleId(),
+                    saved.getCategory() != null ? saved.getCategory().getId() : null,
+                    saved.getSavingGoal() != null ? saved.getSavingGoal().getId() : null));
 
             walletService.updateBalance(userId, saved.getWallet().getId(), saved.getType(), saved.getAmount());
 
@@ -204,12 +207,24 @@ public class TransactionServiceImpl implements TransactionService {
     public void disable(Long id){
         Transaction transaction = transactionRepository
                 .findByIdAndUser_Id(id, securityService.getCurrentUser().getId()).orElseThrow();
+        if (!Boolean.TRUE.equals(transaction.getActive())) {
+            return;
+        }
         Long userId = transaction.getUser().getId();
+        Long walletId = transaction.getWallet().getId();
+        TransactionType type = transaction.getType();
+        BigDecimal amount = transaction.getAmount();
         ZoneId zoneId = transaction.getUser().getTimeZone().toZoneId();
         transaction.setActive(false);
         transaction.setDisabledAt(OffsetDateTime.now(zoneId));
         Transaction saved = transactionRepository.save(transaction);
+        Long transactionId = saved.getId();
 
-        eventPublisher.publishEvent(new TransactionDisabledEvent(saved.getId(), userId, saved.getWallet().getId(), saved.getAmount(), saved.getType()));
+        TransactionType reversed = type == TransactionType.INCOME
+                ? TransactionType.SPENT
+                : TransactionType.INCOME;
+        walletService.updateBalance(userId, walletId, reversed, amount);
+
+        eventPublisher.publishEvent(new TransactionDisabledEvent(transactionId, userId, walletId, amount, type));
     }
 }

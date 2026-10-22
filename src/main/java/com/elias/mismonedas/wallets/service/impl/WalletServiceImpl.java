@@ -126,13 +126,10 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     @Override
     public void updateBalance(Long userId, Long walletId, TransactionType type, BigDecimal amount) {
-        Wallet wallet = walletRepository.findByIdAndUser_Id(walletId, userId)
-                .orElseThrow(() -> new EntityNotFoundException("Wallet not found: " + walletId));
-
-        if (type == TransactionType.INCOME) {
-            wallet.setBalance(wallet.getBalance().add(amount));
-        } else {
-            wallet.setBalance(wallet.getBalance().subtract(amount));
+        BigDecimal delta = type == TransactionType.INCOME ? amount : amount.negate();
+        int updated = walletRepository.adjustBalance(walletId, userId, delta);
+        if (updated == 0) {
+            throw new EntityNotFoundException("Wallet not found: " + walletId);
         }
     }
 }
