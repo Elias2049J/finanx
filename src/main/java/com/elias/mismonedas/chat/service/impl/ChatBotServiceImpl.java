@@ -69,7 +69,7 @@ public class ChatBotServiceImpl implements ChatBotService {
     public ChatSessionResponse startSession() {
         User user = securityService.getCurrentUser();
         Long userId = user.getId();
-        UserDataContext dataContext = userDataContextService.getUserDataContext(userId);
+        UserDataContext dataContext = refreshUserDataContext(userId);
 
         ChatSession session = new ChatSession();
         session.setUser(user);
@@ -192,6 +192,15 @@ public class ChatBotServiceImpl implements ChatBotService {
 
 
 
+
+    private UserDataContext refreshUserDataContext(Long userId) {
+        try {
+            return userDataContextService.updateUserDataContext(userId);
+        } catch (Exception e) {
+            log.warn("No se pudo refrescar el contexto financiero del usuario {}; se usa el persistido", userId, e);
+            return userDataContextService.getUserDataContext(userId);
+        }
+    }
 
     private String buildSessionContext(UserDataContext ctx) {
         if (ctx == null) return null;
