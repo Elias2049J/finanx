@@ -95,13 +95,9 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
         BigDecimal totalBudgetRemainingAmount = totalBudgetLimitAmount
                 .subtract(totalBudgetSpentAmount);
 
-        List<BudgetExecutionResponse> budgetE = budgets
-                .stream()
-                .map(this::mapToExecution)
-                .toList();
-
         BudgetsDashboard result = new BudgetsDashboard();
         result.setDateRangeLabel(dateMapper.dateRangeLabel(request));
+        result.setCurrencyCode(baseCurrency);
         result.setTotalBudgetLimitAmount(totalBudgetLimitAmount);
         result.setTotalBudgetRemainingAmount(totalBudgetRemainingAmount);
         result.setTotalBudgetSpentAmount(totalBudgetSpentAmount);

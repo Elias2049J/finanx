@@ -4,6 +4,8 @@ import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.repository.projection.AmountByCurrency;
 import com.elias.mismonedas.ledger.repository.projection.SavingGoalAggregate;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -18,6 +20,11 @@ import java.util.Optional;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long>, JpaSpecificationExecutor<Transaction> {
+
+    @Override
+    @EntityGraph(attributePaths = {"wallet", "wallet.user", "category", "reason"})
+    List<Transaction> findAll(Specification<Transaction> spec);
+
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
 
     Optional<Transaction> findByIdAndUser_Id(Long id, Long userId);

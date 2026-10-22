@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Setter
@@ -27,6 +28,12 @@ public class TransactionsDashboard extends DashboardResponse {
 
     @Schema(description = "Moneda base del consolidado (preferencia del usuario)", example = "PEN")
     private String currencyCode;
+
+    @Schema(description = "Indica si el consolidado quedo incompleto por tasas de cambio faltantes")
+    private boolean partial;
+
+    @Schema(description = "Pares de moneda sin tasa disponible (origen->destino) excluidos del consolidado")
+    private List<String> missingRates;
 
     @Schema(
             description = "Ranking de categorias con metricas resumidas"

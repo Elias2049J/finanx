@@ -22,6 +22,9 @@ import java.util.List;
 @Schema(description = "Dashboard de presupuestos con agregados por salud y categoria, evolucion de ejecucion y metricas globales")
 public class BudgetsDashboard extends DashboardResponse {
 
+    @Schema(description = "Moneda base del consolidado (preferencia del usuario)", example = "PEN")
+    private String currencyCode;
+
     @Schema(
             description = "Lista de agregados por estado de salud del presupuesto"
     )

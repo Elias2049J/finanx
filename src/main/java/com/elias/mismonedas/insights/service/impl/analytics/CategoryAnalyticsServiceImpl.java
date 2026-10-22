@@ -85,7 +85,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
                 .toList();
 
 
-        String dateRangeLabel = dateMapper.dateRangeLabel(request);
+        String dateRangeLabel = dateMapper.dateRangeLabel(period);
         td.setDateRangeLabel(dateRangeLabel);
 
         List<TransactionResponse> income = new ArrayList<>();
@@ -99,7 +99,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
         }
 
         TimeLine<TransactionResponse> expenses = this.buildTimeLine(
-                request,
+                period,
                 "Gastos del periodo :"+ dateRangeLabel,
                 spent,
                 t -> t.getCreatedAt().toLocalDate(),
@@ -107,7 +107,7 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
                 Comparator.comparing(TransactionResponse::getCreatedAt));
 
         TimeLine<TransactionResponse> incomes = this.buildTimeLine(
-                request,
+                period,
                 "Ingresos del periodo :"+ dateRangeLabel,
                 income,
                 t -> t.getCreatedAt().toLocalDate(),

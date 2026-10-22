@@ -104,6 +104,8 @@ export default function (data) {
     assert('tiene periodo', !!body.dateRangeLabel, JSON.stringify(body.dateRangeLabel));
     assert('expone moneda base', body.currencyCode === data.currencyCode, `${body.currencyCode} vs ${data.currencyCode}`);
     assert('balance = 600 (800-200)', Number(body.balance) === 600, `balance=${body.balance}`);
+    assert('consolidado completo', body.partial === false, `partial=${body.partial}`);
+    assert('sin tasas faltantes', Array.isArray(body.missingRates) && body.missingRates.length === 0, JSON.stringify(body.missingRates));
     assert('tiene ranking por categoria', !!body.summaryByCategory, 'sin summaryByCategory');
   });
 
@@ -132,6 +134,7 @@ export default function (data) {
     statusOk('dashboard budgets', res, 200);
     const body = res.json();
     assert('tiene type BUDGETS', body.type === 'BUDGETS', body.type);
+    assert('expone moneda base', body.currencyCode === data.currencyCode, `${body.currencyCode} vs ${data.currencyCode}`);
     assert('incluye totales de presupuesto', body.totalBudgetLimitAmount !== undefined, JSON.stringify(body));
   });
 
