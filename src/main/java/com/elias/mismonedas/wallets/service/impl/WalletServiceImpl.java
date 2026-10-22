@@ -86,6 +86,11 @@ public class WalletServiceImpl implements WalletService {
     }
 
 
+    /**
+     * @deprecated Sin endpoint y peligrosa: deja al usuario sin billetera
+     * principal. Ver {@link WalletService#disable(Long)}.
+     */
+    @Deprecated
     @Override
     @Transactional
     public void disable(Long id) {
