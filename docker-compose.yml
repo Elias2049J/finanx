@@ -38,6 +38,15 @@ services:
       APP_STORAGE_SEAWEEDFS_SECRET_KEY: ${SEAWEEDFS_SECRET_KEY}
       APP_STORAGE_SEAWEEDFS_PRESIGNED_URL_TTL: 5m
       FCM_CREDENTIALS_PATH: /run/secrets/firebase-sa
+    healthcheck:
+      # /actuator/health esta permitAll en WebSecurityConfig, asi que no pide
+      # token. Si la app reporta DOWN, Spring responde 503 y wget falla ->
+      # el contenedor queda unhealthy.
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     secrets:
       - firebase-sa
     networks:
