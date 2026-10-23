@@ -4,11 +4,15 @@ import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.wallets.dto.wallet.WalletRequest;
 import com.elias.mismonedas.wallets.dto.wallet.WalletResponse;
+import com.elias.mismonedas.wallets.dto.wallet.WalletBalanceResponse;
 import com.elias.mismonedas.wallets.mapper.WalletMapper;
 import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
+import com.elias.mismonedas.shared.domain.vo.Money;
+import com.elias.mismonedas.shared.exception.CurrencyConversionException;
+import com.elias.mismonedas.shared.money.CurrencyConverter;
 import com.elias.mismonedas.wallets.service.WalletService;
 import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
 import com.elias.mismonedas.billing.plan.PlanRequiredException;
@@ -25,6 +29,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +45,7 @@ public class WalletServiceImpl implements WalletService {
     private final SubscriptionService subscriptionService;
     private final UserPreferencesRepository preferencesRepository;
     private final SecurityService securityService;
+    private final CurrencyConverter currencyConverter;
 
     @Override
     @Transactional
@@ -83,6 +93,60 @@ public class WalletServiceImpl implements WalletService {
         Long userId = securityService.getCurrentUser().getId();
         Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.ASC, "id"));
         return PageResponseFactory.from(walletRepository.findByUserId(userId, stablePage), walletMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WalletBalanceResponse getConsolidatedBalance() {
+        Long userId = securityService.getCurrentUser().getId();
+        List<Wallet> wallets = walletRepository.findByUserId(userId);
+
+        String baseCurrency = walletRepository.findByUserIdAndPrimaryTrue(userId)
+                .map(Wallet::getCurrencyCode)
+                .orElse(null);
+
+        List<String> missingRates = new ArrayList<>();
+        Set<String> failedPairs = new HashSet<>();
+
+        BigDecimal total = wallets.stream()
+                .map(w -> convertToBase(w.getBalance(), w.getCurrencyCode(), baseCurrency, failedPairs, missingRates))
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<String> uniqueMissingRates = missingRates.stream().distinct().sorted().toList();
+
+        return WalletBalanceResponse.builder()
+                .balance(total)
+                .currencyCode(baseCurrency)
+                .partial(!uniqueMissingRates.isEmpty())
+                .missingRates(uniqueMissingRates)
+                .build();
+    }
+
+    private BigDecimal convertToBase(BigDecimal amount,
+                                     String fromCurrency,
+                                     String toCurrency,
+                                     Set<String> failedPairs,
+                                     List<String> missingRates) {
+        if (amount == null) {
+            return BigDecimal.ZERO;
+        }
+        if (fromCurrency == null || toCurrency == null || fromCurrency.equalsIgnoreCase(toCurrency)) {
+            return amount;
+        }
+        String pair = fromCurrency + "->" + toCurrency;
+        if (failedPairs.contains(pair)) {
+            missingRates.add(pair);
+            return null;
+        }
+        try {
+            Money converted = currencyConverter.convert(Money.of(amount, fromCurrency), toCurrency);
+            return converted == null ? null : converted.amount();
+        } catch (CurrencyConversionException ex) {
+            failedPairs.add(pair);
+            missingRates.add(pair);
+            return null;
+        }
     }
 
 

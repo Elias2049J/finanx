@@ -3,6 +3,7 @@ package com.elias.mismonedas.wallets.service;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.wallets.dto.wallet.WalletRequest;
 import com.elias.mismonedas.wallets.dto.wallet.WalletResponse;
+import com.elias.mismonedas.wallets.dto.wallet.WalletBalanceResponse;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,8 @@ public interface WalletService {
     Wallet getOwned(Long id, Long userId);
 
     PageResponse<WalletResponse> list(Pageable pageable);
+
+    WalletBalanceResponse getConsolidatedBalance();
 
     /**
      * @deprecated No se expone en ningun endpoint y, si se llamara, dejaria al

@@ -8,8 +8,12 @@ import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.wallets.dto.wallet.WalletResponse;
+import com.elias.mismonedas.wallets.dto.wallet.WalletBalanceResponse;
 import com.elias.mismonedas.wallets.mapper.WalletMapper;
 import com.elias.mismonedas.wallets.repository.WalletRepository;
+import com.elias.mismonedas.shared.domain.vo.Money;
+import com.elias.mismonedas.shared.exception.CurrencyConversionException;
+import com.elias.mismonedas.shared.money.CurrencyConverter;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,12 +24,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -40,6 +46,7 @@ class WalletServiceImplTest {
     @Mock private SubscriptionService subscriptionService;
     @Mock private UserPreferencesRepository preferencesRepository;
     @Mock private SecurityService securityService;
+    @Mock private CurrencyConverter currencyConverter;
 
     private WalletServiceImpl service;
 
@@ -47,7 +54,7 @@ class WalletServiceImplTest {
     void setUp() {
         service = new WalletServiceImpl(
                 walletRepository, userRepository, walletMapper,
-                subscriptionService, preferencesRepository, securityService);
+                subscriptionService, preferencesRepository, securityService, currencyConverter);
     }
 
     @Nested
@@ -191,6 +198,65 @@ class WalletServiceImplTest {
                     .hasMessageContaining("99");
 
             verify(walletRepository, never()).save(any(Wallet.class));
+        }
+    }
+
+    @Nested
+    class ConsolidatedBalanceTest {
+
+        private static final long USER_ID = 7L;
+
+        private User currentUser() {
+            User user = mock(User.class);
+            when(user.getId()).thenReturn(USER_ID);
+            when(securityService.getCurrentUser()).thenReturn(user);
+            return user;
+        }
+
+        @Test
+        @DisplayName("consolida todas las billeteras en la moneda principal")
+        void shouldConsolidateAllWalletsInPrimaryCurrency() {
+            currentUser();
+
+            Wallet primary = wallet("PEN", "100.00");
+            Wallet secondary = wallet("USD", "50.00");
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(List.of(primary, secondary));
+            when(walletRepository.findByUserIdAndPrimaryTrue(USER_ID)).thenReturn(Optional.of(primary));
+            when(currencyConverter.convert(Money.of(new BigDecimal("50.00"), "USD"), "PEN"))
+                    .thenReturn(new Money(new BigDecimal("171.71"), "PEN"));
+
+            WalletBalanceResponse result = service.getConsolidatedBalance();
+
+            assertThat(result.getBalance()).isEqualByComparingTo("271.71");
+            assertThat(result.getCurrencyCode()).isEqualTo("PEN");
+            assertThat(result.isPartial()).isFalse();
+            assertThat(result.getMissingRates()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("marca partial cuando falta una tasa")
+        void shouldMarkPartialWhenRateIsMissing() {
+            currentUser();
+
+            Wallet primary = wallet("PEN", "100.00");
+            Wallet secondary = wallet("USD", "50.00");
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(List.of(primary, secondary));
+            when(walletRepository.findByUserIdAndPrimaryTrue(USER_ID)).thenReturn(Optional.of(primary));
+            when(currencyConverter.convert(any(Money.class), eq("PEN")))
+                    .thenThrow(new CurrencyConversionException("sin tasa"));
+
+            WalletBalanceResponse result = service.getConsolidatedBalance();
+
+            assertThat(result.getBalance()).isEqualByComparingTo("100.00");
+            assertThat(result.isPartial()).isTrue();
+            assertThat(result.getMissingRates()).containsExactly("USD->PEN");
+        }
+
+        private Wallet wallet(String currency, String balance) {
+            Wallet wallet = mock(Wallet.class);
+            when(wallet.getCurrencyCode()).thenReturn(currency);
+            when(wallet.getBalance()).thenReturn(new BigDecimal(balance));
+            return wallet;
         }
     }
 }

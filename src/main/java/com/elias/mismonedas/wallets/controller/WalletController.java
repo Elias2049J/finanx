@@ -2,6 +2,7 @@ package com.elias.mismonedas.wallets.controller;
 
 import com.elias.mismonedas.wallets.dto.wallet.WalletRequest;
 import com.elias.mismonedas.wallets.dto.wallet.WalletResponse;
+import com.elias.mismonedas.wallets.dto.wallet.WalletBalanceResponse;
 import com.elias.mismonedas.wallets.service.WalletService;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
@@ -30,6 +31,16 @@ public class WalletController {
             @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "id", direction = Sort.Direction.ASC)
             Pageable pageable) {
         return ResponseEntity.ok(walletService.list(pageable));
+    }
+
+    @Operation(
+            summary = "Balance consolidado",
+            description = "Balance neto de todas las billeteras del usuario, consolidado en su moneda principal.",
+            operationId = "getConsolidatedBalance",
+            tags = {"Wallets"})
+    @GetMapping("/balance")
+    public ResponseEntity<WalletBalanceResponse> getConsolidatedBalance() {
+        return ResponseEntity.ok(walletService.getConsolidatedBalance());
     }
 
     @Operation(summary = "Obtener billetera por ID", tags = {"Wallets"})
