@@ -88,19 +88,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
-    @ExceptionHandler(CurrencyChangeRateLimitException.class)
-    public ResponseEntity<ErrorResponse> handleCurrencyChangeRateLimit(CurrencyChangeRateLimitException ex, HttpServletRequest request) {
-        ErrorResponse error = new ErrorResponse(
-                request.getMethod(),
-                request.getRequestURI(),
-                ex.getMessage(),
-                HttpStatus.TOO_MANY_REQUESTS.value(),
-                LocalDateTime.now().toString()
-        );
-        log.warn("[handleCurrencyChangeRateLimit] at path: {}, method: {}, error: {}", request.getRequestURI(), request.getMethod(), error);
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
-    }
-
     @ExceptionHandler(NullPointerException.class)
     public ResponseEntity<ErrorResponse> handleNullPointer(NullPointerException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
