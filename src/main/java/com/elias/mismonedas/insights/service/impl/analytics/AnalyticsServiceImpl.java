@@ -10,11 +10,9 @@ import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.wallets.repository.WalletRepository;
-import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -44,13 +42,13 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
 
     @Transactional(readOnly = true)
     @Override
-    public DashboardResponse buildDashboard(DateRange request) throws HttpException, IOException {
+    public DashboardResponse buildDashboard(DateRange request) {
         return buildDashboard(request, securityService.getCurrentUser().getId());
     }
 
     @Transactional(readOnly = true)
     @Override
-    public abstract DashboardResponse buildDashboard(DateRange request, Long userId) throws HttpException, IOException;
+    public abstract DashboardResponse buildDashboard(DateRange request, Long userId);
 
     protected Aggregate buildAggregate(
             String title,

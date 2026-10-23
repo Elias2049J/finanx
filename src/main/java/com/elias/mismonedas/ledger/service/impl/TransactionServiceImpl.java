@@ -29,7 +29,6 @@ import com.elias.mismonedas.shared.exception.ConflictException;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpException;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -38,7 +37,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -61,14 +59,14 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TransactionResponse create(TransactionRequest request, String idempotencyKey) throws HttpException, IOException {
+    public TransactionResponse create(TransactionRequest request, String idempotencyKey) {
         Long currentUserId = securityService.getCurrentUser().getId();
         return create(currentUserId, null, request, idempotencyKey);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TransactionResponse create(Long userId, Long scheduleId, TransactionRequest request, String idempotencyKey) throws HttpException, IOException {
+    public TransactionResponse create(Long userId, Long scheduleId, TransactionRequest request, String idempotencyKey) {
         String key = normalizeKey(idempotencyKey);
 
         Transaction replay = findReplay(key, userId);

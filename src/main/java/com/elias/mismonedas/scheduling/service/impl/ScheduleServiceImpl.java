@@ -363,11 +363,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         txRequest.setType(st.getTransactionType());
         txRequest.setConvertCurrency(false);
 
-        try {
-            transactionService.create(st.getUser().getId(), st.getId(), txRequest, UUID.randomUUID().toString());
-        } catch (org.apache.http.HttpException | java.io.IOException e) {
-            throw new RuntimeException(e);
-        }
+        transactionService.create(st.getUser().getId(), st.getId(), txRequest, UUID.randomUUID().toString());
 
         boolean hasNext = advanceOrFinalize(st);
 

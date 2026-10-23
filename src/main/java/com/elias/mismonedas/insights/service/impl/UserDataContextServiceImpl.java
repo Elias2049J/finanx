@@ -7,11 +7,9 @@ import com.elias.mismonedas.insights.repository.UserDataContextRepository;
 import com.elias.mismonedas.insights.service.UserDataContextService;
 import com.elias.mismonedas.insights.service.analytics.AnalyticsService;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
-import org.apache.http.HttpException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -31,7 +29,7 @@ public class UserDataContextServiceImpl implements UserDataContextService {
     }
 
     @Override
-    public UserDataContext updateUserDataContext(Long userId) throws HttpException, IOException {
+    public UserDataContext updateUserDataContext(Long userId) {
         LocalDate currentDate = LocalDate.now();
         LocalDate previousMonth = currentDate.minusMonths(1);
 
@@ -64,12 +62,6 @@ public class UserDataContextServiceImpl implements UserDataContextService {
     @Override
     public UserDataContext getUserDataContext(Long userId) {
         return userDataContextRepository.findByUser_Id(userId)
-                .orElseGet(() -> {
-                    try {
-                        return updateUserDataContext(userId);
-                    } catch (HttpException | IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+                .orElseGet(() -> updateUserDataContext(userId));
     }
 }

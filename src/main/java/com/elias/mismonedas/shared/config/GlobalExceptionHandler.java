@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
+import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
@@ -85,6 +87,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CurrencyConversionException.class)
     public ResponseEntity<ErrorResponse> handleCurrencyConversion(CurrencyConversionException ex, HttpServletRequest request) {
         return respond(HttpStatus.SERVICE_UNAVAILABLE, "CURRENCY_CONVERSION_UNAVAILABLE", "error.currency_conversion", request, ex);
+    }
+
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<ErrorResponse> handleIoException(IOException ex, HttpServletRequest request) {
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "error.internal", request, ex);
+    }
+
+    @ExceptionHandler(HttpException.class)
+    public ResponseEntity<ErrorResponse> handleHttpException(HttpException ex, HttpServletRequest request) {
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "error.internal", request, ex);
     }
 
     @ExceptionHandler(AccessDeniedException.class)

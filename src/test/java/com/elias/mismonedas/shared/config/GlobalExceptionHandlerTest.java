@@ -5,6 +5,7 @@ import com.elias.mismonedas.shared.i18n.CurrentLocaleProvider;
 import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.http.HttpException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+
+import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -73,5 +76,27 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getCode()).isEqualTo("FCM_TOKEN_ALREADY_REGISTERED");
         assertThat(response.getBody().getMessage())
                 .isEqualTo("El token de notificaciones ya está registrado para este usuario.");
+    }
+
+    @Test
+    void shouldReturnGenericServerErrorForIoException() {
+        HttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/receipts/scan");
+
+        var response = handler.handleIoException(new IOException("disk detail"), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody().getCode()).isEqualTo("INTERNAL_ERROR");
+        assertThat(response.getBody().getMessage()).isEqualTo("Ocurrió un error interno.");
+    }
+
+    @Test
+    void shouldReturnGenericServerErrorForHttpException() {
+        HttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/analytics/dashboard/balance");
+
+        var response = handler.handleHttpException(new HttpException("upstream detail"), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody().getCode()).isEqualTo("INTERNAL_ERROR");
+        assertThat(response.getBody().getMessage()).isEqualTo("Ocurrió un error interno.");
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -21,6 +22,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.io.IOException;
 
 class ReceiptControllerTest {
 
@@ -61,6 +64,20 @@ class ReceiptControllerTest {
         assertThatThrownBy(() -> controller.scan(image))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("vacía");
+        verify(receiptScanService, never()).startScan(any(), any(), any());
+    }
+
+    @Test
+    void shouldWrapServerFailureWhenReadingUploadedImage() throws IOException {
+        MultipartFile image = mock(MultipartFile.class);
+        when(image.isEmpty()).thenReturn(false);
+        when(image.getSize()).thenReturn(12L);
+        when(image.getBytes()).thenThrow(new IOException("stream read failed"));
+
+        assertThatThrownBy(() -> controller.scan(image))
+                .isInstanceOf(RuntimeException.class)
+                .hasCauseInstanceOf(IOException.class)
+                .hasMessageContaining("Failed to read uploaded receipt image");
         verify(receiptScanService, never()).startScan(any(), any(), any());
     }
 }

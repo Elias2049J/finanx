@@ -38,8 +38,7 @@ public class ReceiptController {
     )
     @PostMapping(value = "/scan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ReceiptResponse> scan(
-            @Parameter(description = "Imagen del recibo (max 5MB)") @RequestParam("image") MultipartFile image)
-            throws IOException {
+            @Parameter(description = "Imagen del recibo (max 5MB)") @RequestParam("image") MultipartFile image) {
 
         if (image.isEmpty()) {
             throw new IllegalArgumentException("La imagen no puede estar vacía");
@@ -48,8 +47,15 @@ public class ReceiptController {
             throw new IllegalArgumentException("La imagen no debe superar 5MB");
         }
 
+        byte[] imageBytes;
+        try {
+            imageBytes = image.getBytes();
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to read uploaded receipt image", ex);
+        }
+
         ReceiptResponse result = receiptScanService.startScan(
-                image.getBytes(), image.getOriginalFilename(), image.getContentType());
+                imageBytes, image.getOriginalFilename(), image.getContentType());
 
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/api/v1/receipts/{id}")

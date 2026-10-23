@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.apache.http.HttpException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +17,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.net.URI;
 import java.time.LocalDate;
 
@@ -70,7 +68,7 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<TransactionResponse> create(
             @Valid @RequestBody TransactionRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) throws HttpException, IOException {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         TransactionResponse saved = transactionService.create(request, idempotencyKey);
         return ResponseEntity.created(URI.create("/api/v1/transactions/" + saved.getId())).body(saved);
     }
@@ -82,7 +80,7 @@ public class TransactionController {
             tags = {"Transactions"}
     )
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> disable(@PathVariable Long id) throws HttpException, IOException {
+    public ResponseEntity<Void> disable(@PathVariable Long id) {
         transactionService.disable(id);
         return ResponseEntity.noContent().build();
     }

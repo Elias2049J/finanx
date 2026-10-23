@@ -27,11 +27,9 @@ import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -78,18 +76,18 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
     }
 
     @Override
-    public DashboardResponse buildDashboard(DateRange request, Long userId) throws HttpException, IOException {
+    public DashboardResponse buildDashboard(DateRange request, Long userId) {
         return buildBalanceDashboard(request, userId, null);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public DashboardResponse buildBalanceDashboard(DateRange period, Long walletId) throws HttpException, IOException {
+    public DashboardResponse buildBalanceDashboard(DateRange period, Long walletId) {
         return buildBalanceDashboard(period, securityService.getCurrentUser().getId(), walletId);
     }
 
     @Override
-    public DashboardResponse buildBalanceDashboard(DateRange request, Long userId, Long walletId) throws HttpException, IOException {
+    public DashboardResponse buildBalanceDashboard(DateRange request, Long userId, Long walletId) {
         TransactionsDashboard td = new TransactionsDashboard();
 
         int topN = 5;

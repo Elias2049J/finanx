@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.apache.http.HttpException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -24,7 +23,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -54,8 +52,7 @@ public class AnalyticsController {
             @Parameter(description = "Fecha de fin del periodo (yyyy-MM-dd)", example = "2026-06-30")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @Parameter(description = "ID de billetera para filtrar (opcional). Sin valor consolida todas las billeteras.", example = "1")
-            @RequestParam(required = false) Long walletId)
-            throws HttpException, IOException {
+            @RequestParam(required = false) Long walletId) {
         return ResponseEntity.ok(tas.buildBalanceDashboard(new DateRange(from, to), walletId));
     }
 
@@ -75,8 +72,7 @@ public class AnalyticsController {
             @Parameter(description = "Fecha de inicio del periodo (yyyy-MM-dd)", example = "2026-06-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @Parameter(description = "Fecha de fin del periodo (yyyy-MM-dd)", example = "2026-06-30")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to)
-            throws HttpException, IOException {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(bas.buildDashboard(new DateRange(from, to)));
     }
 
