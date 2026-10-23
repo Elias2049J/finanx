@@ -125,7 +125,7 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
 
         Ranking<F> ranking = new Ranking<>();
         ranking.setTitle(title);
-        ranking.setCount(topN);
+        ranking.setCount(items.size());
         ranking.setItems(items);
 
         return ranking;
@@ -217,6 +217,9 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     protected BigDecimal getPercentageOfTotal(BigDecimal value, BigDecimal total) {
+        if (total == null || total.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
         return value
                 .divide(total, 4, HALF_UP)
                 .multiply(new BigDecimal("100.00"));

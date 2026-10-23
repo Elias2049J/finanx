@@ -207,14 +207,14 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
                 "Resumen de movimientos por método de pago, ordenado por monto",
                 aggsByPaymentMethod,
                 agg -> agg.getAggregate().getTotalAmount(),
-                aggsByCategory.size()
+                aggsByPaymentMethod.size()
         );
 
         Ranking<TransactionType> summaryByType = this.buildRanking(
                 "Resumen de movimientos por tipo, ordenado por monto",
                 aggsByType,
                 agg -> agg.getAggregate().getTotalAmount(),
-                aggsByCategory.size()
+                aggsByType.size()
         );
 
         Aggregate generalAggregate = buildAggregate(
