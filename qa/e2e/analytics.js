@@ -135,6 +135,8 @@ export default function (data) {
     const body = res.json();
     assert('tiene type BUDGETS', body.type === 'BUDGETS', body.type);
     assert('expone moneda base', body.currencyCode === data.currencyCode, `${body.currencyCode} vs ${data.currencyCode}`);
+    assert('consolidado completo', body.partial === false, `partial=${body.partial}`);
+    assert('sin tasas faltantes', Array.isArray(body.missingRates) && body.missingRates.length === 0, JSON.stringify(body.missingRates));
     assert('incluye totales de presupuesto', body.totalBudgetLimitAmount !== undefined, JSON.stringify(body));
   });
 
