@@ -17,7 +17,17 @@ docker compose up -d --build
 
 El esquema de PostgreSQL no se actualiza automáticamente (`ddl-auto: none`).
 Antes de desplegar esta versión sobre una base existente, aplica
-`database/manual/20261023_add_locale_to_user_preferences.sql`.
+`database/manual/20261023_add_locale_to_user_preferences.sql` y
+`database/manual/20261023_add_locale_to_notifications.sql`.
+
+### Idiomas
+
+Los catálogos JSON están en `src/main/resources/i18n/` y se cargan en memoria al
+iniciar el backend. `es-PE` es el fallback; los errores HTTP incluyen un `code`
+estable y un `message` localizado según el claim `locale` del JWT. Las
+notificaciones se renderizan con el locale persistido del usuario y se guardan
+localizadas en la notificación y en el payload de outbox. RabbitMQ sigue
+transportando únicamente el `outboxId`.
 
 ### Que hay que rellenar
 

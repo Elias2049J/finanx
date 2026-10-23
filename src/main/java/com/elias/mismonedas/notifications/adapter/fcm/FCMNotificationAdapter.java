@@ -1,10 +1,12 @@
 package com.elias.mismonedas.notifications.adapter.fcm;
 
+import com.elias.mismonedas.identity.domain.enums.SupportedLocale;
 import com.elias.mismonedas.notifications.domain.entity.FcmToken;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.outbox.NotificationDeliveryChannel;
 import com.elias.mismonedas.notifications.port.NotificationPort;
 import com.elias.mismonedas.notifications.repository.FcmTokenRepository;
+import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
@@ -27,6 +29,7 @@ import java.util.Map;
 public class FCMNotificationAdapter implements NotificationPort {
     private final FCMProperties fcmProperties;
     private final FcmTokenRepository fcmTokenRepository;
+    private final JsonMessageCatalog messageCatalog;
 
     @Override
     public NotificationDeliveryChannel channel() {
@@ -66,7 +69,7 @@ public class FCMNotificationAdapter implements NotificationPort {
             return;
         }
 
-        String title = "Mis Monedas - " + (notification.getType() != null ? notification.getType().name() : "NOTIFICATION");
+        String title = localizedTitle(notification);
         String body = notification.getMessage() != null ? notification.getMessage() : "";
 
         Map<String, String> data = new HashMap<>();
@@ -119,5 +122,15 @@ public class FCMNotificationAdapter implements NotificationPort {
                 log.warn("Error transitorio en token FCM ({}): {}", errorCode, tokens.get(i));
             }
         }
+    }
+
+    private String localizedTitle(NotificationDTO notification) {
+        if (notification.getTitle() != null) {
+            return notification.getTitle();
+        }
+        String type = notification.getType() == null ? "INFO" : notification.getType().name();
+        return messageCatalog.getMessage(
+                "notification.title." + type,
+                SupportedLocale.toLocale(notification.getLocale()));
     }
 }

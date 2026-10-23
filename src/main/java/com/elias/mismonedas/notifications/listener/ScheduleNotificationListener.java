@@ -34,7 +34,7 @@ public class ScheduleNotificationListener {
 
         User user = userRepository.getReferenceById(event.userId());
 
-        RenderedNotification rendered = formatter.transactionScheduleExecuted(event);
+        RenderedNotification rendered = formatter.transactionScheduleExecuted(event, user);
 
         notificationService.generate(builder -> builder
                 .user(user)
@@ -48,7 +48,7 @@ public class ScheduleNotificationListener {
     public void onBudgetRegistered(BudgetRegisteredEvent event) {
         User user = userRepository.getReferenceById(event.userId());
 
-        RenderedNotification rendered = formatter.budgetScheduleExecuted(event);
+        RenderedNotification rendered = formatter.budgetScheduleExecuted(event, user);
 
         notificationService.generate(builder -> builder
                 .user(user)

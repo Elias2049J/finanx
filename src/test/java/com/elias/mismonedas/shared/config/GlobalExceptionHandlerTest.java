@@ -1,16 +1,37 @@
 package com.elias.mismonedas.shared.config;
 
 import com.elias.mismonedas.billing.exception.InvalidWebhookSignatureException;
+import com.elias.mismonedas.shared.i18n.CurrentLocaleProvider;
+import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    private GlobalExceptionHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        JsonMessageCatalog catalog = new JsonMessageCatalog(new ObjectMapper());
+        catalog.initialize();
+        handler = new GlobalExceptionHandler(catalog, new CurrentLocaleProvider());
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void shouldReturnUnauthorizedForInvalidWebhookSignature() {
@@ -22,5 +43,35 @@ class GlobalExceptionHandlerTest {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody().getCode()).isEqualTo("AUTHENTICATION_REQUIRED");
+        assertThat(response.getBody().getMessage())
+                .isEqualTo("Se requiere autenticación o la sesión no es válida.");
+    }
+
+    @Test
+    void shouldUseLocaleFromJwtForApiErrors() {
+        Jwt jwt = Jwt.withTokenValue("token")
+                .header("alg", "none")
+                .claim("locale", "en-US")
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+        HttpServletRequest request = new MockHttpServletRequest("PUT", "/api/v1/users/me/preferences");
+
+        var response = handler.handleIllegalArgument(new IllegalArgumentException("internal message"), request);
+
+        assertThat(response.getBody().getCode()).isEqualTo("INVALID_ARGUMENT");
+        assertThat(response.getBody().getMessage()).isEqualTo("The request contains invalid data.");
+    }
+
+    @Test
+    void shouldKeepSpecificLocalizedMessageForDuplicateFcmToken() {
+        HttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/fcm-tokens");
+
+        var response = handler.handleDataIntegrity(
+                new DataIntegrityViolationException("uq_fcm_token_user_token"), request);
+
+        assertThat(response.getBody().getCode()).isEqualTo("FCM_TOKEN_ALREADY_REGISTERED");
+        assertThat(response.getBody().getMessage())
+                .isEqualTo("El token de notificaciones ya está registrado para este usuario.");
     }
 }

@@ -19,6 +19,7 @@ public interface NotificationMapper {
     @Mapping(source = "budget.state", target = "budgetState")
     @Mapping(source = "savingGoal.id", target = "savingGoalId")
     @Mapping(source = "savingGoal.description", target = "savingGoalDescription")
+    @Mapping(target = "title", ignore = true)
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "disabledAt", target = "disabledAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "scheduledAt", target = "scheduledAt", qualifiedByName = "OffsetToLocal")

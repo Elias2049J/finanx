@@ -10,6 +10,7 @@ import org.mapstruct.Named;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.Locale;
 
 @Mapper(componentModel = "spring")
@@ -60,6 +61,14 @@ public interface DateMapper {
         DateTimeFormatter formatter = DateTimeFormatter
                 .ofPattern("d 'de' MMMM 'de' yyyy 'a las' h:mma", Locale.of("es", "ES"));
 
+        return dateTime.atZoneSameInstant(zoneId).format(formatter);
+    }
+
+    default String toStringLocalized(OffsetDateTime dateTime, ZoneId zoneId, Locale locale) {
+        if (dateTime == null || zoneId == null || locale == null) return null;
+        DateTimeFormatter formatter = DateTimeFormatter
+                .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+                .withLocale(locale);
         return dateTime.atZoneSameInstant(zoneId).format(formatter);
     }
 

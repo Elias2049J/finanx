@@ -5,6 +5,9 @@ import com.elias.mismonedas.insights.service.analytics.BudgetAnalyticsService;
 import com.elias.mismonedas.insights.service.analytics.TransactionAnalyticsService;
 import com.elias.mismonedas.shared.config.GlobalExceptionHandler;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
+import com.elias.mismonedas.shared.i18n.CurrentLocaleProvider;
+import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,10 +32,17 @@ class AnalyticsControllerHttpTest {
 
     private final BudgetAnalyticsService budgetAnalyticsService = mock(BudgetAnalyticsService.class);
     private final TransactionAnalyticsService transactionAnalyticsService = mock(TransactionAnalyticsService.class);
+    private final JsonMessageCatalog messageCatalog = createMessageCatalog();
     private final MockMvc mockMvc = MockMvcBuilders
             .standaloneSetup(new AnalyticsController(budgetAnalyticsService, transactionAnalyticsService))
-            .setControllerAdvice(new GlobalExceptionHandler())
+            .setControllerAdvice(new GlobalExceptionHandler(messageCatalog, new CurrentLocaleProvider()))
             .build();
+
+    private static JsonMessageCatalog createMessageCatalog() {
+        JsonMessageCatalog catalog = new JsonMessageCatalog(new ObjectMapper());
+        catalog.initialize();
+        return catalog;
+    }
 
     @Test
     void balanceShouldBeGetOnly() throws Exception {

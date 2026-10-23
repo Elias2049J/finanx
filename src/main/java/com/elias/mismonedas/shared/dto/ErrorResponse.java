@@ -1,17 +1,18 @@
 package com.elias.mismonedas.shared.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
 @Getter
 @Setter
-@AllArgsConstructor
 @ToString
 @Schema(description = "Respuesta estandar de error devuelta por la API")
 public class ErrorResponse {
+
+    @Schema(description = "Codigo estable para manejar el error desde el cliente", example = "INVALID_ARGUMENT")
+    private String code;
 
     @Schema(
             description = "Metodo HTTP que origino el error",
@@ -42,4 +43,17 @@ public class ErrorResponse {
             example = "2026-06-25T23:59:59"
     )
     private String timestamp;
+
+    public ErrorResponse(String method, String path, String message, int status, String timestamp) {
+        this("API_ERROR", method, path, message, status, timestamp);
+    }
+
+    public ErrorResponse(String code, String method, String path, String message, int status, String timestamp) {
+        this.code = code;
+        this.method = method;
+        this.path = path;
+        this.message = message;
+        this.status = status;
+        this.timestamp = timestamp;
+    }
 }

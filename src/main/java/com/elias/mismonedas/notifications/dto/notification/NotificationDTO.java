@@ -26,6 +26,12 @@ public class NotificationDTO {
     @Schema(description = "Correo electronico del usuario", example = "usuario@ejemplo.com")
     private String userEmail;
 
+    @Schema(description = "Locale utilizado para renderizar esta notificacion", example = "en-US")
+    private String locale;
+
+    @Schema(description = "Titulo localizado de la notificacion", example = "Mis Monedas - Notice")
+    private String title;
+
     @Schema(description = "Indica si el usuario tiene habilitadas las notificaciones por email", example = "true")
     private boolean emailNotifications;
 

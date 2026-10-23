@@ -1,6 +1,8 @@
 package com.elias.mismonedas.identity.security;
 
 import com.elias.mismonedas.shared.dto.ErrorResponse;
+import com.elias.mismonedas.shared.i18n.CurrentLocaleProvider;
+import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,7 +19,9 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class RestAccessDeniedHandler implements AccessDeniedHandler {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+    private final JsonMessageCatalog messageCatalog;
+    private final CurrentLocaleProvider localeProvider;
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException)
@@ -26,9 +30,10 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
         ErrorResponse error = new ErrorResponse(
+                "ACCESS_DENIED",
                 request.getMethod(),
                 request.getRequestURI(),
-                accessDeniedException.getMessage(),
+                messageCatalog.getMessage("error.access_denied", localeProvider.currentLocale()),
                 HttpServletResponse.SC_FORBIDDEN,
                 LocalDateTime.now().toString()
         );

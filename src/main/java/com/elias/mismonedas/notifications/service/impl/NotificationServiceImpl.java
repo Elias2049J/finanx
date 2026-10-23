@@ -1,6 +1,7 @@
 package com.elias.mismonedas.notifications.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.domain.enums.SupportedLocale;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.notifications.domain.entity.Notification;
@@ -14,6 +15,7 @@ import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxR
 import com.elias.mismonedas.notifications.repository.NotificationRepository;
 import com.elias.mismonedas.notifications.repository.NotificationSpecifications;
 import com.elias.mismonedas.notifications.service.NotificationService;
+import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
@@ -47,6 +49,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationOutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final JsonMessageCatalog messageCatalog;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -54,8 +57,11 @@ public class NotificationServiceImpl implements NotificationService {
         Notification.NotificationBuilder builder = Notification.builder();
         builderConsumer.accept(builder);
 
-        Notification saved = notificationRepository.save(builder.build());
-        NotificationDTO dto = notificationMapper.toResponse(saved);
+        Notification notification = builder.build();
+        String localeTag = localeTagOf(notification.getUser());
+        notification.setLocale(localeTag);
+        Notification saved = notificationRepository.save(notification);
+        NotificationDTO dto = toLocalizedResponse(saved);
         if (saved.getUser() != null && saved.getUser().getPreferences() != null) {
             dto.setEmailNotifications(saved.getUser().getPreferences().isEmailNotifications());
         }
@@ -83,7 +89,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public NotificationDTO findById(Long id) {
-        return notificationMapper.toResponse(getOwned(id));
+        return toLocalizedResponse(getOwned(id));
     }
 
 
@@ -94,7 +100,26 @@ public class NotificationServiceImpl implements NotificationService {
         Pageable stablePage = PaginationDefaults.stablePage(pageable, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Notification> page = notificationRepository.findAll(
                 NotificationSpecifications.list(userId, state, search), stablePage);
-        return PageResponseFactory.from(page, notificationMapper::toResponse);
+        return PageResponseFactory.from(page, this::toLocalizedResponse);
+    }
+
+    private NotificationDTO toLocalizedResponse(Notification notification) {
+        NotificationDTO dto = notificationMapper.toResponse(notification);
+        String localeTag = notification.getLocale() == null || notification.getLocale().isBlank()
+                ? localeTagOf(notification.getUser())
+                : SupportedLocale.canonicalizeOrDefault(notification.getLocale());
+        dto.setLocale(localeTag);
+        String titleKey = notification.getType() == null
+                ? "notification.title.INFO"
+                : "notification.title." + notification.getType().name();
+        dto.setTitle(messageCatalog.getMessage(titleKey, SupportedLocale.toLocale(localeTag)));
+        return dto;
+    }
+
+    private static String localeTagOf(User user) {
+        return SupportedLocale.canonicalizeOrDefault(user == null || user.getPreferences() == null
+                ? null
+                : user.getPreferences().getLocale());
     }
 
     @Override

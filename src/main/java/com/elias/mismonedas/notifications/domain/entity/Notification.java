@@ -1,6 +1,7 @@
 package com.elias.mismonedas.notifications.domain.entity;
 
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.domain.enums.SupportedLocale;
 import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
 import com.elias.mismonedas.planning.domain.entity.Budget;
@@ -37,6 +38,10 @@ public class Notification {
 
     @Column(name = "mensaje_html", columnDefinition = "TEXT")
     private String htmlMessage;
+
+    @Builder.Default
+    @Column(name = "locale", nullable = false, length = 16)
+    private String locale = SupportedLocale.DEFAULT_TAG;
 
     @Column(name = "fecha_creacion", nullable = false)
     private OffsetDateTime createdAt;

@@ -1,8 +1,10 @@
 package com.elias.mismonedas.notifications.adapter.email;
 
+import com.elias.mismonedas.identity.domain.enums.SupportedLocale;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.outbox.NotificationDeliveryChannel;
 import com.elias.mismonedas.notifications.port.NotificationPort;
+import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
@@ -21,6 +23,7 @@ import java.util.Properties;
 public class EmailNotificationAdapter implements NotificationPort {
 
     private final EmailProperties emailProperties;
+    private final JsonMessageCatalog messageCatalog;
 
     @Override
     public NotificationDeliveryChannel channel() {
@@ -34,11 +37,21 @@ public class EmailNotificationAdapter implements NotificationPort {
             log.debug("Email skip: user {} tiene notificaciones email deshabilitadas", notification.getUserId());
             return;
         }
-        String subject = "Mis Monedas - " + (notification.getType() != null ? notification.getType().name() : "NOTIFICATION");
+        String subject = localizedTitle(notification);
         String text = notification.getMessage() != null ? notification.getMessage() : "";
         String html = notification.getHtmlMessage();
 
         sendEmail(notification.getUserEmail(), subject, text, html);
+    }
+
+    private String localizedTitle(NotificationDTO notification) {
+        if (notification.getTitle() != null) {
+            return notification.getTitle();
+        }
+        String type = notification.getType() == null ? "INFO" : notification.getType().name();
+        return messageCatalog.getMessage(
+                "notification.title." + type,
+                SupportedLocale.toLocale(notification.getLocale()));
     }
 
     private void sendEmail(String to, String subject, String text, String html) {

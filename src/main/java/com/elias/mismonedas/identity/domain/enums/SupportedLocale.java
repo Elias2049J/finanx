@@ -1,6 +1,7 @@
 package com.elias.mismonedas.identity.domain.enums;
 
 import java.util.Arrays;
+import java.util.Locale;
 
 public enum SupportedLocale {
     ES_PE("es-PE"),
@@ -37,5 +38,9 @@ public enum SupportedLocale {
         } catch (IllegalArgumentException ex) {
             return DEFAULT_TAG;
         }
+    }
+
+    public static Locale toLocale(String value) {
+        return Locale.forLanguageTag(canonicalizeOrDefault(value));
     }
 }
