@@ -83,7 +83,6 @@ class ScheduleMapperTest {
     private User userWithCurrency(String currencyCode) {
         User user = new User();
         user.setPreferences(UserPreferences.builder()
-                .currencyCode(currencyCode)
                 .timeZone(TimeZone.AMERICA_LIMA)
                 .build());
         return user;

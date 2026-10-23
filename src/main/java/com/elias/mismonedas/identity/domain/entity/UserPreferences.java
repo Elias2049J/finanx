@@ -31,17 +31,8 @@ public class UserPreferences {
     @Column(name = "zona_horaria", nullable = false, length = 50)
     private TimeZone timeZone;
 
-    @Column(name = "codigo_moneda", nullable = false, length = 3)
-    private String currencyCode;
-
     @Column(name = "notificaciones_email", nullable = false)
     private boolean emailNotifications;
-
-    @Column(name = "contador_cambios_moneda")
-    private Integer currencyChangeCount;
-
-    @Column(name = "mes_ultimo_cambio_moneda")
-    private Integer currencyChangeMonth;
 
     @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime createdAt;

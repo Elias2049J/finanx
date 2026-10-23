@@ -22,9 +22,6 @@ public class UserPreferencesResponse {
     @Schema(description = "Zona horaria preferida", implementation = TimeZone.class, example = "AMERICA_LIMA")
     private TimeZone timeZone;
 
-    @Schema(description = "Codigo de moneda por defecto", example = "PEN")
-    private String currencyCode;
-
     @Schema(description = "Notificaciones por email habilitadas", example = "true")
     private boolean emailNotifications;
 

@@ -193,7 +193,6 @@ class BudgetAnalyticsServiceImplTest {
         user.setId(USER_ID);
         if (currencyCode != null) {
             user.setPreferences(UserPreferences.builder()
-                    .currencyCode(currencyCode)
                     .timeZone(TimeZone.AMERICA_LIMA)
                     .build());
         }
