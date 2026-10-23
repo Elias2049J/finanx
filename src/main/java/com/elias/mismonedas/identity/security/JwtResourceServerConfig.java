@@ -45,6 +45,7 @@ public class JwtResourceServerConfig {
                 copyClaim(claims, decoded, Constants.LASTNAME_CLAIM);
                 copyClaim(claims, decoded, Constants.ROLE_CLAIM);
                 copyClaim(claims, decoded, Constants.STATE_CLAIM);
+                copyClaim(claims, decoded, Constants.LOCALE_CLAIM);
 
                 return new Jwt(token, issuedAt, expiresAt, headers, claims);
             } catch (Exception ex) {

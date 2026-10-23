@@ -1,6 +1,7 @@
 package com.elias.mismonedas.identity.domain.entity;
 
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
+import com.elias.mismonedas.identity.domain.enums.SupportedLocale;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +31,10 @@ public class UserPreferences {
     @Enumerated(EnumType.STRING)
     @Column(name = "zona_horaria", nullable = false, length = 50)
     private TimeZone timeZone;
+
+    @Builder.Default
+    @Column(name = "locale", nullable = false, length = 16)
+    private String locale = SupportedLocale.DEFAULT_TAG;
 
     @Column(name = "notificaciones_email", nullable = false)
     private boolean emailNotifications;

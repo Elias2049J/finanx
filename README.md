@@ -15,6 +15,10 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+El esquema de PostgreSQL no se actualiza automáticamente (`ddl-auto: none`).
+Antes de desplegar esta versión sobre una base existente, aplica
+`database/manual/20261023_add_locale_to_user_preferences.sql`.
+
 ### Que hay que rellenar
 
 | Variable | Que es |
@@ -77,7 +81,7 @@ placeholders `${VARIABLE}`. Los valores concretos viven unicamente en `.env`.
 | **Tokens FCM** | Registro y gestión de tokens para notificaciones push | — |
 | **Analíticas** | Dashboard de movimientos (balance, ingresos/gastos, timeline, rankings por categoría/motivo/método de pago). Dashboard de presupuestos (ejecución vs límite). | El dashboard de movimientos solo incluye transacciones de la **billetera principal**. El dashboard de presupuestos convierte todos los montos a la moneda base del usuario. |
 | **Reportes** | Exportación de transacciones y presupuestos a CSV y PDF | — |
-| **Preferencias de Usuario** | Zona horaria, moneda por defecto, notificaciones email | La moneda solo se puede cambiar **2 veces por mes** como máximo. El timezone está pendiente de implementación explícita. |
+| **Preferencias de Usuario** | Locale (`es-PE`, `en-US`), zona horaria, moneda por defecto, notificaciones email | El locale se incluye en el access JWT; tras cambiarlo, refrescar el token para recibir el claim actualizado. La moneda solo se puede cambiar **2 veces por mes** como máximo. El timezone está pendiente de implementación explícita. |
 | **Suscripciones** | Visualización del plan actual e historial de pagos | — |
 
 ### PREMIUM-ONLY

@@ -22,6 +22,9 @@ public class UserPreferencesResponse {
     @Schema(description = "Zona horaria preferida", implementation = TimeZone.class, example = "AMERICA_LIMA")
     private TimeZone timeZone;
 
+    @Schema(description = "Locale preferido (etiqueta BCP 47)", allowableValues = {"es-PE", "en-US"}, example = "es-PE")
+    private String locale;
+
     @Schema(description = "Notificaciones por email habilitadas", example = "true")
     private boolean emailNotifications;
 

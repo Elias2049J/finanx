@@ -13,7 +13,7 @@ import lombok.Setter;
 @Schema(description = "Par de tokens emitido tras autenticar: access token de vida corta y refresh token rotativo")
 public class AuthResponse {
 
-    @Schema(description = "Access token JWT de vida corta", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
+    @Schema(description = "Access token JWT de vida corta; incluye el claim locale", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
     private String accessToken;
 
     @Schema(description = "Refresh token opaco; se rota y revoca en cada uso", example = "Kf3s7QwLmN2rT4vYbC6dE8hJkR0sU")

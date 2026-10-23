@@ -2,6 +2,7 @@ package com.elias.mismonedas.identity.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.entity.UserPreferences;
+import com.elias.mismonedas.identity.domain.enums.SupportedLocale;
 import com.elias.mismonedas.identity.dto.user.UserPreferencesRequest;
 import com.elias.mismonedas.identity.dto.user.UserPreferencesResponse;
 import com.elias.mismonedas.identity.mapper.UserPreferencesMapper;
@@ -52,6 +53,7 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
                 .orElseGet(() -> {
                     UserPreferences prefs = mapper.toEntity(request);
                     prefs.setUser(user);
+                    prefs.setLocale(SupportedLocale.canonicalize(request.getLocale()));
                     repository.save(prefs);
                     log.info("Preferencias creadas para userId={}", userId);
                     return mapper.toResponse(prefs);
@@ -67,6 +69,8 @@ public class UserPreferencesServiceImpl implements UserPreferencesService {
                 .orElseThrow(() -> new UserPreferencesNotFoundException(userId));
 
         mapper.updateFromDto(request, prefs);
+        prefs.setLocale(SupportedLocale.canonicalize(
+                request.getLocale() == null ? prefs.getLocale() : request.getLocale()));
         repository.save(prefs);
         log.info("Preferencias actualizadas para userId={}", userId);
         return mapper.toResponse(prefs);

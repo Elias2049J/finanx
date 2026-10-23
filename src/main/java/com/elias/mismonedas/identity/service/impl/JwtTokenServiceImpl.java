@@ -5,6 +5,7 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.domain.enums.SupportedLocale;
 import com.elias.mismonedas.identity.security.Constants;
 import com.elias.mismonedas.identity.service.JwtTokenService;
 import jakarta.annotation.PostConstruct;
@@ -59,6 +60,7 @@ public class JwtTokenServiceImpl implements JwtTokenService {
         String lastname = null;
         String role = null;
         String state = null;
+        String locale = SupportedLocale.DEFAULT_TAG;
 
         if (details instanceof User u) {
             subject = String.valueOf(u.getId());
@@ -67,6 +69,9 @@ public class JwtTokenServiceImpl implements JwtTokenService {
             lastname = u.getLastname();
             role = u.getRole() == null ? null : u.getRole().name();
             state = u.getState() == null ? null : u.getState().name();
+            if (u.getPreferences() != null) {
+                locale = SupportedLocale.canonicalizeOrDefault(u.getPreferences().getLocale());
+            }
         }
 
         var creator = JWT.create()
@@ -74,7 +79,8 @@ public class JwtTokenServiceImpl implements JwtTokenService {
                 .withSubject(subject)
                 .withIssuedAt(Date.from(now))
                 .withExpiresAt(Date.from(now.plusSeconds(expirationSeconds)))
-                .withClaim(Constants.AUTHORITIES_CLAIM, authorities);
+                .withClaim(Constants.AUTHORITIES_CLAIM, authorities)
+                .withClaim(Constants.LOCALE_CLAIM, locale);
 
         if (email != null) {
             creator.withClaim(Constants.EMAIL_CLAIM, email);
