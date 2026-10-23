@@ -21,11 +21,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Verifica el mapeo real de {@link ScheduleMapper} (implementacion generada por
  * MapStruct), no un mock.
  *
- * {@link BudgetScheduleResponse} nacio sin moneda, asi que el cliente Android
- * tenia que adivinar con que moneda mostrar {@code limitAmount} (pasaba la
- * moneda primaria por parametro). El backend materializa el presupuesto con la
- * moneda de la preferencia del usuario (ScheduleServiceImpl.executeBudget), por
- * eso el DTO debe exponer esa misma moneda.
+ * La moneda del presupuesto programado se resuelve ahora en la capa de servicio
+ * (ScheduleServiceImpl) a partir de la billetera principal, no aqui: el mapper
+ * deja {@code currencyCode} en null y el servicio lo completa.
  */
 class ScheduleMapperTest {
 
@@ -48,7 +46,7 @@ class ScheduleMapperTest {
     }
 
     @Test
-    void shouldExposeUserPreferenceCurrency() {
+    void shouldLeaveCurrencyCodeNullForServiceResolution() {
         User user = userWithCurrency("USD");
         BudgetSchedule schedule = new BudgetSchedule();
         schedule.setId(1L);
@@ -61,7 +59,7 @@ class ScheduleMapperTest {
 
         BudgetScheduleResponse response = mapper.toResponse(schedule);
 
-        assertThat(response.getCurrencyCode()).isEqualTo("USD");
+        assertThat(response.getCurrencyCode()).isNull();
         assertThat(response.getLimitAmount()).isEqualByComparingTo("1500.00");
         assertThat(response.getType()).isEqualTo("BUDGET");
         assertThat(response.getId()).isEqualTo(1L);

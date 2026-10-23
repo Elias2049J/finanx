@@ -66,14 +66,9 @@ public interface ScheduleMapper {
     BudgetScheduleResponse toResponseWithContext(BudgetSchedule entity, @Context User user);
 
     default BudgetScheduleResponse toResponse(BudgetSchedule entity) {
-        BudgetScheduleResponse response = toResponseWithContext(entity, entity.getUser());
-        User user = entity.getUser();
-        // Misma moneda que usa el scheduler al materializar el presupuesto
-        // (ScheduleServiceImpl.executeBudget): la preferencia del usuario.
-        response.setCurrencyCode(user != null && user.getPreferences() != null
-                ? user.getPreferences().getCurrencyCode()
-                : null);
-        return response;
+        // La moneda del presupuesto materializado se resuelve con la billetera
+        // principal en ScheduleServiceImpl (no aqui, el mapper no accede a repos).
+        return toResponseWithContext(entity, entity.getUser());
     }
 
     default TransactionScheduleResponse toResponse(TransactionSchedule entity) {

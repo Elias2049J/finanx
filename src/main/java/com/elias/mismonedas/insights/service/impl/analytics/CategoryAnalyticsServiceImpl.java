@@ -22,6 +22,7 @@ import com.elias.mismonedas.ledger.repository.TransactionSpecifications;
 import com.elias.mismonedas.scheduling.domain.enums.RecurrenceType;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.mapper.DateMapper;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -49,9 +50,10 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
             TransactionRepository transactionRepository,
             CategoryRepository categoryRepository,
             ReasonRepository reasonRepository, TransactionMapper tMapper, ReasonMapper reasonMapper, CategoryMapper categoryMapper,
-            SecurityService securityService
+            SecurityService securityService,
+            WalletRepository walletRepository
     ) {
-        super(dateMapper, userRepository, securityService);
+        super(dateMapper, userRepository, securityService, walletRepository);
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.reasonRepository = reasonRepository;

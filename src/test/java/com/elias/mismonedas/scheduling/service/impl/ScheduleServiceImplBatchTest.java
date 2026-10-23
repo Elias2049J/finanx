@@ -33,6 +33,7 @@ import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import jakarta.persistence.EntityManager;
 import org.apache.http.HttpException;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,6 +84,7 @@ class ScheduleServiceImplBatchTest {
     @Mock private BudgetService budgetService;
     @Mock private SavingGoalService savingGoalService;
     @Mock private WalletService walletService;
+    @Mock private WalletRepository walletRepository;
     @Mock private TransactionService transactionService;
     @Mock private EntityManager entityManager;
     @Mock private TransactionTemplate transactionTemplate;
@@ -177,8 +179,8 @@ class ScheduleServiceImplBatchTest {
             ScheduleServiceImpl schedulerService = new ScheduleServiceImpl(
                     scheduleRepository, tsRepository, bsRepository, categoryRepository, tsMapper,
                     budgetRepository, rcService, reasonResolver, recurrenceService, eventPublisher,
-                    realTransactionService, entityManager, walletService, transactionTemplate,
-                    securityService);
+                    realTransactionService, entityManager, walletService, walletRepository,
+                    transactionTemplate, securityService);
 
             when(tsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
                     .thenReturn(List.of(schedule));

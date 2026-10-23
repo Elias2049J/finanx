@@ -10,6 +10,8 @@ import com.elias.mismonedas.ledger.service.TransactionService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
 import com.elias.mismonedas.wallets.service.WalletService;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.planning.domain.entity.Budget;
 import com.elias.mismonedas.planning.domain.event.BudgetRegisteredEvent;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
@@ -73,6 +75,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final TransactionService transactionService;
     private final EntityManager entityManager;
     private final WalletService walletService;
+    private final WalletRepository walletRepository;
     private final TransactionTemplate transactionTemplate;
     private final SecurityService securityService;
 
@@ -104,13 +107,13 @@ public class ScheduleServiceImpl implements ScheduleService {
         RecurrenceRule rr = resolveRecurrence(s, request.getRecurrenceRule());
         s.setNextRunAt(rr.getStart());
 
-        return tsMapper.toResponseDispatch(scheduleRepository.save(s));
+        return mapSchedule(scheduleRepository.save(s));
     }
 
     @Override
     @Transactional(readOnly = true)
     public ScheduleResponse findById(Long id) {
-        return tsMapper.toResponseDispatch(getOwned(id));
+        return mapSchedule(getOwned(id));
     }
 
     @Override
@@ -121,7 +124,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         Page<Schedule> page = state == null
                 ? scheduleRepository.findAllByUser_IdAndActiveTrue(userId, stablePage)
                 : scheduleRepository.findAllByUser_IdAndActiveAndState(userId, true, state, stablePage);
-        return PageResponseFactory.from(page, tsMapper::toResponseDispatch);
+        return PageResponseFactory.from(page, this::mapSchedule);
     }
 
     @Override
@@ -132,7 +135,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         Page<BudgetSchedule> page = state == null
                 ? bsRepository.findAllByUser_IdAndActiveTrue(userId, stablePage)
                 : bsRepository.findAllByUser_IdAndActiveAndState(userId, true, state, stablePage);
-        return PageResponseFactory.from(page, tsMapper::toResponse);
+        return PageResponseFactory.from(page, this::mapBudgetSchedule);
     }
 
     @Override
@@ -144,6 +147,29 @@ public class ScheduleServiceImpl implements ScheduleService {
                 ? tsRepository.findAllByUser_IdAndActiveTrue(userId, stablePage)
                 : tsRepository.findAllByUser_IdAndActiveAndState(userId, true, state, stablePage);
         return PageResponseFactory.from(page, tsMapper::toResponse);
+    }
+
+    private ScheduleResponse mapSchedule(Schedule s) {
+        ScheduleResponse response = tsMapper.toResponseDispatch(s);
+        if (response instanceof BudgetScheduleResponse bs) {
+            bs.setCurrencyCode(primaryCurrency(s.getUser()));
+        }
+        return response;
+    }
+
+    private BudgetScheduleResponse mapBudgetSchedule(BudgetSchedule bs) {
+        BudgetScheduleResponse response = tsMapper.toResponse(bs);
+        response.setCurrencyCode(primaryCurrency(bs.getUser()));
+        return response;
+    }
+
+    private String primaryCurrency(User user) {
+        if (user == null || user.getId() == null) {
+            return null;
+        }
+        return walletRepository.findByUserIdAndPrimaryTrue(user.getId())
+                .map(Wallet::getCurrencyCode)
+                .orElse(null);
     }
 
     @Transactional
@@ -374,7 +400,9 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .alertable(st.getAlertable())
                 .percentAlert(st.getPercentAlert())
                 .limitAmount(st.getLimitAmount())
-                .currencyCode(st.getUser().getPreferences().getCurrencyCode())
+                .currencyCode(walletRepository.findByUserIdAndPrimaryTrue(st.getUser().getId())
+                        .map(Wallet::getCurrencyCode)
+                        .orElse(null))
                 .description(st.getDescription())
                 .start(executedAt)
                 .end(budgetEnd)

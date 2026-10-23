@@ -23,6 +23,7 @@ import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.shared.exception.CurrencyConversionException;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,9 +55,10 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
                                       TransactionRepository tRepository,
                                       BudgetMapper budgetMapper,
                                       CurrencyConverter currencyConverter,
-                                      SecurityService securityService
+                                      SecurityService securityService,
+                                      WalletRepository walletRepository
     ) {
-        super(dateMapper, userRepository, securityService);
+        super(dateMapper, userRepository, securityService, walletRepository);
         this.bRepository = bRepository;
         this.tRepository = tRepository;
         this.budgetMapper = budgetMapper;

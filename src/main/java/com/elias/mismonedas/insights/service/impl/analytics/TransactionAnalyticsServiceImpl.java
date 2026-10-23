@@ -53,7 +53,6 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
     protected final TransactionMapper tMapper;
     protected final ReasonMapper reasonMapper;
     protected final CategoryMapper categoryMapper;
-    protected final WalletRepository walletRepository;
     protected final CurrencyConverter currencyConverter;
 
     public TransactionAnalyticsServiceImpl(
@@ -68,14 +67,13 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
             WalletRepository walletRepository,
             CurrencyConverter currencyConverter,
             SecurityService securityService) {
-        super(dateMapper, userRepository, securityService);
+        super(dateMapper, userRepository, securityService, walletRepository);
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.reasonRepository = reasonRepository;
         this.tMapper = tMapper;
         this.reasonMapper = reasonMapper;
         this.categoryMapper = categoryMapper;
-        this.walletRepository = walletRepository;
         this.currencyConverter = currencyConverter;
     }
 

@@ -8,6 +8,8 @@ import com.elias.mismonedas.insights.dto.analytics.dashboard.DashboardResponse;
 import com.elias.mismonedas.insights.service.analytics.AnalyticsService;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.mapper.DateMapper;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import org.apache.http.HttpException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +32,14 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
     protected final DateMapper dateMapper;
     protected final UserRepository userRepository;
     protected final SecurityService securityService;
+    protected final WalletRepository walletRepository;
 
-    public AnalyticsServiceImpl(DateMapper dateMapper, UserRepository userRepository, SecurityService securityService) {
+    public AnalyticsServiceImpl(DateMapper dateMapper, UserRepository userRepository, SecurityService securityService,
+                                WalletRepository walletRepository) {
         this.dateMapper = dateMapper;
         this.userRepository = userRepository;
         this.securityService = securityService;
+        this.walletRepository = walletRepository;
     }
 
     @Transactional(readOnly = true)
@@ -206,7 +211,9 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     protected String resolveBaseCurrency(User user) {
-        return user.getPreferences() != null ? user.getPreferences().getCurrencyCode() : null;
+        return walletRepository.findByUserIdAndPrimaryTrue(user.getId())
+                .map(Wallet::getCurrencyCode)
+                .orElse(null);
     }
 
     protected BigDecimal getPercentageOfTotal(BigDecimal value, BigDecimal total) {

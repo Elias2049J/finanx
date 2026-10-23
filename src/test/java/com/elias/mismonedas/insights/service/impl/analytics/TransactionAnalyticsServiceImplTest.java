@@ -103,7 +103,7 @@ class TransactionAnalyticsServiceImplTest {
         assertThat(dashboard.getMissingRates()).isEmpty();
         assertThat(dashboard.getDateRangeLabel()).isEqualTo(LABEL);
         assertThat(dashboard.getDailyExpenses().getDateRangeLabel()).isEqualTo(LABEL);
-        verifyNoInteractions(walletRepository);
+        verify(walletRepository, never()).findByIdAndUser_Id(any(), any());
     }
 
     @Test
@@ -213,6 +213,7 @@ class TransactionAnalyticsServiceImplTest {
 
     private void stubUser(String currencyCode) {
         User user = new User();
+        user.setId(USER_ID);
         if (currencyCode != null) {
             user.setPreferences(UserPreferences.builder()
                     .currencyCode(currencyCode)
@@ -220,6 +221,14 @@ class TransactionAnalyticsServiceImplTest {
                     .build());
         }
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        if (currencyCode != null) {
+            Wallet primary = mock(Wallet.class);
+            when(primary.getCurrencyCode()).thenReturn(currencyCode);
+            when(walletRepository.findByUserIdAndPrimaryTrue(USER_ID)).thenReturn(Optional.of(primary));
+        } else {
+            when(walletRepository.findByUserIdAndPrimaryTrue(USER_ID)).thenReturn(Optional.empty());
+        }
     }
 
     private void stubGroupingMappers() {

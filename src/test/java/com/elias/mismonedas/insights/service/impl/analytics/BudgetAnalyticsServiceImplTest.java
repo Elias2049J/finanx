@@ -18,6 +18,7 @@ import com.elias.mismonedas.shared.exception.CurrencyConversionException;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -53,6 +54,7 @@ class BudgetAnalyticsServiceImplTest {
     private final BudgetMapper budgetMapper = mock(BudgetMapper.class);
     private final CurrencyConverter currencyConverter = mock(CurrencyConverter.class);
     private final SecurityService securityService = mock(SecurityService.class);
+    private final WalletRepository walletRepository = mock(WalletRepository.class);
 
     private final BudgetAnalyticsServiceImpl service = new BudgetAnalyticsServiceImpl(
             dateMapper,
@@ -61,7 +63,8 @@ class BudgetAnalyticsServiceImplTest {
             transactionRepository,
             budgetMapper,
             currencyConverter,
-            securityService);
+            securityService,
+            walletRepository);
 
     @Test
     void shouldConsolidateBudgetsInBaseCurrency() throws Exception {
@@ -176,6 +179,13 @@ class BudgetAnalyticsServiceImplTest {
 
     private void stubUser(String currencyCode) {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(userWithPreferences(currencyCode)));
+        if (currencyCode != null) {
+            Wallet primary = mock(Wallet.class);
+            when(primary.getCurrencyCode()).thenReturn(currencyCode);
+            when(walletRepository.findByUserIdAndPrimaryTrue(USER_ID)).thenReturn(Optional.of(primary));
+        } else {
+            when(walletRepository.findByUserIdAndPrimaryTrue(USER_ID)).thenReturn(Optional.empty());
+        }
     }
 
     private User userWithPreferences(String currencyCode) {

@@ -19,6 +19,8 @@ import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +49,7 @@ public class SavingGoalServiceImpl implements SavingGoalService {
     private final CurrencyConverter currencyConverter;
     private final SecurityService securityService;
     private final TransactionRepository transactionRepository;
+    private final WalletRepository walletRepository;
 
     @Override
     @Transactional
@@ -56,7 +59,9 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         User user = securityService.getCurrentUser();
         sg.setUser(user);
 
-        sg.setCurrencyCode(user.getPreferences().getCurrencyCode());
+        sg.setCurrencyCode(walletRepository.findByUserIdAndPrimaryTrue(user.getId())
+                .map(Wallet::getCurrencyCode)
+                .orElse(null));
 
         ZoneId userZone = user.getTimeZone().toZoneId();
         sg.setDeadline(request.getDeadline().atStartOfDay().atZone(userZone).toOffsetDateTime());

@@ -29,6 +29,8 @@ import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +61,7 @@ public class BudgetServiceImpl implements BudgetService {
     private final ApplicationEventPublisher eventPublisher;
     private final CurrencyConverter currencyConverter;
     private final SecurityService securityService;
+    private final WalletRepository walletRepository;
 
     @Override
     @Transactional
@@ -68,7 +71,9 @@ public class BudgetServiceImpl implements BudgetService {
         b.setCategory(categoryRepository.findByIdAndUser_Id(request.getCategoryId(), user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to the user")));
         b.setUser(user);
-        b.setCurrencyCode(user.getPreferences().getCurrencyCode());
+        b.setCurrencyCode(walletRepository.findByUserIdAndPrimaryTrue(user.getId())
+                .map(Wallet::getCurrencyCode)
+                .orElse(null));
         applyRequestDateTimes(request, b);
 
         return budgetMapper.toResponse(budgetRepository.save(b));
