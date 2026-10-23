@@ -361,6 +361,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
 
         return """
             === RESUMEN GENERAL ===
+            Moneda       : %s
             Periodo      : %s
             Total movido : %s
             Operaciones  : %d
@@ -391,6 +392,7 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
             === DISTRIBUCIÓN POR MÉTODO DE PAGO ===
             %s
             """.formatted(
+                td.getCurrencyCode() != null ? td.getCurrencyCode() : "Sin definir",
                 td.getDateRangeLabel(),
                 general.getTotalAmount(),
                 general.getOccurrenceCount(),
