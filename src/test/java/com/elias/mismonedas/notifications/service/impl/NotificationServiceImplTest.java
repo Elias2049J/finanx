@@ -91,7 +91,7 @@ class NotificationServiceImplTest {
         verify(outboxRepository).save(outboxCaptor.capture());
         NotificationDTO payload = objectMapper.readValue(outboxCaptor.getValue().getPayload(), NotificationDTO.class);
         assertThat(payload.getLocale()).isEqualTo("en-US");
-        assertThat(payload.getTitle()).isEqualTo("Mis Monedas - Notice");
+        assertThat(payload.getTitle()).isEqualTo("Finanx - Notice");
         assertThat(payload.getMessage()).isEqualTo("You exceeded your budget.");
         assertThat(payload.isEmailNotifications()).isTrue();
     }

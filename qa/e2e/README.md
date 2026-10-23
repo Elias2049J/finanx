@@ -1,6 +1,6 @@
 # QA — Suite E2E (k6)
 
-Análisis de cobertura end-to-end del backend de **Mis Monedas** (`finanx`).
+Análisis de cobertura end-to-end del backend de **Finanx** (`finanx`).
 
 - **Herramienta:** [k6](https://k6.io) (VUs=1, 1 iteración por escenario).
 - **Target por defecto:** `http://localhost:8080/api/v1` (override con `BASE_URL`).

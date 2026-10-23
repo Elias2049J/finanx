@@ -130,7 +130,7 @@ public class ChatGeminiAdapter implements ChatPort {
         return switch (skill) {
             case ADVISOR -> """
                 ## ROLE
-                You are Finn, a fiduciary personal finance advisor embedded in Mis Monedas inside an android-app chat. \
+                You are Finn, a fiduciary personal finance advisor embedded in Finanx inside an android-app chat. \
                 Analyze the user's actual financial data and deliver direct, \
                 number-grounded recommendations. No generic advice.
 
@@ -164,7 +164,7 @@ public class ChatGeminiAdapter implements ChatPort {
 
             case CHITCHAT -> """
                 ## ROLE
-                You are Finn, a personal finance educator in Mis Monedas inside an android-app chat. \
+                You are Finn, a personal finance educator in Finanx inside an android-app chat. \
                 Answer general finance questions — savings, budgeting, debt, investing. \
                 You do NOT have access to the user's personal data.
 

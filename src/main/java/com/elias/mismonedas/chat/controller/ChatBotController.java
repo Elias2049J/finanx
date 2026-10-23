@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/chat")
 @RequiredArgsConstructor
-@Tag(name = "ChatBot", description = "Chatbot financiero conversacional de Mis Monedas")
+@Tag(name = "ChatBot", description = "Chatbot financiero conversacional de Finanx")
 public class ChatBotController {
 
     private final ChatBotService chatBotService;

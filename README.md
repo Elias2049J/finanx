@@ -1,4 +1,4 @@
-# Mis Monedas
+# Finanx
 
 Aplicación de finanzas personales con soporte multi-moneda, programación recurrente, metas de ahorro, presupuestos y analíticas. Diseñada con una arquitectura hexagonal (puertos y adaptadores) y un plan de suscripción FREE/PREMIUM.
 

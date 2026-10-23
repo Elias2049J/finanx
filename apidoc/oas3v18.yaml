@@ -9,7 +9,7 @@ tags:
   - name: FCM Tokens
     description: Gestion de tokens FCM para notificaciones push
   - name: ChatBot
-    description: Chatbot financiero conversacional de Mis Monedas
+    description: Chatbot financiero conversacional de Finanx
   - name: Images
     description: Almacenamiento generico de imagenes
   - name: Receipts

@@ -1,6 +1,6 @@
 # QA — Escenarios de stress/concurrencia (k6)
 
-Pruebas de **carga y concurrencia** del backend de Mis Monedas. Complementan la
+Pruebas de **carga y concurrencia** del backend de Finanx. Complementan la
 suite funcional e2e ([`../e2e/README.md`](../e2e/README.md)): aquí no se verifica
 corrección, se mide **capacidad** bajo distintos modelos de tráfico.
 
