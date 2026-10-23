@@ -10,6 +10,7 @@ public record BudgetNearLimitEvent(
         BigDecimal spent,
         BigDecimal limitAmount,
         int percentAlert,
+        String currencyCode,
         OffsetDateTime lastTransactionAt,
         BigDecimal lastTransactionAmount,
         String lastTransactionMethod

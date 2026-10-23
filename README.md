@@ -24,7 +24,7 @@ docker compose up -d --build
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | credenciales de OAuth de Google |
 | `GEMINI_API_KEY` | clave de la API de Gemini |
 | `CURRENCYBEACON_API_KEY` | clave de Currency Beacon |
-| `GMAIL_APP_PASSWORD` | *app-password* de Google (no la contrasena de la cuenta) |
+| `EMAIL_APP_PASSWORD` | *app-password* de Google (no la contrasena de la cuenta) |
 | `SEAWEEDFS_SECRET_KEY` | secreto del bucket de imagenes |
 | `RABBITMQ_PASSWORD` | contrasena de RabbitMQ |
 
@@ -73,7 +73,7 @@ placeholders `${VARIABLE}`. Los valores concretos viven unicamente en `.env`.
 | **Presupuestos** | CRUD con estado (ACTIVE, FINALIZED, CANCELLED, DISABLED) y salud (OK, NEAR_LIMIT, EXCEEDED). Alertas por porcentaje de consumo. | El límite y el gasto se convierten a la moneda del presupuesto usando la tasa de cambio más reciente (CurrencyBeacon API). Al finalizar (FINALIZED) se congela el gasto convertido. |
 | **Metas de Ahorro** | CRUD con monto objetivo, plazo, progreso. Se completan automáticamente al alcanzar el objetivo. | Las transacciones asociadas se convierten a la moneda de la meta para calcular el progreso. Al completarse o cancelarse se congela el acumulado convertido. |
 | **Programación Recurrente** | CRUD de schedules vinculados a transacciones o presupuestos. Ejecución automática cada minuto (scheduler). | Las transacciones generadas por schedule se asignan a la billetera configurada en el schedule. |
-| **Notificaciones** | In-app (persistidas en BD). Push (FCM). Email (Gmail SMTP). | El envío de email respeta la preferencia `emailNotifications` del usuario. Si está deshabilitada, se salta el adaptador Gmail. |
+| **Notificaciones** | In-app (persistidas en BD). Push (FCM). Email (Email SMTP). | El envío de email respeta la preferencia `emailNotifications` del usuario. Si está deshabilitada, se salta el adaptador Email. |
 | **Tokens FCM** | Registro y gestión de tokens para notificaciones push | — |
 | **Analíticas** | Dashboard de movimientos (balance, ingresos/gastos, timeline, rankings por categoría/motivo/método de pago). Dashboard de presupuestos (ejecución vs límite). | El dashboard de movimientos solo incluye transacciones de la **billetera principal**. El dashboard de presupuestos convierte todos los montos a la moneda base del usuario. |
 | **Reportes** | Exportación de transacciones y presupuestos a CSV y PDF | — |
@@ -114,7 +114,7 @@ El gating se implementa mediante **AOP** con la anotación `@RequiresPlan` y un 
 - CurrencyBeacon API (tasas de cambio)
 - Google Gemini (chatbot/insights)
 - Firebase Cloud Messaging (push)
-- Gmail SMTP (email)
+- Email SMTP (email)
 - Stripe / Mercado Pago (pagos)
 
 ---

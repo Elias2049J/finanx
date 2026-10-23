@@ -6,6 +6,7 @@ import com.elias.mismonedas.notifications.domain.entity.Notification;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
 import com.elias.mismonedas.notifications.service.NotificationService;
 import com.elias.mismonedas.notifications.template.NotificationMessageFormatter;
+import com.elias.mismonedas.notifications.template.RenderedNotification;
 import com.elias.mismonedas.planning.domain.entity.Budget;
 import com.elias.mismonedas.planning.domain.event.BudgetExceededEvent;
 import com.elias.mismonedas.planning.domain.event.BudgetNearLimitEvent;
@@ -52,10 +53,10 @@ class BudgetNotificationListenerTest {
         Budget budget = Budget.builder().id(1L).build();
         when(userRepository.getReferenceById(2L)).thenReturn(user);
         when(budgetRepository.getReferenceById(1L)).thenReturn(budget);
-        when(formatter.budgetExceeded(any(), eq(user))).thenReturn("MSG");
+        when(formatter.budgetExceeded(any(), eq(user))).thenReturn(new RenderedNotification("MSG", "<html/>"));
 
         listener.onBudgetExceeded(new BudgetExceededEvent(
-                1L, 2L, "Comida", BigDecimal.ONE, BigDecimal.TEN,
+                1L, 2L, "Comida", BigDecimal.ONE, BigDecimal.TEN, "PEN",
                 OffsetDateTime.now(), BigDecimal.ONE, "Efectivo"));
 
         Notification notification = capturedNotification();
@@ -71,10 +72,10 @@ class BudgetNotificationListenerTest {
         Budget budget = Budget.builder().id(1L).build();
         when(userRepository.getReferenceById(2L)).thenReturn(user);
         when(budgetRepository.getReferenceById(1L)).thenReturn(budget);
-        when(formatter.budgetNearLimit(any(), eq(user))).thenReturn("NEAR");
+        when(formatter.budgetNearLimit(any(), eq(user))).thenReturn(new RenderedNotification("NEAR", "<html/>"));
 
         listener.onBudgetNearLimit(new BudgetNearLimitEvent(
-                1L, 2L, "Comida", BigDecimal.ONE, BigDecimal.TEN, 80,
+                1L, 2L, "Comida", BigDecimal.ONE, BigDecimal.TEN, 80, "PEN",
                 OffsetDateTime.now(), BigDecimal.ONE, "Efectivo"));
 
         Notification notification = capturedNotification();

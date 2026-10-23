@@ -94,12 +94,12 @@ app:
   front-url: ${APP_FRONT_URL}
   front-url-https: ${APP_FRONT_URL_HTTPS}
   notifications:
-    gmail:
-      host: ${APP_NOTIFICATIONS_GMAIL_HOST}
-      port: ${APP_NOTIFICATIONS_GMAIL_PORT}
-      from: ${APP_NOTIFICATIONS_GMAIL_FROM}
-      username: ${APP_NOTIFICATIONS_GMAIL_USERNAME}
-      app-password: ${GMAIL_APP_PASSWORD}
+    email:
+      host: ${APP_NOTIFICATIONS_EMAIL_HOST}
+      port: ${APP_NOTIFICATIONS_EMAIL_PORT}
+      from: ${APP_NOTIFICATIONS_EMAIL_FROM}
+      username: ${APP_NOTIFICATIONS_EMAIL_USERNAME}
+      app-password: ${EMAIL_APP_PASSWORD}
 
     fcm:
       credentials-path: ${FCM_CREDENTIALS_PATH}
@@ -146,7 +146,7 @@ resilience4j:
         minimum-number-of-calls: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 60s
-      gmail:
+      email:
         sliding-window-size: 10
         minimum-number-of-calls: 5
         failure-rate-threshold: 60

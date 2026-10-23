@@ -219,6 +219,7 @@ public class BudgetServiceImpl implements BudgetService {
                             c.getName(),
                             spent,
                             b.getLimitAmount(),
+                            b.getCurrencyCode(),
                             lastTx.getCreatedAt(),
                             lastTx.getAmount(),
                             lastTx.getPaymentMethod().getDisplayName()
@@ -238,6 +239,7 @@ public class BudgetServiceImpl implements BudgetService {
                             spent,
                             b.getLimitAmount(),
                             alertPercent,
+                            b.getCurrencyCode(),
                             lastTx.getCreatedAt(),
                             lastTx.getAmount(),
                             lastTx.getPaymentMethod().getDisplayName()

@@ -6,6 +6,7 @@ import com.elias.mismonedas.notifications.domain.entity.Notification;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
 import com.elias.mismonedas.notifications.service.NotificationService;
 import com.elias.mismonedas.notifications.template.NotificationMessageFormatter;
+import com.elias.mismonedas.notifications.template.RenderedNotification;
 import com.elias.mismonedas.planning.domain.entity.SavingGoal;
 import com.elias.mismonedas.planning.domain.event.SavingGoalCompletedEvent;
 import com.elias.mismonedas.planning.repository.SavingGoalRepository;
@@ -52,7 +53,7 @@ class SavingGoalNotificationListenerTest {
         goal.setId(5L);
         when(userRepository.getReferenceById(2L)).thenReturn(user);
         when(savingGoalRepository.getReferenceById(5L)).thenReturn(goal);
-        when(formatter.savingGoalCompleted(any(), eq(user))).thenReturn("DONE");
+        when(formatter.savingGoalCompleted(any(), eq(user))).thenReturn(new RenderedNotification("DONE", "<html/>"));
 
         listener.onSavingGoalCompleted(new SavingGoalCompletedEvent(
                 5L, 2L, "Viaje", BigDecimal.ONE, BigDecimal.TEN, "PEN",

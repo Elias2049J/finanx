@@ -6,6 +6,7 @@ import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
 import com.elias.mismonedas.notifications.service.NotificationService;
 import com.elias.mismonedas.notifications.template.NotificationMessageFormatter;
+import com.elias.mismonedas.notifications.template.RenderedNotification;
 import com.elias.mismonedas.planning.domain.event.BudgetRegisteredEvent;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
 import com.elias.mismonedas.scheduling.repository.ScheduleRepository;
@@ -33,21 +34,27 @@ public class ScheduleNotificationListener {
 
         User user = userRepository.getReferenceById(event.userId());
 
+        RenderedNotification rendered = formatter.transactionScheduleExecuted(event);
+
         notificationService.generate(builder -> builder
                 .user(user)
                 .schedule(scheduleRepository.getReferenceById(event.scheduleId()))
                 .type(NotificationType.INFO)
-                .message(formatter.transactionScheduleExecuted(event)));
+                .message(rendered.text())
+                .htmlMessage(rendered.html()));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     public void onBudgetRegistered(BudgetRegisteredEvent event) {
         User user = userRepository.getReferenceById(event.userId());
 
+        RenderedNotification rendered = formatter.budgetScheduleExecuted(event);
+
         notificationService.generate(builder -> builder
                 .user(user)
                 .budget(budgetRepository.getReferenceById(event.budgetId()))
                 .type(NotificationType.INFO)
-                .message(formatter.budgetScheduleExecuted(event)));
+                .message(rendered.text())
+                .htmlMessage(rendered.html()));
     }
 }

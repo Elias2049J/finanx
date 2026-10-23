@@ -9,6 +9,7 @@ public record BudgetExceededEvent(
         String categoryName,
         BigDecimal spent,
         BigDecimal limitAmount,
+        String currencyCode,
         OffsetDateTime lastTransactionAt,
         BigDecimal lastTransactionAmount,
         String lastTransactionMethod

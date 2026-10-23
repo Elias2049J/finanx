@@ -1,4 +1,4 @@
-package com.elias.mismonedas.notifications.adapter.gmail;
+package com.elias.mismonedas.notifications.adapter.email;
 
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.outbox.NotificationDeliveryChannel;
@@ -6,7 +6,9 @@ import com.elias.mismonedas.notifications.port.NotificationPort;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,9 +18,9 @@ import java.util.Properties;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class GmailNotificationAdapter implements NotificationPort {
+public class EmailNotificationAdapter implements NotificationPort {
 
-    private final GmailProperties gmailProperties;
+    private final EmailProperties emailProperties;
 
     @Override
     public NotificationDeliveryChannel channel() {
@@ -26,21 +28,22 @@ public class GmailNotificationAdapter implements NotificationPort {
     }
 
     @Override
-    @CircuitBreaker(name = "gmail")
+    @CircuitBreaker(name = "email")
     public void send(NotificationDTO notification) {
         if (!notification.isEmailNotifications()) {
             log.debug("Email skip: user {} tiene notificaciones email deshabilitadas", notification.getUserId());
             return;
         }
         String subject = "Mis Monedas - " + (notification.getType() != null ? notification.getType().name() : "NOTIFICATION");
-        String body = notification.getMessage() != null ? notification.getMessage() : "";
+        String text = notification.getMessage() != null ? notification.getMessage() : "";
+        String html = notification.getHtmlMessage();
 
-        sendEmail(notification.getUserEmail(), subject, body);
+        sendEmail(notification.getUserEmail(), subject, text, html);
     }
 
-    private void sendEmail(String to, String subject, String body) {
-        String host = gmailProperties.getHost();
-        int port = gmailProperties.getPort();
+    private void sendEmail(String to, String subject, String text, String html) {
+        String host = emailProperties.getHost();
+        int port = emailProperties.getPort();
 
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
@@ -51,17 +54,29 @@ public class GmailNotificationAdapter implements NotificationPort {
         Session session = Session.getInstance(props, new Authenticator() {
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(gmailProperties.getUsername(), gmailProperties.getAppPassword());
+                return new PasswordAuthentication(emailProperties.getUsername(), emailProperties.getAppPassword());
             }
         });
 
         try {
             MimeMessage message = new MimeMessage(session);
-            String from = gmailProperties.getFrom();
+            String from = emailProperties.getFrom();
             message.setFrom(new InternetAddress(from));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
             message.setSubject(subject, "UTF-8");
-            message.setText(body, "UTF-8");
+
+            if (html != null && !html.isBlank()) {
+                MimeMultipart multipart = new MimeMultipart("alternative");
+                MimeBodyPart textPart = new MimeBodyPart();
+                textPart.setText(text, "UTF-8");
+                MimeBodyPart htmlPart = new MimeBodyPart();
+                htmlPart.setContent(html, "text/html; charset=UTF-8");
+                multipart.addBodyPart(textPart);
+                multipart.addBodyPart(htmlPart);
+                message.setContent(multipart);
+            } else {
+                message.setText(text, "UTF-8");
+            }
 
             Transport.send(message);
             log.info("Email enviado a {} con subject='{}'", to, subject);

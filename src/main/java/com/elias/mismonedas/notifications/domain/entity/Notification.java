@@ -35,6 +35,9 @@ public class Notification {
     @Column(name = "mensaje", nullable = false)
     private String message;
 
+    @Column(name = "mensaje_html", columnDefinition = "TEXT")
+    private String htmlMessage;
+
     @Column(name = "fecha_creacion", nullable = false)
     private OffsetDateTime createdAt;
 

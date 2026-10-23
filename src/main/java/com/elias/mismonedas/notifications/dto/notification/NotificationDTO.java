@@ -35,6 +35,9 @@ public class NotificationDTO {
     @Schema(description = "Mensaje de la notificacion", example = "Has alcanzado el 80% de tu presupuesto de alimentacion")
     private String message;
 
+    @Schema(description = "Version HTML del mensaje para el envio por correo")
+    private String htmlMessage;
+
     @Schema(description = "Fecha y hora de creacion de la notificacion", example = "2026-06-25T23:59:59")
     private LocalDateTime createdAt;
 

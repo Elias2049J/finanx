@@ -1,9 +1,9 @@
-package com.elias.mismonedas.notifications.adapter.gmail;
+package com.elias.mismonedas.notifications.adapter.email;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(GmailProperties.class)
-public class GmailConfig {
+@EnableConfigurationProperties(EmailProperties.class)
+public class EmailConfig {
 }

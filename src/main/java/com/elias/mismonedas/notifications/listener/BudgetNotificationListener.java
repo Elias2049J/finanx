@@ -5,6 +5,7 @@ import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
 import com.elias.mismonedas.notifications.service.NotificationService;
 import com.elias.mismonedas.notifications.template.NotificationMessageFormatter;
+import com.elias.mismonedas.notifications.template.RenderedNotification;
 import com.elias.mismonedas.planning.domain.event.BudgetExceededEvent;
 import com.elias.mismonedas.planning.domain.event.BudgetNearLimitEvent;
 import com.elias.mismonedas.planning.repository.BudgetRepository;
@@ -25,24 +26,26 @@ public class BudgetNotificationListener {
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     public void onBudgetExceeded(BudgetExceededEvent event) {
         User user = userRepository.getReferenceById(event.userId());
-        String message = formatter.budgetExceeded(event, user);
+        RenderedNotification rendered = formatter.budgetExceeded(event, user);
 
         notificationService.generate(builder -> builder
                 .budget(budgetRepository.getReferenceById(event.budgetId()))
                 .user(user)
                 .type(NotificationType.WARNING)
-                .message(message));
+                .message(rendered.text())
+                .htmlMessage(rendered.html()));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
     public void onBudgetNearLimit(BudgetNearLimitEvent event) {
         User user = userRepository.getReferenceById(event.userId());
-        String message = formatter.budgetNearLimit(event, user);
+        RenderedNotification rendered = formatter.budgetNearLimit(event, user);
 
         notificationService.generate(builder -> builder
                 .budget(budgetRepository.getReferenceById(event.budgetId()))
                 .user(user)
                 .type(NotificationType.WARNING)
-                .message(message));
+                .message(rendered.text())
+                .htmlMessage(rendered.html()));
     }
 }
