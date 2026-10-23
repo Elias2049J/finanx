@@ -61,9 +61,14 @@ public class TransactionsDashboard extends DashboardResponse {
     private TimeLine<TransactionResponse> dailyIncome;
 
     @Schema(
-            description = "Ranking de las categorias principales"
+            description = "Ranking de categorias de gasto, con participacion sobre el total de gastos"
     )
-    private Ranking<CategorySummary> topCategories;
+    private Ranking<CategorySummary> topSpentCategories;
+
+    @Schema(
+            description = "Ranking de categorias de ingreso, con participacion sobre el total de ingresos"
+    )
+    private Ranking<CategorySummary> topIncomeCategories;
 
     @Schema(
             description = "Ranking de los principales motivos de gasto"

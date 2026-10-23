@@ -227,6 +227,28 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
                 ))
                 .toList();
 
+        List<AggregateBy<CategorySummary>> spentByCategory = spent.stream()
+                .collect(Collectors.groupingBy(categoryMapper::toSummary))
+                .entrySet().stream()
+                .map(entry -> buildAggregateBy(
+                        entry.getKey(),
+                        entry.getKey().getName(),
+                        entry.getValue().stream().map(TransactionResponse::getAmount).toList(),
+                        totalSpent
+                ))
+                .toList();
+
+        List<AggregateBy<CategorySummary>> incomeByCategory = income.stream()
+                .collect(Collectors.groupingBy(categoryMapper::toSummary))
+                .entrySet().stream()
+                .map(entry -> buildAggregateBy(
+                        entry.getKey(),
+                        entry.getKey().getName(),
+                        entry.getValue().stream().map(TransactionResponse::getAmount).toList(),
+                        totalIncome
+                ))
+                .toList();
+
         List<AggregateBy<TransactionType>> aggsByType = all.stream()
                 .collect(Collectors.groupingBy(TransactionResponse::getType))
                 .entrySet().stream()
@@ -238,18 +260,25 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
                 ))
                 .toList();
 
-        Ranking<CategorySummary> cRanking = this.buildRanking(
-                "Top " + topN + " categorías con más dinero acumulado",
-                aggsByCategory,
-                agg -> agg.getAggregate().getTotalAmount(),
-                topN
-        );
-
         Ranking<CategorySummary> summaryByCategory = this.buildRanking(
                 "Resumen de movimientos por categoría, ordenado por montos",
                 aggsByCategory,
                 agg -> agg.getAggregate().getTotalAmount(),
                 aggsByCategory.size()
+        );
+
+        Ranking<CategorySummary> topSpentCategories = this.buildRanking(
+                "Top " + topN + " categorías de gasto",
+                spentByCategory,
+                agg -> agg.getAggregate().getTotalAmount(),
+                topN
+        );
+
+        Ranking<CategorySummary> topIncomeCategories = this.buildRanking(
+                "Top " + topN + " categorías de ingreso",
+                incomeByCategory,
+                agg -> agg.getAggregate().getTotalAmount(),
+                topN
         );
 
         Ranking<PaymentMethod> summaryByPaymentMethod = this.buildRanking(
@@ -278,8 +307,9 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         td.setDailyIncome(incomes);
         td.setTopSpentReasons(rsRanking);
         td.setTopIncomeReasons(riRanking);
-        td.setTopCategories(cRanking);
         td.setSummaryByCategory(summaryByCategory);
+        td.setTopSpentCategories(topSpentCategories);
+        td.setTopIncomeCategories(topIncomeCategories);
         td.setSummaryByType(summaryByType);
         td.setSummaryByPaymentMethod(summaryByPaymentMethod);
         td.setAggregate(generalAggregate);
@@ -345,7 +375,10 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
             Gastos       : %s  (%s)
             Balance neto : %s
 
-            === TOP CATEGORÍAS (por monto acumulado) ===
+            === TOP CATEGORÍAS DE GASTO ===
+            %s
+
+            === TOP CATEGORÍAS DE INGRESO ===
             %s
 
             === TOP MOTIVOS DE GASTO ===
@@ -369,12 +402,30 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
                 totalIncome, formatTimeLine(td.getDailyIncome()),
                 totalSpent,   formatTimeLine(td.getDailyExpenses()),
                 balance,
-                formatRanking(td.getTopCategories(), 5),
+                formatRanking(td.getTopSpentCategories(), 5),
+                formatRanking(td.getTopIncomeCategories(), 5),
                 formatRanking(td.getTopSpentReasons(), 5),
                 formatRanking(td.getTopIncomeReasons(), 5),
                 formatRanking(td.getSummaryByType(), td.getSummaryByType().getCount()),
                 formatRanking(td.getSummaryByPaymentMethod(), td.getSummaryByPaymentMethod().getCount())
         );
+    }
+
+    private RankingItem<CategorySummary> topCategoryItem(TransactionsDashboard td) {
+        RankingItem<CategorySummary> top = null;
+        for (Ranking<CategorySummary> ranking : List.of(
+                td.getTopIncomeCategories(), td.getTopSpentCategories())) {
+            if (ranking == null || ranking.getItems() == null) {
+                continue;
+            }
+            for (RankingItem<CategorySummary> item : ranking.getItems()) {
+                if (top == null || item.getAggregate().getAggregate().getTotalAmount()
+                        .compareTo(top.getAggregate().getAggregate().getTotalAmount()) > 0) {
+                    top = item;
+                }
+            }
+        }
+        return top;
     }
 
     @Override
@@ -399,26 +450,24 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
                 : "Considera destinar parte del excedente a ahorro o inversión.");
         insights.add(balanceInsight);
 
-        if (td.getTopCategories() != null && !td.getTopCategories().getItems().isEmpty()) {
-            RankingItem<CategorySummary> top = td.getTopCategories().getItems().getFirst();
+        RankingItem<CategorySummary> top = topCategoryItem(td);
+        if (top != null) {
             BigDecimal share = top.getAggregate().getSharePercentage();
             boolean isHigh   = share.compareTo(new BigDecimal("50")) >= 0;
+            TransactionType type = top.getAggregate().getFactor().getType();
+            String base = TransactionType.SPENT == type ? "los gastos" : "los ingresos";
 
             Insight catInsight = new Insight();
             catInsight.setSeverity(isHigh ? Insight.InsightSeverity.WARNING : Insight.InsightSeverity.INFO);
             catInsight.setTitle("Categoría dominante: " + top.getAggregate().getFactorName());
-            catInsight.setDescription("Concentra el %.1f%% del total movido (%s).".formatted(
-                    share, top.getAggregate().getAggregate().getTotalAmount()));
-
-            TransactionType type = top.getAggregate().getFactor().getType();
+            catInsight.setDescription("Concentra el %.1f%% de %s (%s).".formatted(
+                    share, base, top.getAggregate().getAggregate().getTotalAmount()));
 
             if (isHigh) {
                 if (TransactionType.SPENT == type) {
                     catInsight.setAction("Una sola categoría de gasto supera el 50%. Evalúa si hay oportunidad de reducirla.");
-                } else if (TransactionType.INCOME == type) {
-                    catInsight.setAction("Una sola categoría de ingreso supera el 50%. Considera diversificar tus fuentes para reducir riesgos.");
                 } else {
-                    catInsight.setAction("Una sola categoría concentra más del 50%. Evalúa si esa concentración es saludable.");
+                    catInsight.setAction("Una sola categoría de ingreso supera el 50%. Considera diversificar tus fuentes para reducir riesgos.");
                 }
             } else {
                 catInsight.setAction("Distribución de categorías dentro del rango normal.");

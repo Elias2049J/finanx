@@ -226,7 +226,6 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
         td.setDailyIncome(incomes);
         td.setTopSpentReasons(rsRanking);
         td.setTopIncomeReasons(riRanking);
-        td.setTopCategories(cRanking);
         td.setSummaryByCategory(summaryByCategory);
         td.setSummaryByType(summaryByType);
         td.setSummaryByPaymentMethod(summaryByPaymentMethod);

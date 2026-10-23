@@ -177,6 +177,40 @@ class TransactionAnalyticsServiceImplTest {
         verify(currencyConverter, times(1)).convert(any(Money.class), eq("PEN"));
     }
 
+    @Test
+    void shouldSplitCategorySharesByTransactionType() throws Exception {
+        stubUser("PEN");
+        when(dateMapper.dateRangeLabel(any(DateRange.class))).thenReturn(LABEL);
+        when(reasonMapper.toReasonSummary(any(TransactionResponse.class)))
+                .thenReturn(new ReasonSummary(1L, "General"));
+        when(categoryMapper.toSummary(any(TransactionResponse.class))).thenAnswer(invocation -> {
+            TransactionResponse t = invocation.getArgument(0);
+            return t.getType() == TransactionType.SPENT
+                    ? new CategorySummary(2L, "Gasto", TransactionType.SPENT)
+                    : new CategorySummary(3L, "Ingreso", TransactionType.INCOME);
+        });
+
+        Transaction incomeA = stubTransaction(response("700.00", "PEN", TransactionType.INCOME));
+        Transaction incomeB = stubTransaction(response("300.00", "PEN", TransactionType.INCOME));
+        Transaction spentA = stubTransaction(response("250.00", "PEN", TransactionType.SPENT));
+        when(transactionRepository.findAll(anySpecification()))
+                .thenReturn(List.of(incomeA, incomeB, spentA));
+
+        TransactionsDashboard dashboard = (TransactionsDashboard) service.buildDashboard(RANGE, USER_ID);
+
+        assertThat(dashboard.getTopIncomeCategories().getItems()).hasSize(1);
+        assertThat(dashboard.getTopIncomeCategories().getItems().get(0)
+                .getAggregate().getFactorName()).isEqualTo("Ingreso");
+        assertThat(dashboard.getTopIncomeCategories().getItems().get(0)
+                .getAggregate().getSharePercentage()).isEqualByComparingTo("100.00");
+
+        assertThat(dashboard.getTopSpentCategories().getItems()).hasSize(1);
+        assertThat(dashboard.getTopSpentCategories().getItems().get(0)
+                .getAggregate().getFactorName()).isEqualTo("Gasto");
+        assertThat(dashboard.getTopSpentCategories().getItems().get(0)
+                .getAggregate().getSharePercentage()).isEqualByComparingTo("100.00");
+    }
+
     private void stubUser(String currencyCode) {
         User user = new User();
         if (currencyCode != null) {
