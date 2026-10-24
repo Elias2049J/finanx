@@ -24,12 +24,7 @@ public interface WalletService {
 
     WalletBalanceResponse getConsolidatedBalance();
 
-    /**
-     * @deprecated No se expone en ningun endpoint y, si se llamara, dejaria al
-     * usuario sin billetera principal: el dashboard de balance filtra por la
-     * principal, asi que pasaria a devolver un dashboard vacio. Antes de
-     * exponer un borrado hay que decidir a que billetera se promueve.
-     */
+
     @Deprecated
     void disable(Long id);
 

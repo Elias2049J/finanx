@@ -150,10 +150,6 @@ public class WalletServiceImpl implements WalletService {
     }
 
 
-    /**
-     * @deprecated Sin endpoint y peligrosa: deja al usuario sin billetera
-     * principal. Ver {@link WalletService#disable(Long)}.
-     */
     @Deprecated
     @Override
     @Transactional
@@ -182,7 +178,6 @@ public class WalletServiceImpl implements WalletService {
         Long userId = securityService.getCurrentUser().getId();
         Wallet wallet = getOwned(id, userId);
 
-        // Idempotente: si ya es la principal no hay nada que mover.
         if (wallet.isPrimary()) {
             return walletMapper.toResponse(wallet);
         }

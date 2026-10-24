@@ -62,12 +62,10 @@ public interface ScheduleMapper {
     @Mapping(source = "nextRunAt", target = "nextRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "lastRunAt", target = "lastRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(target = "type", constant = "BUDGET")
-    @Mapping(target = "currencyCode", ignore = true) // se completa en toResponse(BudgetSchedule)
+    @Mapping(target = "currencyCode", ignore = true)
     BudgetScheduleResponse toResponseWithContext(BudgetSchedule entity, @Context User user);
 
     default BudgetScheduleResponse toResponse(BudgetSchedule entity) {
-        // La moneda del presupuesto materializado se resuelve con la billetera
-        // principal en ScheduleServiceImpl (no aqui, el mapper no accede a repos).
         return toResponseWithContext(entity, entity.getUser());
     }
 

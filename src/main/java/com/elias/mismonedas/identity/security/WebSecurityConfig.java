@@ -63,10 +63,6 @@ public class WebSecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        // Health check sin autenticacion: lo consume el healthcheck
-                        // de docker compose (y cualquier probe del orquestador).
-                        // Con el show-details por defecto ("never") un anonimo solo
-                        // ve {"status":"UP"}, sin componentes ni detalles.
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 
                         .requestMatchers("/api/v1/users/{id}/delete").hasAnyRole("USER", "SYSTEM")
