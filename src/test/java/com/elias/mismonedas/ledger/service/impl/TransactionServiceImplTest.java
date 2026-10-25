@@ -36,12 +36,14 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
@@ -306,12 +308,11 @@ class TransactionServiceImplTest {
         @Test
         void shouldDeactivateAndReverseBalanceForSpentTransaction() {
             when(transactionRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.of(activeTransaction));
-            when(transactionRepository.save(any(Transaction.class))).thenReturn(activeTransaction);
+            when(transactionRepository.deactivateIfActive(eq(999L), eq(1L), any(OffsetDateTime.class)))
+                    .thenReturn(1);
 
             service.disable(999L);
 
-            assertThat(activeTransaction.getActive()).isFalse();
-            assertThat(activeTransaction.getDisabledAt()).isNotNull();
             // Un gasto se revierte como ingreso.
             verify(walletService).updateBalance(1L, 10L, TransactionType.INCOME, new BigDecimal("50.00"));
             verify(eventPublisher).publishEvent(isA(TransactionDisabledEvent.class));
@@ -321,7 +322,8 @@ class TransactionServiceImplTest {
         void shouldReverseIncomeAsSpent() {
             activeTransaction.setType(TransactionType.INCOME);
             when(transactionRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.of(activeTransaction));
-            when(transactionRepository.save(any(Transaction.class))).thenReturn(activeTransaction);
+            when(transactionRepository.deactivateIfActive(eq(999L), eq(1L), any(OffsetDateTime.class)))
+                    .thenReturn(1);
 
             service.disable(999L);
 
@@ -338,7 +340,20 @@ class TransactionServiceImplTest {
 
             service.disable(999L);
 
-            verify(transactionRepository, never()).save(any());
+            verify(transactionRepository, never()).deactivateIfActive(anyLong(), anyLong(), any());
+            verify(walletService, never()).updateBalance(anyLong(), anyLong(), any(), any());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
+
+        @Test
+        void shouldNotReverseWhenAConcurrentDeleteWonTheClaim() {
+            // Otra peticion desactivo la transaccion entre el find y el claim.
+            when(transactionRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.of(activeTransaction));
+            when(transactionRepository.deactivateIfActive(eq(999L), eq(1L), any(OffsetDateTime.class)))
+                    .thenReturn(0);
+
+            service.disable(999L);
+
             verify(walletService, never()).updateBalance(anyLong(), anyLong(), any(), any());
             verify(eventPublisher, never()).publishEvent(any());
         }
@@ -346,7 +361,8 @@ class TransactionServiceImplTest {
         @Test
         void shouldPublishDisabledEventWithOriginalType() {
             when(transactionRepository.findByIdAndUser_Id(999L, 1L)).thenReturn(Optional.of(activeTransaction));
-            when(transactionRepository.save(any(Transaction.class))).thenReturn(activeTransaction);
+            when(transactionRepository.deactivateIfActive(eq(999L), eq(1L), any(OffsetDateTime.class)))
+                    .thenReturn(1);
 
             service.disable(999L);
 

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -28,6 +29,29 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
 
     Optional<Transaction> findByIdAndUser_Id(Long id, Long userId);
+
+    /**
+     * Desactiva la transaccion solo si sigue activa y pertenece al usuario.
+     *
+     * <p>Es un claim atomico: dos DELETE concurrentes compiten por el mismo
+     * UPDATE y solo uno obtiene {@code 1}, de modo que la reversion de saldo
+     * se aplica una sola vez.
+     *
+     * @return 1 si esta llamada desactivo la transaccion; 0 si ya estaba inactiva
+     *         o no pertenece al usuario
+     */
+    @Modifying
+    @Query("""
+            UPDATE Transaction t
+               SET t.active = false,
+                   t.disabledAt = :now
+             WHERE t.id = :id
+               AND t.user.id = :userId
+               AND t.active = true
+            """)
+    int deactivateIfActive(@Param("id") Long id,
+                           @Param("userId") Long userId,
+                           @Param("now") OffsetDateTime now);
 
     List<Transaction> findAllByCategory_IdAndCreatedAtBetweenAndActive(Long categoryId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active);
 

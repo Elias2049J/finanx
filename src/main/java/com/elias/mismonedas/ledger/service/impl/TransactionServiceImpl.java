@@ -203,26 +203,30 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public void disable(Long id){
+        Long userId = securityService.getCurrentUser().getId();
         Transaction transaction = transactionRepository
-                .findByIdAndUser_Id(id, securityService.getCurrentUser().getId()).orElseThrow();
+                .findByIdAndUser_Id(id, userId).orElseThrow();
         if (!Boolean.TRUE.equals(transaction.getActive())) {
             return;
         }
-        Long userId = transaction.getUser().getId();
         Long walletId = transaction.getWallet().getId();
         TransactionType type = transaction.getType();
         BigDecimal amount = transaction.getAmount();
         ZoneId zoneId = transaction.getUser().getTimeZone().toZoneId();
-        transaction.setActive(false);
-        transaction.setDisabledAt(OffsetDateTime.now(zoneId));
-        Transaction saved = transactionRepository.save(transaction);
-        Long transactionId = saved.getId();
+
+        // Claim atomico: dos DELETE concurrentes compiten por el mismo UPDATE y
+        // solo uno lo gana, de modo que el saldo se revierte una sola vez.
+        OffsetDateTime disabledAt = OffsetDateTime.now(zoneId);
+        if (transactionRepository.deactivateIfActive(id, userId, disabledAt) == 0) {
+            log.debug("La transaccion {} ya fue desactivada por otra peticion", id);
+            return;
+        }
 
         TransactionType reversed = type == TransactionType.INCOME
                 ? TransactionType.SPENT
                 : TransactionType.INCOME;
         walletService.updateBalance(userId, walletId, reversed, amount);
 
-        eventPublisher.publishEvent(new TransactionDisabledEvent(transactionId, userId, walletId, amount, type));
+        eventPublisher.publishEvent(new TransactionDisabledEvent(id, userId, walletId, amount, type));
     }
 }
