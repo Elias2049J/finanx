@@ -1,6 +1,7 @@
 {
   "catalog.fallback.test": "Texto de respaldo en español.",
   "error.authentication_required": "Se requiere autenticación o la sesión no es válida.",
+  "error.authentication_unavailable": "No se pudo validar la sesión temporalmente. Inténtalo de nuevo.",
   "error.refresh_token_invalid": "El token de renovación no es válido.",
   "error.invalid_argument": "La solicitud contiene datos no válidos.",
   "error.preferences_not_found": "No se encontraron las preferencias del usuario.",

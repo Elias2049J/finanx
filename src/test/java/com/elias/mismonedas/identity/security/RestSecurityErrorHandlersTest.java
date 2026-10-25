@@ -10,9 +10,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.io.IOException;
@@ -48,6 +50,33 @@ class RestSecurityErrorHandlersTest {
         assertThat(json.path("code").asText()).isEqualTo("AUTHENTICATION_REQUIRED");
         assertThat(json.path("message").asText())
                 .isEqualTo("Se requiere autenticación o la sesión no es válida.");
+        assertThat(response.getHeader("WWW-Authenticate")).isEqualTo("Bearer");
+    }
+
+    @Test
+    void invalidBearerTokensShouldCarryARefreshableChallenge() throws IOException {
+        RestAuthenticationEntryPoint handler = new RestAuthenticationEntryPoint(objectMapper, messageCatalog);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        handler.commence(new MockHttpServletRequest("GET", "/api/v1/private"), response,
+                new InvalidBearerTokenException("expired"));
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getHeader("WWW-Authenticate")).isEqualTo("Bearer error=\"invalid_token\"");
+    }
+
+    @Test
+    void authenticationStoreFailuresShouldNotLookLikeInvalidTokens() throws IOException {
+        RestAuthenticationEntryPoint handler = new RestAuthenticationEntryPoint(objectMapper, messageCatalog);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        handler.commence(new MockHttpServletRequest("GET", "/api/v1/private"), response,
+                new AuthenticationServiceException("session database unavailable"));
+
+        var json = objectMapper.readTree(response.getContentAsByteArray());
+        assertThat(response.getStatus()).isEqualTo(503);
+        assertThat(json.path("code").asText()).isEqualTo("AUTHENTICATION_SERVICE_UNAVAILABLE");
+        assertThat(response.getHeader("WWW-Authenticate")).isNull();
     }
 
     @Test

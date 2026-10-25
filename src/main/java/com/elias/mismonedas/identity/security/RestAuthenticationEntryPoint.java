@@ -8,7 +8,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
@@ -25,15 +27,24 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
             throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        boolean unavailable = authException instanceof AuthenticationServiceException;
+        int status = unavailable ? HttpServletResponse.SC_SERVICE_UNAVAILABLE : HttpServletResponse.SC_UNAUTHORIZED;
+        response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        if (!unavailable) {
+            response.setHeader("WWW-Authenticate", authException instanceof InvalidBearerTokenException
+                    ? "Bearer error=\"invalid_token\""
+                    : "Bearer");
+        }
 
         ErrorResponse error = new ErrorResponse(
-                "AUTHENTICATION_REQUIRED",
+                unavailable ? "AUTHENTICATION_SERVICE_UNAVAILABLE" : "AUTHENTICATION_REQUIRED",
                 request.getMethod(),
                 request.getRequestURI(),
-                messageCatalog.getMessage("error.authentication_required", SupportedLocale.toLocale(null)),
-                HttpServletResponse.SC_UNAUTHORIZED,
+                messageCatalog.getMessage(unavailable
+                        ? "error.authentication_unavailable"
+                        : "error.authentication_required", SupportedLocale.toLocale(null)),
+                status,
                 LocalDateTime.now().toString()
         );
 

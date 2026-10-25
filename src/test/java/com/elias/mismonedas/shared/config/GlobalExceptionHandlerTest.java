@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.http.HttpException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -114,6 +115,18 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody().getCode()).isEqualTo("INTERNAL_ERROR");
         assertThat(response.getBody().getMessage()).isEqualTo("Ocurrió un error interno.");
+    }
+
+    @Test
+    void shouldReturnServiceUnavailableForDatabaseOutage() {
+        HttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/refresh");
+
+        var response = handler.handleDatabaseUnavailable(
+                new DataAccessResourceFailureException("database unavailable"), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody().getCode()).isEqualTo("SERVICE_UNAVAILABLE");
+        assertThat(response.getBody().getMessage()).isEqualTo("El servicio está ocupado. Inténtalo nuevamente en unos segundos.");
     }
 
     @Test
