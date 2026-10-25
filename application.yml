@@ -73,6 +73,9 @@ logging:
 app:
   time:
     default-zone: ${APP_TIME_DEFAULT_ZONE}
+  billing:
+    # Regala PREMIUM a cada registro. Solo para desarrollo; por defecto off.
+    auto-premium: ${APP_BILLING_AUTO_PREMIUM:false}
   ai:
     max-user-prompt-length: 500
     max-output-tokens: 1024
