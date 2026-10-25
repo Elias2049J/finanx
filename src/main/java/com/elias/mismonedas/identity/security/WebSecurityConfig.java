@@ -24,6 +24,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 
 @Configuration
 @EnableWebSecurity
@@ -42,7 +43,8 @@ public class WebSecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http,
-                                   Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter) {
+                                   Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter,
+                                   BearerTokenResolver bearerTokenResolver) {
         http
                 .cors(cors -> {
                 })
@@ -96,6 +98,7 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .bearerTokenResolver(bearerTokenResolver)
                         .jwt(jwt ->
                                 jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)
                         )
@@ -103,6 +106,11 @@ public class WebSecurityConfig {
                 .addFilterAfter(activeUserFilter, BearerTokenAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    BearerTokenResolver bearerTokenResolver() {
+        return new AuthRouteBearerTokenResolver();
     }
 
     @Bean
