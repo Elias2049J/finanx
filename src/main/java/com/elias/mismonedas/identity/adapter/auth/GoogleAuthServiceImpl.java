@@ -10,6 +10,7 @@ import com.elias.mismonedas.identity.dto.user.UserRequest;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.UserService;
+import com.elias.mismonedas.identity.util.EmailNormalizer;
 import com.elias.mismonedas.shared.exception.ConflictException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +62,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
     }
 
     private AuthResponse registerOrReject(GoogleIdTokenPayload payload) {
-        String email = normalize(payload.email());
+        String email = EmailNormalizer.normalize(payload.email());
         if (userRepository.existsByEmail(email)) {
             log.warn("Rejected Google sign-in: email already belongs to a local account");
             throw new ConflictException(
@@ -113,10 +114,6 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
-    }
-
-    private static String normalize(String email) {
-        return email == null ? null : email.trim().toLowerCase();
     }
 
     private static String randomSecret() {

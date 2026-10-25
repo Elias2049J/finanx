@@ -16,6 +16,7 @@ import com.elias.mismonedas.identity.repository.UserSpecifications;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.UserService;
+import com.elias.mismonedas.identity.util.EmailNormalizer;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
@@ -52,10 +53,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Transactional
     public AuthResponse register(UserRequest request) {
         User user = userMapper.toEntity(request);
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String normalizedEmail = EmailNormalizer.normalize(request.getEmail());
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new IllegalArgumentException("Email already taken");
         }
-        user.setEmail(request.getEmail().trim().toLowerCase());
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         User saved = userRepository.save(user);
@@ -127,6 +129,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public UserResponse update(Long id, UserRequest request) {
         User existing = userRepository.findById(id).orElseThrow();
         userMapper.updateFromDto(request, existing);
+        existing.setEmail(EmailNormalizer.normalize(existing.getEmail()));
         existing.setPassword(passwordEncoder.encode(request.getPassword()));
         return userMapper.toResponse(userRepository.save(existing));
     }
@@ -137,7 +140,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         if (email == null || email.isBlank()) {
             throw new UsernameNotFoundException("Email is null or empty");
         }
-        String normalized = email.trim().toLowerCase();
+        String normalized = EmailNormalizer.normalize(email);
         return userRepository.findByEmail(normalized)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + normalized));
     }
