@@ -19,6 +19,7 @@ import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
+import com.elias.mismonedas.shared.exception.CurrencyConversionException;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.wallets.repository.WalletRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -36,8 +37,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RequiredArgsConstructor
 @Service
@@ -104,14 +107,35 @@ public class SavingGoalServiceImpl implements SavingGoalService {
         if (goals.isEmpty()) {
             return totals;
         }
+
+        Map<Long, Set<String>> missingByGoal = new HashMap<>();
         for (SavingGoalAggregate row : transactionRepository.sumAmountsByCurrencyForSavingGoals(userId, totals.keySet())) {
-            BigDecimal converted = currencyConverter
-                    .convert(Money.of(row.getTotal(), row.getCurrencyCode()), row.getGoalCurrencyCode())
-                    .amount();
+            String pair = row.getCurrencyCode() + "->" + row.getGoalCurrencyCode();
+            BigDecimal converted;
+            try {
+                Money convertedMoney = currencyConverter
+                        .convert(Money.of(row.getTotal(), row.getCurrencyCode()), row.getGoalCurrencyCode());
+                if (convertedMoney == null) {
+                    throw new CurrencyConversionException("Sin tipo de cambio para " + pair);
+                }
+                converted = convertedMoney.amount();
+            } catch (CurrencyConversionException ex) {
+                // Una tasa ausente no debe tumbar toda la lista: se omite la fila,
+                // se marca la meta como parcial y se informa el par que fallo.
+                log.warn("No se pudo convertir {} para la meta {}: {}", pair, row.getGoalId(), ex.getMessage());
+                missingByGoal.computeIfAbsent(row.getGoalId(), k -> new LinkedHashSet<>()).add(pair);
+                continue;
+            }
             totals.computeIfPresent(row.getGoalId(), (k, current) -> new SavingGoalTotals(
                     current.accumulated().add(converted),
-                    current.transactionsCount() + row.getTransactionsCount().intValue()));
+                    current.transactionsCount() + row.getTransactionsCount().intValue(),
+                    current.partial(),
+                    current.missingRates()));
         }
+
+        missingByGoal.forEach((goalId, pairs) -> totals.computeIfPresent(goalId, (k, current) ->
+                new SavingGoalTotals(current.accumulated(), current.transactionsCount(), true, List.copyOf(pairs))));
+
         return totals;
     }
 

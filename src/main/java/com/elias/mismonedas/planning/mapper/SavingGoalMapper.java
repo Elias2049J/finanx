@@ -28,6 +28,8 @@ public interface SavingGoalMapper {
     @Mapping(target = "averageContribution", expression = "java(entity.getAverageContribution(totals))")
     @Mapping(target = "completed", expression = "java(entity.isCompleted(totals))")
     @Mapping(target = "estimatedCompletionDate", expression = "java(entity.getEstimatedCompletionDate(totals))")
+    @Mapping(target = "partial", expression = "java(totals.partial())")
+    @Mapping(target = "missingRates", expression = "java(totals.missingRates())")
     SavingGoalResponse toResponseWithContext(SavingGoal entity, SavingGoalTotals totals, @Context User user);
 
     @Mapping(target = "id", ignore = true)

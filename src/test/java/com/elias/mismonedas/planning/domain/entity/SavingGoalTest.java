@@ -5,6 +5,7 @@ import com.elias.mismonedas.planning.domain.vo.SavingGoalTotals;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,7 +23,7 @@ class SavingGoalTest {
     @Test
     void shouldUseAccumulatedAmountAndRunningStateForIsCompleted() {
         SavingGoal goal = goal(new BigDecimal("100.00"));
-        SavingGoalTotals totalsReached = new SavingGoalTotals(new BigDecimal("100.00"), 1);
+        SavingGoalTotals totalsReached = new SavingGoalTotals(new BigDecimal("100.00"), 1, false, List.of());
 
         assertThat(goal.isCompleted(totalsReached)).isTrue();
 

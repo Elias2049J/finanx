@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -71,4 +72,10 @@ public class SavingGoalResponse {
 
     @Schema(description = "Fecha estimada de cumplimiento de la meta, calculada en base al ritmo de aportes", example = "2026-11-30T23:59:59")
     private LocalDateTime estimatedCompletionDate;
+
+    @Schema(description = "Indica si el acumulado quedo incompleto por falta de tipo de cambio", example = "false")
+    private boolean partial;
+
+    @Schema(description = "Pares de moneda sin tipo de cambio que impidieron convertir el acumulado", example = "[\"USD->PEN\"]")
+    private List<String> missingRates;
 }
