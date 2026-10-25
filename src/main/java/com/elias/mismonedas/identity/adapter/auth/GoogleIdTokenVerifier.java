@@ -64,18 +64,32 @@ public class GoogleIdTokenVerifier {
             throw new BadCredentialsException("Invalid Google id_token", ex);
         }
 
+        return toPayload(jwt);
+    }
+
+    /**
+     * Extrae y valida los claims que el servicio de identidad necesita.
+     * Se exige {@code email_verified} explicito: un token sin el claim no se acepta.
+     */
+    GoogleIdTokenPayload toPayload(Jwt jwt) {
         String email = jwt.getClaimAsString("email");
         Boolean emailVerified = jwt.getClaimAsBoolean("email_verified");
+        String subject = jwt.getSubject();
+
         if (email == null || email.isBlank()) {
             throw new BadCredentialsException("Google id_token missing email");
         }
-        if (emailVerified != null && !emailVerified) {
+        if (!Boolean.TRUE.equals(emailVerified)) {
             throw new BadCredentialsException("Google email not verified");
         }
+        if (subject == null || subject.isBlank()) {
+            throw new BadCredentialsException("Google id_token missing subject");
+        }
 
-        String givenName = jwt.getClaimAsString("given_name");
-        String familyName = jwt.getClaimAsString("family_name");
-
-        return new GoogleIdTokenPayload(email, givenName, familyName);
+        return new GoogleIdTokenPayload(
+                subject,
+                email.trim().toLowerCase(),
+                jwt.getClaimAsString("given_name"),
+                jwt.getClaimAsString("family_name"));
     }
 }

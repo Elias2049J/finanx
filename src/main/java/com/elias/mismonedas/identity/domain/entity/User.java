@@ -1,5 +1,6 @@
 package com.elias.mismonedas.identity.domain.entity;
 
+import com.elias.mismonedas.identity.domain.enums.AuthProvider;
 import com.elias.mismonedas.identity.domain.enums.Role;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.domain.enums.UserState;
@@ -43,6 +44,16 @@ public class User implements UserDetails {
 
     @Column(name = "clave", nullable = false)
     private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false)
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    @Column(name = "provider_user_id")
+    private String providerUserId;
+
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "rol")
@@ -89,6 +100,8 @@ public class User implements UserDetails {
             state = UserState.ENABLED;
         if (role == null)
             role = Role.USER;
+        if (authProvider == null)
+            authProvider = AuthProvider.LOCAL;
     }
 
     @Transient

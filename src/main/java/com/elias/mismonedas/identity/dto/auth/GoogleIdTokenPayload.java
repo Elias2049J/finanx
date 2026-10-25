@@ -6,7 +6,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record GoogleIdTokenPayload(
 
         @Schema(
-                description = "Correo electronico del usuario",
+                description = "Identificador inmutable de la cuenta de Google (claim sub)",
+                example = "109876543210987654321"
+        )
+        String subject,
+
+        @Schema(
+                description = "Correo electronico del usuario, normalizado",
                 example = "juan.perez@example.com"
         )
         String email,
@@ -24,5 +30,3 @@ public record GoogleIdTokenPayload(
         String familyName
 ) {
 }
-
-
