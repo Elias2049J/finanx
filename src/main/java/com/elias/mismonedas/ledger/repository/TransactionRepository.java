@@ -99,22 +99,24 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
             SELECT t.wallet.currencyCode AS currencyCode,
                    t.type AS type,
                    t.paymentMethod AS paymentMethod,
-                   t.category.id AS categoryId,
-                   t.category.name AS categoryName,
-                   t.reason.id AS reasonId,
-                   t.reason.description AS reasonDescription,
+                   c.id AS categoryId,
+                   c.name AS categoryName,
+                   r.id AS reasonId,
+                   r.description AS reasonDescription,
                    SUM(t.amount) AS total,
                    COUNT(t) AS occurrences,
                    MIN(t.amount) AS minAmount,
                    MAX(t.amount) AS maxAmount
               FROM Transaction t
+              LEFT JOIN t.category c
+              LEFT JOIN t.reason r
              WHERE t.user.id = :userId
                AND t.active = true
                AND t.createdAt >= :from
                AND t.createdAt < :to
                AND (:walletId IS NULL OR t.wallet.id = :walletId)
              GROUP BY t.wallet.currencyCode, t.type, t.paymentMethod,
-                      t.category.id, t.category.name, t.reason.id, t.reason.description
+                      c.id, c.name, r.id, r.description
             """)
     List<AnalyticsDimensionAggregate> aggregateByDimensions(
             @Param("userId") Long userId,

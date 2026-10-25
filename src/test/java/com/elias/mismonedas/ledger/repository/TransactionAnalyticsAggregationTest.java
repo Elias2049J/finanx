@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -43,6 +44,7 @@ class TransactionAnalyticsAggregationTest {
     @Autowired private WalletRepository walletRepository;
     @Autowired private CategoryRepository categoryRepository;
     @Autowired private ReasonRepository reasonRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private User user;
     private Wallet pen;
@@ -148,6 +150,48 @@ class TransactionAnalyticsAggregationTest {
         AnalyticsDimensionAggregate incomePen = findDimension(rows, TransactionType.INCOME, "PEN");
         assertThat(incomePen.getTotal()).isEqualByComparingTo("5.00");
         assertThat(incomePen.getOccurrences()).isEqualTo(1L);
+    }
+
+    @Test
+    void shouldIncludeTransactionsWithoutCategoryOrReason() {
+        Transaction withoutReason = new Transaction();
+        withoutReason.setAmount(new BigDecimal("20.00"));
+        withoutReason.setType(TransactionType.SPENT);
+        withoutReason.setPaymentMethod(PaymentMethod.CASH);
+        withoutReason.setWallet(pen);
+        withoutReason.setUser(user);
+        withoutReason.setCategory(spentCategory);
+        withoutReason.setCreatedAt(OffsetDateTime.parse("2026-06-01T15:00:00Z"));
+        withoutReason.setActive(true);
+        transactionRepository.saveAndFlush(withoutReason);
+
+        jdbcTemplate.update("""
+                INSERT INTO movimientos
+                    (monto, tipo, metodo_pago, fecha_creacion, id_billetera, id_usuario,
+                     id_categoria, id_motivo, activo)
+                VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, true)
+                """,
+                new BigDecimal("12.00"),
+                "SPENT",
+                "CASH",
+                OffsetDateTime.parse("2026-06-01T16:00:00Z"),
+                pen.getId(),
+                user.getId());
+
+        List<AnalyticsDimensionAggregate> rows = transactionRepository.aggregateByDimensions(
+                user.getId(), null, FROM, TO);
+
+        assertThat(rows).hasSize(2);
+        assertThat(rows).anySatisfy(row -> {
+            assertThat(row.getCategoryId()).isEqualTo(spentCategory.getId());
+            assertThat(row.getReasonId()).isNull();
+        });
+        assertThat(rows).anySatisfy(row -> {
+            assertThat(row.getCategoryId()).isNull();
+            assertThat(row.getCategoryName()).isNull();
+            assertThat(row.getReasonId()).isNull();
+            assertThat(row.getReasonDescription()).isNull();
+        });
     }
 
     private Category category(String name, TransactionType type) {
