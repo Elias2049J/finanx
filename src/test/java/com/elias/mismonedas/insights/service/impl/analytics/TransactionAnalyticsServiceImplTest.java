@@ -1,22 +1,15 @@
 package com.elias.mismonedas.insights.service.impl.analytics;
 
-import com.elias.mismonedas.catalog.dto.category.CategorySummary;
-import com.elias.mismonedas.catalog.dto.reason.ReasonSummary;
-import com.elias.mismonedas.catalog.mapper.CategoryMapper;
-import com.elias.mismonedas.catalog.mapper.ReasonMapper;
-import com.elias.mismonedas.catalog.repository.CategoryRepository;
-import com.elias.mismonedas.catalog.repository.ReasonRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.TransactionsDashboard;
-import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
-import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
-import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
+import com.elias.mismonedas.ledger.repository.projection.AnalyticsDailyAggregate;
+import com.elias.mismonedas.ledger.repository.projection.AnalyticsDimensionAggregate;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.domain.vo.Money;
@@ -26,13 +19,13 @@ import com.elias.mismonedas.shared.money.CurrencyConverter;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.elias.mismonedas.wallets.repository.WalletRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,17 +47,12 @@ class TransactionAnalyticsServiceImplTest {
     private static final Long WALLET_ID = 42L;
     private static final DateRange RANGE =
             new DateRange(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30));
-    private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 6, 10, 12, 0);
     private static final String LABEL = "01 jun 2026 - 30 jun 2026";
+    private static final String LIMA = "America/Lima";
 
     private final DateMapper dateMapper = mock(DateMapper.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final TransactionRepository transactionRepository = mock(TransactionRepository.class);
-    private final CategoryRepository categoryRepository = mock(CategoryRepository.class);
-    private final ReasonRepository reasonRepository = mock(ReasonRepository.class);
-    private final TransactionMapper transactionMapper = mock(TransactionMapper.class);
-    private final ReasonMapper reasonMapper = mock(ReasonMapper.class);
-    private final CategoryMapper categoryMapper = mock(CategoryMapper.class);
     private final WalletRepository walletRepository = mock(WalletRepository.class);
     private final CurrencyConverter currencyConverter = mock(CurrencyConverter.class);
     private final SecurityService securityService = mock(SecurityService.class);
@@ -73,27 +61,32 @@ class TransactionAnalyticsServiceImplTest {
             dateMapper,
             userRepository,
             transactionRepository,
-            categoryRepository,
-            reasonRepository,
-            transactionMapper,
-            reasonMapper,
-            categoryMapper,
             walletRepository,
             currencyConverter,
             securityService);
 
-    @Test
-    void shouldConsolidateAllWalletsInBaseCurrencyWhenWalletIdIsMissing() throws Exception {
-        stubUser("PEN");
+    @BeforeEach
+    void setUp() {
         when(dateMapper.dateRangeLabel(any(DateRange.class))).thenReturn(LABEL);
-        stubGroupingMappers();
+    }
+
+    @Test
+    void shouldConsolidateAllWalletsInBaseCurrencyWhenWalletIdIsMissing() {
+        stubUser("PEN");
         stubConversionAt(3.75);
 
-        Transaction incomePen = stubTransaction(response("800.00", "PEN", TransactionType.INCOME));
-        Transaction spentPen = stubTransaction(response("200.00", "PEN", TransactionType.SPENT));
-        Transaction spentUsd = stubTransaction(response("100.00", "USD", TransactionType.SPENT));
-        when(transactionRepository.findAll(anySpecification()))
-                .thenReturn(List.of(incomePen, spentPen, spentUsd));
+        stubAggregates(
+                List.of(
+                        dimension("PEN", TransactionType.INCOME, 3L, "Sueldo", 1L, "General",
+                                "800.00", 1, "800.00", "800.00"),
+                        dimension("PEN", TransactionType.SPENT, 2L, "Comida", 1L, "General",
+                                "200.00", 1, "200.00", "200.00"),
+                        dimension("USD", TransactionType.SPENT, 2L, "Comida", 1L, "General",
+                                "100.00", 1, "100.00", "100.00")),
+                List.of(
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.INCOME, "PEN", "800.00", 1),
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.SPENT, "PEN", "200.00", 1),
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.SPENT, "USD", "100.00", 1)));
 
         TransactionsDashboard dashboard = (TransactionsDashboard) service.buildDashboard(RANGE, USER_ID);
 
@@ -103,27 +96,59 @@ class TransactionAnalyticsServiceImplTest {
         assertThat(dashboard.getMissingRates()).isEmpty();
         assertThat(dashboard.getDateRangeLabel()).isEqualTo(LABEL);
         assertThat(dashboard.getDailyExpenses().getDateRangeLabel()).isEqualTo(LABEL);
-        verify(walletRepository, never()).findByIdAndUser_Id(any(), any());
+
+        assertThat(dashboard.getAggregate().getTotalAmount()).isEqualByComparingTo("1375.00");
+        assertThat(dashboard.getAggregate().getOccurrenceCount()).isEqualTo(3);
+        assertThat(dashboard.getAggregate().getAverageAmount()).isEqualByComparingTo("458.33");
+        assertThat(dashboard.getAggregate().getMin()).isEqualByComparingTo("200.00");
+        assertThat(dashboard.getAggregate().getMax()).isEqualByComparingTo("800.00");
+
+        assertThat(dashboard.getDailyExpenses().getPoints()).hasSize(1);
+        assertThat(dashboard.getDailyExpenses().getPoints().get(0).getAmount())
+                .isEqualByComparingTo("575.00");
+        assertThat(dashboard.getDailyExpenses().getPoints().get(0).getOccurrenceCount())
+                .isEqualTo(2);
+        assertThat(dashboard.getDailyIncome().getPoints()).hasSize(1);
+        assertThat(dashboard.getDailyIncome().getPoints().get(0).getAmount())
+                .isEqualByComparingTo("800.00");
+
+        assertThat(dashboard.getTopSpentCategories().getItems()).hasSize(1);
+        assertThat(dashboard.getTopSpentCategories().getItems().get(0)
+                .getAggregate().getFactorName()).isEqualTo("Comida");
+        assertThat(dashboard.getTopSpentCategories().getItems().get(0)
+                .getAggregate().getSharePercentage()).isEqualByComparingTo("100.00");
+        assertThat(dashboard.getTopIncomeCategories().getItems().get(0)
+                .getAggregate().getFactorName()).isEqualTo("Sueldo");
+
+        assertThat(dashboard.getSummaryByType().getCount()).isEqualTo(2);
+        assertThat(dashboard.getSummaryByPaymentMethod().getCount()).isEqualTo(1);
+        verify(transactionRepository, never()).findAll(any(Specification.class));
     }
 
     @Test
-    void shouldFilterByWalletWhenItBelongsToTheUser() throws Exception {
+    void shouldFilterByWalletWhenItBelongsToTheUser() {
         stubUser("PEN");
-        when(dateMapper.dateRangeLabel(any(DateRange.class))).thenReturn(LABEL);
-        stubGroupingMappers();
-        stubConversionAt(3.75);
         when(walletRepository.findByIdAndUser_Id(WALLET_ID, USER_ID))
                 .thenReturn(Optional.of(mock(Wallet.class)));
-
-        Transaction spentPen = stubTransaction(response("150.00", "PEN", TransactionType.SPENT));
-        when(transactionRepository.findAll(anySpecification())).thenReturn(List.of(spentPen));
+        List<AnalyticsDimensionAggregate> dimensions = List.of(
+                dimension("PEN", TransactionType.SPENT, "150.00", 1, "150.00", "150.00"));
+        List<AnalyticsDailyAggregate> daily = List.of(
+                daily(LocalDate.of(2026, 6, 10), TransactionType.SPENT, "PEN", "150.00", 1));
+        when(transactionRepository.aggregateByDimensions(eq(USER_ID), eq(WALLET_ID), any(), any()))
+                .thenReturn(dimensions);
+        when(transactionRepository.aggregateDaily(
+                eq(USER_ID), eq(WALLET_ID), any(), any(), eq(LIMA)))
+                .thenReturn(daily);
 
         TransactionsDashboard dashboard =
                 (TransactionsDashboard) service.buildBalanceDashboard(RANGE, USER_ID, WALLET_ID);
 
         assertThat(dashboard.getBalance()).isEqualByComparingTo("-150.00");
         verify(walletRepository).findByIdAndUser_Id(WALLET_ID, USER_ID);
-        verify(transactionRepository).findAll(anySpecification());
+        verify(transactionRepository).aggregateByDimensions(eq(USER_ID), eq(WALLET_ID), any(), any());
+        verify(transactionRepository).aggregateDaily(
+                eq(USER_ID), eq(WALLET_ID), any(), any(), eq(LIMA));
+        verifyNoInteractions(currencyConverter);
     }
 
     @Test
@@ -135,66 +160,66 @@ class TransactionAnalyticsServiceImplTest {
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining(String.valueOf(WALLET_ID));
 
-        verify(transactionRepository, never()).findAll(anySpecification());
+        verifyNoInteractions(transactionRepository);
     }
 
     @Test
-    void shouldKeepRawAmountsWhenUserHasNoPreferences() throws Exception {
+    void shouldKeepRawAmountsWhenUserHasNoPreferences() {
         stubUser(null);
-        when(dateMapper.dateRangeLabel(any(DateRange.class))).thenReturn(LABEL);
-        stubGroupingMappers();
 
-        Transaction incomePen = stubTransaction(response("800.00", "PEN", TransactionType.INCOME));
-        Transaction spentUsd = stubTransaction(response("100.00", "USD", TransactionType.SPENT));
-        when(transactionRepository.findAll(anySpecification())).thenReturn(List.of(incomePen, spentUsd));
+        stubAggregates(
+                List.of(
+                        dimension("PEN", TransactionType.INCOME, "800.00", 1, "800.00", "800.00"),
+                        dimension("USD", TransactionType.SPENT, "100.00", 1, "100.00", "100.00")),
+                List.of(
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.INCOME, "PEN", "800.00", 1),
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.SPENT, "USD", "100.00", 1)));
 
         TransactionsDashboard dashboard = (TransactionsDashboard) service.buildDashboard(RANGE, USER_ID);
 
         assertThat(dashboard.getCurrencyCode()).isNull();
         assertThat(dashboard.getBalance()).isEqualByComparingTo("700.00");
+        assertThat(dashboard.isPartial()).isFalse();
         verifyNoInteractions(currencyConverter);
     }
 
     @Test
-    void shouldDegradeToPartialWhenRateIsMissing() throws Exception {
+    void shouldDegradeToPartialWhenRateIsMissing() {
         stubUser("PEN");
-        when(dateMapper.dateRangeLabel(any(DateRange.class))).thenReturn(LABEL);
-        stubGroupingMappers();
         when(currencyConverter.convert(any(Money.class), anyString()))
                 .thenThrow(new CurrencyConversionException("sin tasa"));
 
-        Transaction spentPen = stubTransaction(response("200.00", "PEN", TransactionType.SPENT));
-        Transaction firstUsd = stubTransaction(response("100.00", "USD", TransactionType.SPENT));
-        Transaction secondUsd = stubTransaction(response("50.00", "USD", TransactionType.SPENT));
-        when(transactionRepository.findAll(anySpecification()))
-                .thenReturn(List.of(spentPen, firstUsd, secondUsd));
+        stubAggregates(
+                List.of(
+                        dimension("PEN", TransactionType.SPENT, "200.00", 1, "200.00", "200.00"),
+                        dimension("USD", TransactionType.SPENT, "100.00", 1, "100.00", "100.00")),
+                List.of(
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.SPENT, "PEN", "200.00", 1),
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.SPENT, "USD", "100.00", 1)));
 
         TransactionsDashboard dashboard = (TransactionsDashboard) service.buildDashboard(RANGE, USER_ID);
 
         assertThat(dashboard.getBalance()).isEqualByComparingTo("-200.00");
         assertThat(dashboard.isPartial()).isTrue();
         assertThat(dashboard.getMissingRates()).containsExactly("USD->PEN");
+        assertThat(dashboard.getDailyExpenses().getAggregate().getTotalAmount())
+                .isEqualByComparingTo("200.00");
         verify(currencyConverter, times(1)).convert(any(Money.class), eq("PEN"));
     }
 
     @Test
-    void shouldSplitCategorySharesByTransactionType() throws Exception {
+    void shouldSplitCategorySharesByTransactionType() {
         stubUser("PEN");
-        when(dateMapper.dateRangeLabel(any(DateRange.class))).thenReturn(LABEL);
-        when(reasonMapper.toReasonSummary(any(TransactionResponse.class)))
-                .thenReturn(new ReasonSummary(1L, "General"));
-        when(categoryMapper.toSummary(any(TransactionResponse.class))).thenAnswer(invocation -> {
-            TransactionResponse t = invocation.getArgument(0);
-            return t.getType() == TransactionType.SPENT
-                    ? new CategorySummary(2L, "Gasto", TransactionType.SPENT)
-                    : new CategorySummary(3L, "Ingreso", TransactionType.INCOME);
-        });
 
-        Transaction incomeA = stubTransaction(response("700.00", "PEN", TransactionType.INCOME));
-        Transaction incomeB = stubTransaction(response("300.00", "PEN", TransactionType.INCOME));
-        Transaction spentA = stubTransaction(response("250.00", "PEN", TransactionType.SPENT));
-        when(transactionRepository.findAll(anySpecification()))
-                .thenReturn(List.of(incomeA, incomeB, spentA));
+        stubAggregates(
+                List.of(
+                        dimension("PEN", TransactionType.INCOME, 3L, "Ingreso", 1L, "General",
+                                "1000.00", 2, "300.00", "700.00"),
+                        dimension("PEN", TransactionType.SPENT, 2L, "Gasto", 1L, "General",
+                                "250.00", 1, "250.00", "250.00")),
+                List.of(
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.INCOME, "PEN", "1000.00", 2),
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.SPENT, "PEN", "250.00", 1)));
 
         TransactionsDashboard dashboard = (TransactionsDashboard) service.buildDashboard(RANGE, USER_ID);
 
@@ -209,6 +234,61 @@ class TransactionAnalyticsServiceImplTest {
                 .getAggregate().getFactorName()).isEqualTo("Gasto");
         assertThat(dashboard.getTopSpentCategories().getItems().get(0)
                 .getAggregate().getSharePercentage()).isEqualByComparingTo("100.00");
+        assertThat(dashboard.getSummaryByCategory().getCount()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldBuildDailyTimelineFromAggregatesAndCountActiveDays() {
+        stubUser("PEN");
+
+        stubAggregates(
+                List.of(dimension("PEN", TransactionType.SPENT, "80.00", 3, "20.00", "30.00")),
+                List.of(
+                        daily(LocalDate.of(2026, 6, 10), TransactionType.SPENT, "PEN", "50.00", 2),
+                        daily(LocalDate.of(2026, 6, 11), TransactionType.SPENT, "PEN", "30.00", 1)));
+
+        TransactionsDashboard dashboard = (TransactionsDashboard) service.buildDashboard(RANGE, USER_ID);
+
+        assertThat(dashboard.getDailyExpenses().getPoints()).hasSize(2);
+        assertThat(dashboard.getDailyExpenses().getPoints().get(0).getDate())
+                .isEqualTo(LocalDate.of(2026, 6, 10));
+        assertThat(dashboard.getDailyExpenses().getPoints().get(0).getAmount())
+                .isEqualByComparingTo("50.00");
+        assertThat(dashboard.getDailyExpenses().getPoints().get(0).getOccurrenceCount())
+                .isEqualTo(2);
+        assertThat(dashboard.getDailyExpenses().getPoints().get(1).getAmount())
+                .isEqualByComparingTo("30.00");
+
+        assertThat(dashboard.getDailyExpenses().getAggregate().getTotalAmount())
+                .isEqualByComparingTo("80.00");
+        assertThat(dashboard.getDailyExpenses().getAggregate().getAverageAmount())
+                .isEqualByComparingTo("40.00");
+        assertThat(dashboard.getDailyExpenses().getAggregate().getOccurrenceCount())
+                .isEqualTo(2);
+        assertThat(dashboard.getDailyExpenses().getAggregate().getMin())
+                .isEqualByComparingTo("30.00");
+        assertThat(dashboard.getDailyExpenses().getAggregate().getMax())
+                .isEqualByComparingTo("50.00");
+        assertThat(dashboard.getDailyExpenses().getCount()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldReturnEmptyDashboardWhenThereAreNoTransactions() {
+        stubUser("PEN");
+
+        stubAggregates(List.of(), List.of());
+
+        TransactionsDashboard dashboard = (TransactionsDashboard) service.buildDashboard(RANGE, USER_ID);
+
+        assertThat(dashboard.getBalance()).isEqualByComparingTo("0");
+        assertThat(dashboard.getAggregate().getTotalAmount()).isEqualByComparingTo("0");
+        assertThat(dashboard.getAggregate().getOccurrenceCount()).isZero();
+        assertThat(dashboard.getAggregate().getAverageAmount()).isEqualByComparingTo("0");
+        assertThat(dashboard.getDailyExpenses().getPoints()).isEmpty();
+        assertThat(dashboard.getDailyExpenses().getCount()).isZero();
+        assertThat(dashboard.getTopSpentCategories().getItems()).isEmpty();
+        assertThat(dashboard.getSummaryByType().getCount()).isZero();
+        verifyNoInteractions(currencyConverter);
     }
 
     private void stubUser(String currencyCode) {
@@ -230,11 +310,12 @@ class TransactionAnalyticsServiceImplTest {
         }
     }
 
-    private void stubGroupingMappers() {
-        when(reasonMapper.toReasonSummary(any(TransactionResponse.class)))
-                .thenReturn(new ReasonSummary(1L, "General"));
-        when(categoryMapper.toSummary(any(TransactionResponse.class)))
-                .thenReturn(new CategorySummary(1L, "General", TransactionType.SPENT));
+    private void stubAggregates(List<AnalyticsDimensionAggregate> dimensions,
+                                List<AnalyticsDailyAggregate> daily) {
+        when(transactionRepository.aggregateByDimensions(eq(USER_ID), any(), any(), any()))
+                .thenReturn(dimensions);
+        when(transactionRepository.aggregateDaily(eq(USER_ID), any(), any(), any(), eq(LIMA)))
+                .thenReturn(daily);
     }
 
     private void stubConversionAt(double rate) {
@@ -248,24 +329,51 @@ class TransactionAnalyticsServiceImplTest {
         });
     }
 
-    private Transaction stubTransaction(TransactionResponse response) {
-        Transaction entity = mock(Transaction.class);
-        when(transactionMapper.toResponse(entity)).thenReturn(response);
-        return entity;
+    private AnalyticsDimensionAggregate dimension(String currency,
+                                                  TransactionType type,
+                                                  String total,
+                                                  long count,
+                                                  String min,
+                                                  String max) {
+        return dimension(currency, type, 2L, "Comida", 1L, "General", total, count, min, max);
     }
 
-    private TransactionResponse response(String amount, String currency, TransactionType type) {
-        TransactionResponse response = new TransactionResponse();
-        response.setAmount(new BigDecimal(amount));
-        response.setWalletCurrency(currency);
-        response.setType(type);
-        response.setPaymentMethod(PaymentMethod.CASH);
-        response.setCreatedAt(CREATED_AT);
-        return response;
+    private AnalyticsDimensionAggregate dimension(String currency,
+                                                  TransactionType type,
+                                                  Long categoryId,
+                                                  String categoryName,
+                                                  Long reasonId,
+                                                  String reasonDescription,
+                                                  String total,
+                                                  long count,
+                                                  String min,
+                                                  String max) {
+        AnalyticsDimensionAggregate row = mock(AnalyticsDimensionAggregate.class);
+        when(row.getCurrencyCode()).thenReturn(currency);
+        when(row.getType()).thenReturn(type);
+        when(row.getPaymentMethod()).thenReturn(PaymentMethod.CASH);
+        when(row.getCategoryId()).thenReturn(categoryId);
+        when(row.getCategoryName()).thenReturn(categoryName);
+        when(row.getReasonId()).thenReturn(reasonId);
+        when(row.getReasonDescription()).thenReturn(reasonDescription);
+        when(row.getTotal()).thenReturn(new BigDecimal(total));
+        when(row.getOccurrences()).thenReturn(count);
+        when(row.getMinAmount()).thenReturn(new BigDecimal(min));
+        when(row.getMaxAmount()).thenReturn(new BigDecimal(max));
+        return row;
     }
 
-    @SuppressWarnings("unchecked")
-    private Specification<Transaction> anySpecification() {
-        return any(Specification.class);
+    private AnalyticsDailyAggregate daily(LocalDate day,
+                                          TransactionType type,
+                                          String currency,
+                                          String total,
+                                          long count) {
+        AnalyticsDailyAggregate row = mock(AnalyticsDailyAggregate.class);
+        when(row.getDay()).thenReturn(day);
+        when(row.getType()).thenReturn(type);
+        when(row.getCurrencyCode()).thenReturn(currency);
+        when(row.getTotal()).thenReturn(new BigDecimal(total));
+        when(row.getOccurrences()).thenReturn(count);
+        return row;
     }
 }

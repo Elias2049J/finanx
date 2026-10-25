@@ -1,12 +1,7 @@
 package com.elias.mismonedas.insights.service.impl.analytics;
 
-import com.elias.mismonedas.wallets.repository.WalletRepository;
 import com.elias.mismonedas.catalog.dto.category.CategorySummary;
 import com.elias.mismonedas.catalog.dto.reason.ReasonSummary;
-import com.elias.mismonedas.catalog.mapper.CategoryMapper;
-import com.elias.mismonedas.catalog.mapper.ReasonMapper;
-import com.elias.mismonedas.catalog.repository.CategoryRepository;
-import com.elias.mismonedas.catalog.repository.ReasonRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
@@ -14,28 +9,29 @@ import com.elias.mismonedas.insights.dto.analytics.component.*;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.DashboardResponse;
 import com.elias.mismonedas.insights.dto.analytics.dashboard.TransactionsDashboard;
 import com.elias.mismonedas.insights.service.analytics.TransactionAnalyticsService;
-import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
-import com.elias.mismonedas.ledger.mapper.TransactionMapper;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
-import com.elias.mismonedas.ledger.repository.TransactionSpecifications;
+import com.elias.mismonedas.ledger.repository.projection.AnalyticsDailyAggregate;
+import com.elias.mismonedas.ledger.repository.projection.AnalyticsDimensionAggregate;
+import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.shared.domain.vo.DateRange;
 import com.elias.mismonedas.shared.domain.vo.Money;
 import com.elias.mismonedas.shared.exception.CurrencyConversionException;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import com.elias.mismonedas.shared.money.CurrencyConverter;
+import com.elias.mismonedas.wallets.repository.WalletRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -46,32 +42,17 @@ import java.util.stream.Collectors;
 @Service("transactionAnalyticsService")
 public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implements TransactionAnalyticsService {
     protected final TransactionRepository transactionRepository;
-    protected final CategoryRepository categoryRepository;
-    protected final ReasonRepository reasonRepository;
-    protected final TransactionMapper tMapper;
-    protected final ReasonMapper reasonMapper;
-    protected final CategoryMapper categoryMapper;
     protected final CurrencyConverter currencyConverter;
 
     public TransactionAnalyticsServiceImpl(
             DateMapper dateMapper,
             UserRepository userRepository,
             TransactionRepository transactionRepository,
-            CategoryRepository categoryRepository,
-            ReasonRepository reasonRepository,
-            TransactionMapper tMapper,
-            ReasonMapper reasonMapper,
-            CategoryMapper categoryMapper,
             WalletRepository walletRepository,
             CurrencyConverter currencyConverter,
             SecurityService securityService) {
         super(dateMapper, userRepository, securityService, walletRepository);
         this.transactionRepository = transactionRepository;
-        this.categoryRepository = categoryRepository;
-        this.reasonRepository = reasonRepository;
-        this.tMapper = tMapper;
-        this.reasonMapper = reasonMapper;
-        this.categoryMapper = categoryMapper;
         this.currencyConverter = currencyConverter;
     }
 
@@ -99,8 +80,8 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         User u = this.getUser(userId);
         ZoneId zoneId = u.getTimeZone().toZoneId();
         DateRange coveredPeriod = request.coveringMonths();
-        var periodStart = coveredPeriod.startInclusive(zoneId);
-        var periodEnd = coveredPeriod.endExclusive(zoneId);
+        OffsetDateTime periodStart = coveredPeriod.startInclusive(zoneId);
+        OffsetDateTime periodEnd = coveredPeriod.endExclusive(zoneId);
         LocalDateTime createdAt = OffsetDateTime.now().atZoneSameInstant(zoneId).toLocalDateTime();
         String baseCurrency = resolveBaseCurrency(u);
 
@@ -112,18 +93,19 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         List<String> missingRates = new ArrayList<>();
         Set<String> failedCurrencies = new HashSet<>();
 
-        List<TransactionResponse> all = transactionRepository.findAll(TransactionSpecifications.list(
-                        userId, true, null, walletId, null, periodStart, periodEnd, null))
+        List<ConvertedGroup> groups = transactionRepository.aggregateByDimensions(
+                        userId, walletId, periodStart, periodEnd)
                 .stream()
-                .map(tMapper::toResponse)
-                .map(t -> convertToBase(t, baseCurrency, failedCurrencies, missingRates))
+                .map(row -> convertGroup(row, baseCurrency, failedCurrencies, missingRates))
                 .filter(Objects::nonNull)
-                .sorted(Comparator.comparing(TransactionResponse::getCreatedAt).reversed())
                 .toList();
 
-        log.info("Period for query: {} to {}", periodStart, periodEnd);
-
-        BigDecimal balance = BigDecimal.ZERO;
+        List<ConvertedDaily> daily = transactionRepository.aggregateDaily(
+                        userId, walletId, periodStart, periodEnd, zoneId.getId())
+                .stream()
+                .map(row -> convertDaily(row, baseCurrency, failedCurrencies, missingRates))
+                .filter(Objects::nonNull)
+                .toList();
 
         String dateRangeLabel = dateMapper.dateRangeLabel(coveredPeriod);
         List<String> uniqueMissingRates = missingRates.stream().distinct().sorted().toList();
@@ -132,58 +114,33 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         td.setPartial(!uniqueMissingRates.isEmpty());
         td.setMissingRates(uniqueMissingRates);
 
-        List<TransactionResponse> income = new ArrayList<>();
-        List<TransactionResponse> spent = new ArrayList<>();
+        BigDecimal totalGeneral = groups.stream()
+                .map(ConvertedGroup::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalIncome = groups.stream()
+                .filter(group -> group.type() == TransactionType.INCOME)
+                .map(ConvertedGroup::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalSpent = groups.stream()
+                .filter(group -> group.type() == TransactionType.SPENT)
+                .map(ConvertedGroup::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal balance = totalIncome.subtract(totalSpent);
 
-        for (TransactionResponse t : all) {
-            if (t.getType() == TransactionType.SPENT) {
-                spent.add(t);
-                balance = balance.subtract(t.getAmount());
-            } else {
-                income.add(t);
-                balance = balance.add(t.getAmount());
-            }
-        }
-
-        com.elias.mismonedas.insights.dto.analytics.component.TimeLine<TransactionResponse> expenses = this.buildTimeLine(
+        TimeLine<TransactionResponse> expenses = this.buildTimeLine(
                 coveredPeriod,
                 "Gastos del periodo :" + dateRangeLabel,
-                spent,
-                t -> t.getCreatedAt().toLocalDate(),
-                TransactionResponse::getAmount);
+                dailyAmounts(daily, TransactionType.SPENT));
 
-        com.elias.mismonedas.insights.dto.analytics.component.TimeLine<TransactionResponse> incomes = this.buildTimeLine(
+        TimeLine<TransactionResponse> incomes = this.buildTimeLine(
                 coveredPeriod,
                 "Ingresos del periodo :" + dateRangeLabel,
-                income,
-                t -> t.getCreatedAt().toLocalDate(),
-                TransactionResponse::getAmount);
+                dailyAmounts(daily, TransactionType.INCOME));
 
-        BigDecimal totalGeneral = this.accumulate(all.stream().map(TransactionResponse::getAmount).toList());
-        BigDecimal totalIncome = this.accumulate(income.stream().map(TransactionResponse::getAmount).toList());
-        BigDecimal totalSpent = this.accumulate(spent.stream().map(TransactionResponse::getAmount).toList());
-
-        List<AggregateBy<ReasonSummary>> spentByReason = spent.stream()
-                .collect(Collectors.groupingBy(reasonMapper::toReasonSummary))
-                .entrySet().stream()
-                .map(entry -> buildAggregateBy(
-                        entry.getKey(),
-                        entry.getKey().getDescription(),
-                        entry.getValue().stream().map(TransactionResponse::getAmount).toList(),
-                        totalSpent
-                ))
-                .toList();
-
-        List<AggregateBy<ReasonSummary>> incomeByReason = income.stream()
-                .collect(Collectors.groupingBy(reasonMapper::toReasonSummary))
-                .entrySet().stream()
-                .map(entry -> buildAggregateBy(
-                        entry.getKey(),
-                        entry.getKey().getDescription(),
-                        entry.getValue().stream().map(TransactionResponse::getAmount).toList(),
-                        totalIncome
-                ))
-                .toList();
+        List<AggregateBy<ReasonSummary>> spentByReason =
+                aggregateByReason(groups, TransactionType.SPENT, totalSpent);
+        List<AggregateBy<ReasonSummary>> incomeByReason =
+                aggregateByReason(groups, TransactionType.INCOME, totalIncome);
 
         Ranking<ReasonSummary> rsRanking = this.buildRanking(
                 "Top " + topN + " motivos de gastos",
@@ -199,59 +156,31 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
                 topN
         );
 
-        List<AggregateBy<PaymentMethod>> aggsByPaymentMethod = all.stream()
-                .collect(Collectors.groupingBy(TransactionResponse::getPaymentMethod))
+        List<AggregateBy<PaymentMethod>> aggsByPaymentMethod = groups.stream()
+                .collect(Collectors.groupingBy(ConvertedGroup::paymentMethod))
                 .entrySet().stream()
-                .map(entry -> buildAggregateBy(
+                .map(entry -> aggregateBy(
                         entry.getKey(),
                         entry.getKey().getDisplayName(),
-                        entry.getValue().stream().map(TransactionResponse::getAmount).toList(),
-                        totalGeneral
-                ))
+                        entry.getValue(),
+                        totalGeneral))
                 .toList();
 
-        List<AggregateBy<CategorySummary>> aggsByCategory = all.stream()
-                .collect(Collectors.groupingBy(categoryMapper::toSummary))
-                .entrySet().stream()
-                .map(entry -> buildAggregateBy(
-                        entry.getKey(),
-                        entry.getKey().getName(),
-                        entry.getValue().stream().map(TransactionResponse::getAmount).toList(),
-                        totalGeneral
-                ))
-                .toList();
+        List<AggregateBy<CategorySummary>> aggsByCategory =
+                aggregateByCategory(groups, null, totalGeneral);
+        List<AggregateBy<CategorySummary>> spentByCategory =
+                aggregateByCategory(groups, TransactionType.SPENT, totalSpent);
+        List<AggregateBy<CategorySummary>> incomeByCategory =
+                aggregateByCategory(groups, TransactionType.INCOME, totalIncome);
 
-        List<AggregateBy<CategorySummary>> spentByCategory = spent.stream()
-                .collect(Collectors.groupingBy(categoryMapper::toSummary))
+        List<AggregateBy<TransactionType>> aggsByType = groups.stream()
+                .collect(Collectors.groupingBy(ConvertedGroup::type))
                 .entrySet().stream()
-                .map(entry -> buildAggregateBy(
-                        entry.getKey(),
-                        entry.getKey().getName(),
-                        entry.getValue().stream().map(TransactionResponse::getAmount).toList(),
-                        totalSpent
-                ))
-                .toList();
-
-        List<AggregateBy<CategorySummary>> incomeByCategory = income.stream()
-                .collect(Collectors.groupingBy(categoryMapper::toSummary))
-                .entrySet().stream()
-                .map(entry -> buildAggregateBy(
-                        entry.getKey(),
-                        entry.getKey().getName(),
-                        entry.getValue().stream().map(TransactionResponse::getAmount).toList(),
-                        totalIncome
-                ))
-                .toList();
-
-        List<AggregateBy<TransactionType>> aggsByType = all.stream()
-                .collect(Collectors.groupingBy(TransactionResponse::getType))
-                .entrySet().stream()
-                .map(entry -> buildAggregateBy(
+                .map(entry -> aggregateBy(
                         entry.getKey(),
                         entry.getKey().getDisplayName(),
-                        entry.getValue().stream().map(TransactionResponse::getAmount).toList(),
-                        totalGeneral
-                ))
+                        entry.getValue(),
+                        totalGeneral))
                 .toList();
 
         Ranking<CategorySummary> summaryByCategory = this.buildRanking(
@@ -289,9 +218,9 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
                 aggsByType.size()
         );
 
-        Aggregate generalAggregate = buildAggregate(
+        Aggregate generalAggregate = aggregate(
                 "Resumen general de movimientos del periodo: " + dateRangeLabel,
-                all.stream().map(TransactionResponse::getAmount).toList()
+                groups
         );
 
         td.setTitle(title);
@@ -312,18 +241,24 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         return td;
     }
 
-    private TransactionResponse convertToBase(TransactionResponse transaction,
-                                              String baseCurrency,
-                                              Set<String> failedCurrencies,
-                                              List<String> missingRates) {
-        if (transaction.getAmount() == null || baseCurrency == null) {
-            return transaction;
-        }
+    private ConvertedGroup convertGroup(AnalyticsDimensionAggregate row,
+                                        String baseCurrency,
+                                        Set<String> failedCurrencies,
+                                        List<String> missingRates) {
+        String sourceCurrency = row.getCurrencyCode();
 
-        String sourceCurrency = transaction.getWalletCurrency();
-        if (sourceCurrency == null || sourceCurrency.equals(baseCurrency)) {
-            transaction.setWalletCurrency(baseCurrency);
-            return transaction;
+        if (baseCurrency == null || sourceCurrency == null || sourceCurrency.equals(baseCurrency)) {
+            return new ConvertedGroup(
+                    row.getType(),
+                    row.getPaymentMethod(),
+                    row.getCategoryId(),
+                    row.getCategoryName(),
+                    row.getReasonId(),
+                    row.getReasonDescription(),
+                    row.getTotal(),
+                    row.getOccurrences(),
+                    row.getMinAmount(),
+                    row.getMaxAmount());
         }
 
         if (failedCurrencies.contains(sourceCurrency)) {
@@ -332,18 +267,174 @@ public class TransactionAnalyticsServiceImpl extends AnalyticsServiceImpl implem
         }
 
         try {
-            Money converted = currencyConverter.convert(
-                    Money.of(transaction.getAmount(), sourceCurrency),
-                    baseCurrency);
-            transaction.setAmount(converted.amount());
-            transaction.setWalletCurrency(baseCurrency);
-            return transaction;
+            return new ConvertedGroup(
+                    row.getType(),
+                    row.getPaymentMethod(),
+                    row.getCategoryId(),
+                    row.getCategoryName(),
+                    row.getReasonId(),
+                    row.getReasonDescription(),
+                    convertAmount(row.getTotal(), sourceCurrency, baseCurrency),
+                    row.getOccurrences(),
+                    convertAmount(row.getMinAmount(), sourceCurrency, baseCurrency),
+                    convertAmount(row.getMaxAmount(), sourceCurrency, baseCurrency));
         } catch (CurrencyConversionException ex) {
             failedCurrencies.add(sourceCurrency);
             missingRates.add(sourceCurrency + "->" + baseCurrency);
-            log.warn("Sin tasa {}->{}: se excluye la transaccion del consolidado", sourceCurrency, baseCurrency);
+            log.warn("Sin tasa {}->{}: se excluye el grupo del consolidado", sourceCurrency, baseCurrency);
             return null;
         }
+    }
+
+    private ConvertedDaily convertDaily(AnalyticsDailyAggregate row,
+                                        String baseCurrency,
+                                        Set<String> failedCurrencies,
+                                        List<String> missingRates) {
+        String sourceCurrency = row.getCurrencyCode();
+
+        if (baseCurrency == null || sourceCurrency == null || sourceCurrency.equals(baseCurrency)) {
+            return new ConvertedDaily(
+                    row.getDay(),
+                    row.getType(),
+                    row.getTotal(),
+                    row.getOccurrences());
+        }
+
+        if (failedCurrencies.contains(sourceCurrency)) {
+            missingRates.add(sourceCurrency + "->" + baseCurrency);
+            return null;
+        }
+
+        try {
+            return new ConvertedDaily(
+                    row.getDay(),
+                    row.getType(),
+                    convertAmount(row.getTotal(), sourceCurrency, baseCurrency),
+                    row.getOccurrences());
+        } catch (CurrencyConversionException ex) {
+            failedCurrencies.add(sourceCurrency);
+            missingRates.add(sourceCurrency + "->" + baseCurrency);
+            log.warn("Sin tasa {}->{}: se excluye el dia del consolidado", sourceCurrency, baseCurrency);
+            return null;
+        }
+    }
+
+    private BigDecimal convertAmount(BigDecimal amount, String sourceCurrency, String baseCurrency) {
+        return currencyConverter.convert(Money.of(amount, sourceCurrency), baseCurrency).amount();
+    }
+
+    private List<DailyAmount> dailyAmounts(List<ConvertedDaily> rows, TransactionType type) {
+        return rows.stream()
+                .filter(row -> row.type() == type)
+                .collect(Collectors.groupingBy(ConvertedDaily::day))
+                .entrySet().stream()
+                .map(entry -> new DailyAmount(
+                        entry.getKey(),
+                        entry.getValue().stream()
+                                .map(ConvertedDaily::amount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add),
+                        entry.getValue().stream()
+                                .mapToLong(ConvertedDaily::count)
+                                .sum()))
+                .toList();
+    }
+
+    private List<AggregateBy<ReasonSummary>> aggregateByReason(List<ConvertedGroup> groups,
+                                                              TransactionType type,
+                                                              BigDecimal grandTotal) {
+        return groups.stream()
+                .filter(group -> group.type() == type)
+                .collect(Collectors.groupingBy(
+                        group -> new ReasonSummary(group.reasonId(), group.reasonDescription())))
+                .entrySet().stream()
+                .map(entry -> aggregateBy(
+                        entry.getKey(),
+                        entry.getKey().getDescription(),
+                        entry.getValue(),
+                        grandTotal))
+                .toList();
+    }
+
+    private List<AggregateBy<CategorySummary>> aggregateByCategory(List<ConvertedGroup> groups,
+                                                                  TransactionType type,
+                                                                  BigDecimal grandTotal) {
+        return groups.stream()
+                .filter(group -> type == null || group.type() == type)
+                .collect(Collectors.groupingBy(
+                        group -> new CategorySummary(group.categoryId(), group.categoryName(), group.type())))
+                .entrySet().stream()
+                .map(entry -> aggregateBy(
+                        entry.getKey(),
+                        entry.getKey().getName(),
+                        entry.getValue(),
+                        grandTotal))
+                .toList();
+    }
+
+    private <F> AggregateBy<F> aggregateBy(F factor,
+                                           String factorName,
+                                           List<ConvertedGroup> groups,
+                                           BigDecimal grandTotal) {
+        GroupTotals totals = totals(groups);
+        return buildAggregateBy(
+                factor,
+                factorName,
+                totals.total(),
+                totals.count(),
+                totals.min(),
+                totals.max(),
+                grandTotal);
+    }
+
+    private Aggregate aggregate(String title, List<ConvertedGroup> groups) {
+        GroupTotals totals = totals(groups);
+        return buildAggregate(title, totals.total(), totals.count(), totals.min(), totals.max());
+    }
+
+    private GroupTotals totals(List<ConvertedGroup> groups) {
+        BigDecimal total = groups.stream()
+                .map(ConvertedGroup::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long count = groups.stream()
+                .mapToLong(ConvertedGroup::count)
+                .sum();
+        BigDecimal min = groups.stream()
+                .map(ConvertedGroup::min)
+                .min(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+        BigDecimal max = groups.stream()
+                .map(ConvertedGroup::max)
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+
+        return new GroupTotals(total, count, min, max);
+    }
+
+    private record ConvertedGroup(
+            TransactionType type,
+            PaymentMethod paymentMethod,
+            Long categoryId,
+            String categoryName,
+            Long reasonId,
+            String reasonDescription,
+            BigDecimal total,
+            long count,
+            BigDecimal min,
+            BigDecimal max) {
+    }
+
+    private record ConvertedDaily(
+            LocalDate day,
+            TransactionType type,
+            BigDecimal amount,
+            long count) {
+    }
+
+    private record GroupTotals(
+            BigDecimal total,
+            long count,
+            BigDecimal min,
+            BigDecimal max) {
     }
 
     @Override

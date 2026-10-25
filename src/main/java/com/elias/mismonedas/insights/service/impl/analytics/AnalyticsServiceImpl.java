@@ -54,20 +54,31 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
             String title,
             List<BigDecimal> amounts) {
 
-        BigDecimal total   = amounts.stream()
+        BigDecimal total = amounts.stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal average = amounts.isEmpty() ? BigDecimal.ZERO
-                : total.divide(BigDecimal.valueOf(amounts.size()), 2, HALF_UP);
-        BigDecimal max     = amounts.stream()
+        BigDecimal max = amounts.stream()
                 .max(Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
-        BigDecimal min     = amounts.stream()
+        BigDecimal min = amounts.stream()
                 .min(Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
+
+        return buildAggregate(title, total, amounts.size(), min, max);
+    }
+
+    protected Aggregate buildAggregate(
+            String title,
+            BigDecimal total,
+            long count,
+            BigDecimal min,
+            BigDecimal max) {
+
+        BigDecimal average = count == 0 ? BigDecimal.ZERO
+                : total.divide(BigDecimal.valueOf(count), 2, HALF_UP);
 
         return Aggregate.builder()
                 .title(title)
                 .totalAmount(total)
                 .averageAmount(average)
-                .occurrenceCount(amounts.size())
+                .occurrenceCount(count)
                 .max(max)
                 .min(min)
                 .build();
@@ -80,7 +91,27 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
             List<BigDecimal> amounts,
             BigDecimal grandTotal) {
 
-        Aggregate base = buildAggregate("por "+factorName, amounts);
+        BigDecimal total = amounts.stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal max = amounts.stream()
+                .max(Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
+        BigDecimal min = amounts.stream()
+                .min(Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
+
+        return buildAggregateBy(
+                factor, factorName, total, amounts.size(), min, max, grandTotal);
+    }
+
+    protected <F> AggregateBy<F> buildAggregateBy(
+            F factor,
+            String factorName,
+            BigDecimal total,
+            long count,
+            BigDecimal min,
+            BigDecimal max,
+            BigDecimal grandTotal) {
+
+        Aggregate base = buildAggregate("por " + factorName, total, count, min, max);
 
         BigDecimal share = grandTotal.compareTo(BigDecimal.ZERO) == 0
                 ? BigDecimal.ZERO
