@@ -129,7 +129,8 @@ public class BudgetAnalyticsServiceImpl extends AnalyticsServiceImpl implements 
     }
 
     private List<Transaction> findActiveTransactions(Budget b) {
-        return tRepository.findAllByCategory_IdAndCreatedAtBetweenAndActive(
+        return tRepository.findAllByUser_IdAndCategory_IdAndCreatedAtBetweenAndActive(
+                b.getUser().getId(),
                 b.getCategory().getId(),
                 b.getStart(),
                 b.getEnd(),

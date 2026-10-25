@@ -69,6 +69,27 @@ class TransactionSpecificationsTest {
     }
 
     @Test
+    void shouldScopeBudgetSpendQueryToTheTransactionOwner() {
+        User budgetOwner = saveUser();
+        User otherUser = saveUser();
+        Wallet ownerWallet = saveWallet(budgetOwner);
+        Wallet otherWallet = saveWallet(otherUser);
+        Category budgetCategory = saveCategory(budgetOwner);
+        OffsetDateTime from = OffsetDateTime.parse("2026-06-01T00:00:00-05:00");
+        OffsetDateTime to = OffsetDateTime.parse("2026-07-01T00:00:00-05:00");
+
+        Transaction ownerTransaction = saveTransaction(
+                ownerWallet, budgetCategory, OffsetDateTime.parse("2026-06-15T12:00:00-05:00"));
+        saveTransaction(otherWallet, budgetCategory, OffsetDateTime.parse("2026-06-16T12:00:00-05:00"));
+
+        List<Transaction> result = transactionRepository
+                .findAllByUser_IdAndCategory_IdAndCreatedAtBetweenAndActive(
+                        budgetOwner.getId(), budgetCategory.getId(), from, to, true);
+
+        assertThat(result).extracting(Transaction::getId).containsExactly(ownerTransaction.getId());
+    }
+
+    @Test
     void shouldFilterBySearchAcrossReasonDescriptionAndCategoryName() {
         User owner = saveUser();
         Wallet wallet = saveWallet(owner);

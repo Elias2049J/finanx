@@ -81,6 +81,8 @@ class BudgetAnalyticsServiceImplTest {
         assertThat(dashboard.getTotalBudgetRemainingAmount()).isEqualByComparingTo("300.00");
         assertThat(dashboard.isPartial()).isFalse();
         assertThat(dashboard.getMissingRates()).isEmpty();
+        verify(transactionRepository).findAllByUser_IdAndCategory_IdAndCreatedAtBetweenAndActive(
+                eq(USER_ID), eq(CATEGORY_ID), any(OffsetDateTime.class), any(OffsetDateTime.class), eq(true));
         verifyNoInteractions(currencyConverter);
     }
 
@@ -160,6 +162,7 @@ class BudgetAnalyticsServiceImplTest {
         when(category.getName()).thenReturn("General");
         Budget budget = mock(Budget.class);
         when(budget.getId()).thenReturn(1L);
+        when(budget.getUser()).thenReturn(userWithPreferences("PEN"));
         when(budget.getCategory()).thenReturn(category);
         when(budget.getCurrencyCode()).thenReturn("USD");
         when(budget.getLimitAmount()).thenReturn(new BigDecimal("100.00"));
@@ -204,6 +207,9 @@ class BudgetAnalyticsServiceImplTest {
         when(category.getId()).thenReturn(CATEGORY_ID);
 
         Budget budget = mock(Budget.class);
+        User owner = new User();
+        owner.setId(USER_ID);
+        when(budget.getUser()).thenReturn(owner);
         when(budget.getCategory()).thenReturn(category);
         when(budget.getCurrencyCode()).thenReturn(currencyCode);
         when(budget.getLimitAmount()).thenReturn(new BigDecimal(limitAmount));
@@ -214,8 +220,8 @@ class BudgetAnalyticsServiceImplTest {
     }
 
     private void stubTransactions(Transaction... transactions) {
-        when(transactionRepository.findAllByCategory_IdAndCreatedAtBetweenAndActive(
-                eq(CATEGORY_ID), any(OffsetDateTime.class), any(OffsetDateTime.class), eq(true)))
+        when(transactionRepository.findAllByUser_IdAndCategory_IdAndCreatedAtBetweenAndActive(
+                eq(USER_ID), eq(CATEGORY_ID), any(OffsetDateTime.class), any(OffsetDateTime.class), eq(true)))
                 .thenReturn(List.of(transactions));
     }
 

@@ -53,7 +53,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
                            @Param("userId") Long userId,
                            @Param("now") OffsetDateTime now);
 
-    List<Transaction> findAllByCategory_IdAndCreatedAtBetweenAndActive(Long categoryId, OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore, Boolean active);
+    /** Only movements owned by the budget owner can contribute to its spend. */
+    List<Transaction> findAllByUser_IdAndCategory_IdAndCreatedAtBetweenAndActive(
+            Long userId,
+            Long categoryId,
+            OffsetDateTime createdAtAfter,
+            OffsetDateTime createdAtBefore,
+            Boolean active);
 
     void deleteAllByWallet_User_Id(Long userId);
 
