@@ -548,7 +548,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **310 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o package` → **376 tests, 0 fallos, BUILD SUCCESS**; `:app:testDebugUnitTest` (28) y `:kotlin-client:test` (583) en verde.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -570,13 +570,14 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | P1-19 | Nginx reenvía `$http_host` en el proxy de storage para preservar el puerto de la URL SigV4 | `6521d01` | `NginxStorageProxyConfigurationTest`, `SeaweedFsConfigurationTest`; descarga real pendiente por Docker no disponible |
 | P1-9 | El gasto de presupuesto suma solo movimientos cuyo `id_usuario` coincide con el dueño del presupuesto | `27b710d` | `TransactionSpecificationsTest` (+1, PostgreSQL), `BudgetAnalyticsServiceImplTest` |
 | P1-10 | OCR y `TransactionServiceImpl` rechazan importes no positivos antes de completar el recibo o persistir/actualizar saldo | `86038ae` | `ReceiptScanServiceImplTest` (+3), `TransactionServiceImplTest` (+2) |
+| P1-14 | Access tokens de 900 s ligados al `sid` de la familia refresh; el guard combina usuario activo y familia vigente en el datasource primario; logout revoca solo su familia y el cambio efectivo de contraseña revoca todas; JWT heredado o mal formado → 401 `invalid_token`, fallo de BD → 503; secreto fail-fast de ≥32 bytes UTF-8; Android renueva solo ante `invalid_token`, con single-flight, reintento único y bodies reproducibles, conservando la sesión ante red/5xx; logging HTTP sin cuerpos | `9ba17a5`, `03c7aeb`, `b8678b7`, `13d5ed1`, `879b939`, `3c541b6`, `ebdc127`, `dccca58`, `eef1717`, `09398f5` | `JwtTokenServiceImplTest` (9), `AuthTokenServiceImplTest` (9), `JwtResourceServerConfigTest` (4), `RestSecurityErrorHandlersTest` (4), `SecurityServiceImplTest` (5), `RefreshTokenFamilyConcurrencyTest` (2, PostgreSQL), `SessionAuthenticatorTest` (11), `SessionRefreshCoordinatorTest` (5), `SessionRefreshResponseClassifierTest` (5) |
 | P1-20 | Registro, actualización y Google normalizan email; V6 backfillea y añade unique sobre `lower(email)`, con guard que aborta ante duplicados | `255b21d` | `UserServiceImplTest` (3), `GoogleAuthServiceImplTest` (5), `UserEmailNormalizationTest` (PostgreSQL) |
 | P2-6 | Fallos transitorios conservan `RUNNING` y se reintentan en el siguiente ciclo; presupuesto ya materializado avanza sin duplicar; los fallos permanentes quedan `ERROR` con log estructurado | `de41784` | `ScheduleServiceImplBatchTest` |
-| Deuda | Flyway versiona V1–V6; V4 añade idempotencia de presupuesto; V5 reconcilia columnas de `movimientos`; V6 normaliza email y crea unique case-insensitive | `dc078ef`, `de41784`, `27b710d`, `255b21d` | V1–V6 aplican desde esquema vacío; validación de checksum |
+| Deuda | Flyway versiona V1–V9; V4 añade idempotencia de presupuesto; V5 reconcilia columnas de `movimientos`; V6 normaliza email y crea unique case-insensitive; V7/V8 añaden claim/reintento y unicidad FCM; V9 versiona familias de refresh | `dc078ef`, `de41784`, `27b710d`, `255b21d`, `85d8936`, `f38e03a`, `6d2b6c1` | V1–V9 aplican desde esquema vacío; validación de checksum |
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
-**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9, P1-10, P1-11, P1-12, P1-13, P1-18, P1-19 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. **P1-7 parcial:** ya no bloquea frases comunes, pero la evaluación muestra falsos positivos y evasiones. P1-8, P1-14, P1-15, P1-16 y P1-17 siguen abiertos.
+**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9, P1-10, P1-11, P1-12, P1-13, P1-14, P1-18, P1-19 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. **P1-7 parcial:** ya no bloquea frases comunes, pero la evaluación muestra falsos positivos y evasiones. P1-8, P1-15, P1-16 y P1-17 siguen abiertos.
 
 **Aplicado en P2:** P2-6. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
 
@@ -615,10 +616,13 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 - Evaluación de `AiUtils.sanitizeUserPrompt` exclusivamente (sin llamar a Gemini): corpus artesanal balanceado de 40 textos, 20 benignos y 20 maliciosos, mitad español y mitad inglés por clase. Global: TP=18, FN=2, FP=1, TN=19; precisión 94,7%, recall 90%, especificidad 95%, exactitud 92,5%. Español (10+10): TP=9, FN=1, FP=0, TN=10; inglés (10+10): TP=9, FN=1, FP=1, TN=9. El FP es una frase benigna sobre ignorar un consejo previo; los FN son variantes de roleplay. Es una medición dirigida, no una estimación estadística de tráfico real ni una garantía de seguridad.
 - `ImageServiceImpl` rechaza cargas sobre 5 MiB y usa `ImageReader` para comprobar dimensiones antes de decodificar; el máximo es 20 MP. Ambos límites se refuerzan en el servicio, además del límite HTTP.
 - El presigner conserva el puerto público configurado (`localhost:8081`) y nginx ahora reenvía el `Host` original (`$http_host`) al upstream de SeaweedFS. Se verificó con tests locales la URL firmada y la directiva; la descarga real a través de Docker no pudo probarse porque el daemon de Docker Desktop no estaba activo.
+- P1-14: el access token dura 900 s y lleva `sid`; cada request protegida exige una fila refresh activa, no revocada y no vencida de esa familia, leída del datasource primario junto con el usuario. Logout revoca solo la familia recibida; el cambio efectivo de contraseña revoca todas. Los JWT emitidos antes del despliegue dejan de aceptarse y el refresh de 30 días sigue siendo la vía de renovación.
+- V9 crea/valida `refresh_tokens` y un unique parcial de una fila activa por familia; aborta ante duplicados activos sin repararlos.
+- Android: el `Authenticator` solo actúa ante `WWW-Authenticate: Bearer error="invalid_token"`, serializa la rotación y reutiliza el par nuevo si otra petición ya renovó. Un refresh terminal (4xx salvo 408/429) limpia la sesión y notifica a Compose; red/5xx conserva la sesión. Un refresh cuyo resultado se pierde no se reintenta automáticamente: el reuso del token anterior activa la detección de replay y puede cerrar la familia, así que el usuario tendría que volver a iniciar sesión. No hay idempotencia de refresh en este alcance.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9 a P1-13, P1-18, P1-19 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas. P1-8 y P1-14 a P1-17 siguen pendientes. P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V8 desde cero.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9 a P1-14, P1-18, P1-19 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas. P1-8 y P1-15 a P1-17 siguen pendientes. P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V9 desde cero.
 
 ---
 
@@ -643,3 +647,4 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | v2.13 | 2026-10-25 | Evaluación offline del filtro de prompts sin invocar IA: 40 casos balanceados, matriz de confusión y métricas ES/EN; P1-7 registrado como parcial; 306 tests pasan |
 | v2.14 | 2026-10-25 | Aplicado P1-18 (5 MiB/20 MP pre-decodificación) y P1-19 (`$http_host` con puerto); la descarga end-to-end queda pendiente por Docker inactivo; 310 tests pasan |
 | v2.15 | 2026-10-25 | Aplicados P1-11/12/13: delivery por canal fuera de TX, unicidad/transferencia FCM y logout por dispositivo, listeners `AFTER_COMMIT`, purga por umbral, DLQ con hasta 5 reintentos exponenciales y replay `SYSTEM`; V1–V8 verificadas y suites backend/Android/cliente Kotlin pasan |
+| v2.16 | 2026-10-25 | Aplicado P1-14: access tokens de 900 s con `sid` de familia, guard de sesión en PostgreSQL primario, logout por familia, password change revoca todas, JWT heredado → 401 `invalid_token`, fallo de BD → 503, secreto fail-fast y renovación Android single-flight solo ante `invalid_token`; V9 versiona `refresh_tokens`; 376 tests backend, 28 Android y 583 del cliente Kotlin pasan |

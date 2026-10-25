@@ -61,13 +61,13 @@ La revocación se valida en el límite de autenticación; no se confía en estad
 
 ## Criterios de aceptación
 
-- [ ] Todo access token nuevo expira a los 900 segundos y contiene `sid` de su familia refresh activa.
-- [ ] Access tokens antiguos o con familia revocada/vencida reciben 401 `invalid_token`; revocar un dispositivo no invalida otra familia.
-- [ ] Cambio efectivo de contraseña invalida las sesiones del usuario.
-- [ ] Se rechaza en startup secreto JWT placeholder o menor de 32 bytes UTF-8, sin exponerlo en logs.
-- [ ] Android renueva solo ante `invalid_token`, evita loops/races y bodies no reproducibles, conserva sesión ante red/5xx y limpia sesión ante refresh inválido.
-- [ ] V9 crea el esquema desde cero, valida el existente y su índice impide nuevas familias activas duplicadas sin cambiar datos automáticamente.
-- [ ] La suite backend y los tests Android/client Kotlin pasan; `.env` no aparece staged.
+- [x] Todo access token nuevo expira a los 900 segundos y contiene `sid` de su familia refresh activa.
+- [x] Access tokens antiguos o con familia revocada/vencida reciben 401 `invalid_token`; revocar un dispositivo no invalida otra familia.
+- [x] Cambio efectivo de contraseña invalida las sesiones del usuario.
+- [x] Se rechaza en startup secreto JWT placeholder o menor de 32 bytes UTF-8, sin exponerlo en logs.
+- [x] Android renueva solo ante `invalid_token`, evita loops/races y bodies no reproducibles, conserva sesión ante red/5xx y limpia sesión ante refresh inválido.
+- [x] V9 crea el esquema desde cero, valida el existente y su índice impide nuevas familias activas duplicadas sin cambiar datos automáticamente.
+- [x] La suite backend y los tests Android/client Kotlin pasan; `.env` no aparece staged.
 
 ## Riesgos conocidos
 
