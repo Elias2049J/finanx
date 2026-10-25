@@ -546,7 +546,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **274 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **276 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -559,11 +559,12 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **27
 | P0-6 | `WebhookController` en `/api/v1/webhooks`, solo existe con `app.billing.webhooks.enabled=true` (default `false` → 404); `permitAll()` para cuando se encienda; `PaymentExpirationScheduler` expira `PENDING` > 24 h y `PROCESSING` > 1 h; `NoResourceFoundException` → 404 | `a63d93f`, `7fc3cda` | `PaymentServiceImplTest$ExpireStalePaymentsTest` (2), `WebhookEndpointDisabledTest` (1), `GlobalExceptionHandlerTest` (+1) |
 | P1-1 | Un presupuesto recurrente se finaliza cuando `now >= end` y congela el gasto de su propia ventana `[start, end]` | `bbb3d00` | `BudgetServiceImplTest` (+2) |
 | P1-2 | Mensual y anual toman el día (y el mes) del ancla `rule.start`, no de la ocurrencia previa | `aafe06e` | `RecurrenceServiceImplTest` (4) |
+| P1-3 | `totalsOf` degrada a parcial si falta una tasa: omite la fila, marca `partial` y expone `missingRates`; sin 503 | `a2aa2d7` | `SavingGoalServiceImplTest` (2), `SavingGoalTest` (+0) |
 | Deuda | Flyway reactivado: V1 restaurado (checksum intacto), V2 recoge las columnas `locale` de `database/manual`, V3 añade identidad federada | `dc078ef` | Validación de checksum en el arranque del contexto |
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
-**Aplicado en P1:** P1-1 y P1-2. El resto de P1 sigue abierto.
+**Aplicado en P1:** P1-1, P1-2 y P1-3. El resto de P1 sigue abierto.
 
 **Riesgo residual de P0-8 (decisión explícita: no ampliar alcance):**
 
@@ -586,6 +587,7 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **27
 - La expiración de pagos no toca la suscripción: un pago `FAILED` por timeout deja la suscripción en `PENDING` y el usuario puede reintentar con un pago nuevo.
 - Un presupuesto recurrente finaliza con el gasto de su ventana `[start, end]`, no con el del periodo actual; `BudgetScheduler` sigue creando una fila por ocurrencia.
 - El ancla mensual/anual se toma de `rule.start`; si el día no existe en el mes destino se usa el último día (31-ene → 28/29-feb → 31-mar).
+- Una tasa ausente en una meta de ahorro ya no devuelve 503: la meta se marca `partial`, se omite la fila no convertible y el par afectado aparece en `missingRates` (mismo contrato que `WalletBalanceResponse`).
 
 ---
 
@@ -604,3 +606,4 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **27
 | v2.3 | 2026-10-25 | Aplicado P0-2 (validación previa al gateway + cancelación de suscripción); P0-1 pospuesto por dependencia de pasarela |
 | v2.4 | 2026-10-25 | Aplicado P0-6 (webhooks apagados por flag + expiración de pagos estancados); corregida la ruta `/api/v1/webhooks` y el 404 de rutas inexistentes; P0-1 sigue pospuesto |
 | v2.5 | 2026-10-25 | Aplicados P1-1 (finalización de presupuestos recurrentes) y P1-2 (ancla mensual/anual); semanal revisado sin cambio |
+| v2.6 | 2026-10-25 | Aplicado P1-3 (degradación parcial de metas de ahorro ante tasas ausentes) |
