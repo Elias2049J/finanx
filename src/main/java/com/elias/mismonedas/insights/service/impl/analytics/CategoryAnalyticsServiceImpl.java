@@ -105,16 +105,14 @@ public class CategoryAnalyticsServiceImpl extends AnalyticsServiceImpl implement
                 "Gastos del periodo :"+ dateRangeLabel,
                 spent,
                 t -> t.getCreatedAt().toLocalDate(),
-                TransactionResponse::getAmount,
-                Comparator.comparing(TransactionResponse::getCreatedAt));
+                TransactionResponse::getAmount);
 
         TimeLine<TransactionResponse> incomes = this.buildTimeLine(
                 period,
                 "Ingresos del periodo :"+ dateRangeLabel,
                 income,
                 t -> t.getCreatedAt().toLocalDate(),
-                TransactionResponse::getAmount,
-                Comparator.comparing(TransactionResponse::getCreatedAt));
+                TransactionResponse::getAmount);
 
         BigDecimal totalGeneral = this.accumulate(all.stream().map(TransactionResponse::getAmount).toList());
         BigDecimal totalIncome = this.accumulate(income.stream().map(TransactionResponse::getAmount).toList());

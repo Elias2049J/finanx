@@ -130,53 +130,40 @@ public abstract class AnalyticsServiceImpl implements AnalyticsService {
     }
 
 
-    protected <T> com.elias.mismonedas.insights.dto.analytics.component.TimeSeriesPoint<T> buildTimeSeriesPoint(
-            LocalDate date,
-            List<BigDecimal> amounts,
-            List<T> context,
-            Comparator<T> contextSorter
-    ) {
-        BigDecimal total = amounts.stream()
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    protected <T> com.elias.mismonedas.insights.dto.analytics.component.TimeLine<T> buildTimeLine(
+            DateRange dateRange,
+            String title,
+            List<T> items,
+            Function<T, LocalDate> dateResolver,
+            Function<T, BigDecimal> amountResolver) {
 
-        List<T> orderedContext = contextSorter == null
-                ? context
-                : context.stream().sorted(contextSorter).toList();
+        Map<LocalDate, List<T>> itemsByDate = items.stream()
+                .collect(Collectors.groupingBy(dateResolver));
 
-        return new com.elias.mismonedas.insights.dto.analytics.component.TimeSeriesPoint<>(
-                date,
-                total,
-                amounts.size(),
-                orderedContext
-        );
+        List<DailyAmount> dailyAmounts = itemsByDate.entrySet().stream()
+                .map(entry -> new DailyAmount(
+                        entry.getKey(),
+                        entry.getValue().stream()
+                                .map(amountResolver)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add),
+                        entry.getValue().size()))
+                .toList();
+
+        return buildTimeLine(dateRange, title, dailyAmounts);
     }
 
 
     protected <T> com.elias.mismonedas.insights.dto.analytics.component.TimeLine<T> buildTimeLine(
             DateRange dateRange,
             String title,
-            List<T> items,
-            Function<T, LocalDate> dateResolver,
-            Function<T, BigDecimal> amountResolver,
-            Comparator<T> contextComparator) {
+            List<DailyAmount> dailyAmounts) {
 
-        Map<LocalDate, List<BigDecimal>> amountsByDate = items.stream()
-                .collect(Collectors.groupingBy(
-                        dateResolver,
-                        Collectors.mapping(amountResolver, Collectors.toList())
-                ));
-
-        Map<LocalDate, List<T>> itemsByDate = items.stream()
-                .collect(Collectors.groupingBy(dateResolver));
-
-        List<com.elias.mismonedas.insights.dto.analytics.component.TimeSeriesPoint<T>> points = amountsByDate.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> buildTimeSeriesPoint(
-                        entry.getKey(),
-                        entry.getValue(),
-                        itemsByDate.getOrDefault(entry.getKey(), List.of()),
-                        contextComparator
-                ))
+        List<com.elias.mismonedas.insights.dto.analytics.component.TimeSeriesPoint<T>> points = dailyAmounts.stream()
+                .sorted(Comparator.comparing(DailyAmount::date))
+                .map(daily -> new com.elias.mismonedas.insights.dto.analytics.component.TimeSeriesPoint<T>(
+                        daily.date(),
+                        daily.amount(),
+                        daily.count()))
                 .toList();
 
         List<BigDecimal> allAmounts = points.stream()
