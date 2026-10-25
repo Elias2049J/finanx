@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class NotificationDeliveryService {
 
+    private static final int MAX_AUTOMATIC_RETRIES = 5;
+
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationDeliveryRepository deliveryRepository;
     private final NotificationRepository notificationRepository;
@@ -141,17 +143,85 @@ public class NotificationDeliveryService {
     @Transactional
     public void markFailed(Long outboxId, String errorMessage) {
         NotificationOutbox outbox = getOutboxForUpdate(outboxId);
-        if (isTerminal(outbox.getState())) {
+        if (isTerminal(outbox.getState()) || outbox.getState() == OutboxState.FAILED) {
             return;
         }
 
+        markOutboxFailed(outbox, outboxId, errorMessage);
+    }
+
+    @Transactional
+    public boolean scheduleAutomaticRetry(Long outboxId, String errorMessage) {
+        NotificationOutbox outbox = getOutboxForUpdate(outboxId);
+        if (isTerminal(outbox.getState())) {
+            return false;
+        }
+        if (outbox.getState() == OutboxState.PUBLISHED) {
+            markOutboxFailed(outbox, outboxId, errorMessage);
+        } else if (outbox.getState() != OutboxState.FAILED) {
+            return false;
+        }
+
+        if (outbox.getNextRetryAt() != null || outbox.getRetryCount() >= MAX_AUTOMATIC_RETRIES) {
+            return false;
+        }
+
+        long delayMinutes = 1L << outbox.getRetryCount();
+        outbox.setRetryCount(outbox.getRetryCount() + 1);
+        outbox.setNextRetryAt(OffsetDateTime.now().plusMinutes(delayMinutes));
+        log.info("notification_retry_scheduled outbox_id={} retry_count={} delay_minutes={}",
+                outboxId, outbox.getRetryCount(), delayMinutes);
+        return true;
+    }
+
+    @Transactional
+    public boolean activateScheduledRetry(Long outboxId, OffsetDateTime now) {
+        NotificationOutbox outbox = getOutboxForUpdate(outboxId);
+        if (outbox.getState() != OutboxState.FAILED
+                || outbox.getNextRetryAt() == null
+                || outbox.getNextRetryAt().isAfter(now)) {
+            return false;
+        }
+
+        resetFailedDeliveries(outboxId);
+        outbox.setState(OutboxState.PENDING);
+        outbox.setNextRetryAt(null);
+        return true;
+    }
+
+    @Transactional
+    public boolean replayFailed(Long outboxId) {
+        NotificationOutbox outbox = getOutboxForUpdate(outboxId);
+        if (outbox.getState() != OutboxState.FAILED) {
+            return false;
+        }
+
+        resetFailedDeliveries(outboxId);
+        outbox.setRetryCount(0);
+        outbox.setNextRetryAt(null);
+        outbox.setState(OutboxState.PENDING);
+        return true;
+    }
+
+    private void markOutboxFailed(NotificationOutbox outbox, Long outboxId, String errorMessage) {
         outbox.setState(OutboxState.FAILED);
+        outbox.setNextRetryAt(null);
         for (NotificationDelivery delivery : deliveryRepository.findAllByOutboxIdOrderByChannelAsc(outboxId)) {
             if (delivery.getState() == NotificationDeliveryState.PENDING
                     || delivery.getState() == NotificationDeliveryState.SENDING) {
                 delivery.setState(NotificationDeliveryState.FAILED);
                 delivery.setSendingStartedAt(null);
                 delivery.setErrorMessage(abbreviate(errorMessage, 255));
+            }
+        }
+    }
+
+    private void resetFailedDeliveries(Long outboxId) {
+        for (NotificationDelivery delivery : deliveryRepository.findAllByOutboxIdOrderByChannelAsc(outboxId)) {
+            if (delivery.getState() == NotificationDeliveryState.FAILED) {
+                delivery.setState(NotificationDeliveryState.PENDING);
+                delivery.setSendingStartedAt(null);
+                delivery.setErrorMessage(null);
             }
         }
     }

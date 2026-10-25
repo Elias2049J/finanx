@@ -1,6 +1,7 @@
 package com.elias.mismonedas.notifications.config;
 
 import com.elias.mismonedas.notifications.adapter.messaging.NotificationMessageRecoverer;
+import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -27,6 +28,7 @@ public class NotificationRabbitConfiguration {
     public static final String NOTIFICATION_DLQ_ROUTING_KEY = "notifications.dead";
     public static final String NOTIFICATION_DLQ = "notifications.dlq";
     public static final String NOTIFICATION_LISTENER_FACTORY = "notificationListenerContainerFactory";
+    public static final String NOTIFICATION_DLQ_LISTENER_FACTORY = "notificationDlqListenerContainerFactory";
 
     @Bean
     DirectExchange notificationExchange() {
@@ -92,6 +94,20 @@ public class NotificationRabbitConfiguration {
         factory.setConnectionFactory(connectionFactory);
         factory.setAdviceChain(retryInterceptor);
         factory.setDefaultRequeueRejected(false);
+        factory.setAutoStartup(autoStartup);
+        return factory;
+    }
+
+    @Bean(name = NOTIFICATION_DLQ_LISTENER_FACTORY)
+    SimpleRabbitListenerContainerFactory notificationDlqListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            @Value("${app.messaging.rabbitmq.consumer-auto-startup:true}") boolean autoStartup
+    ) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+        factory.setDefaultRequeueRejected(true);
+        factory.setPrefetchCount(1);
         factory.setAutoStartup(autoStartup);
         return factory;
     }

@@ -576,7 +576,7 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
-**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9, P1-10, P1-18, P1-19 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. **P1-7 parcial:** ya no bloquea frases comunes, pero la evaluación muestra falsos positivos y evasiones. El resto de P1 sigue abierto.
+**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9, P1-10, P1-11, P1-12, P1-13, P1-18, P1-19 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. **P1-7 parcial:** ya no bloquea frases comunes, pero la evaluación muestra falsos positivos y evasiones. P1-8, P1-14, P1-15, P1-16 y P1-17 siguen abiertos.
 
 **Aplicado en P2:** P2-6. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
 
@@ -618,7 +618,7 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9, P1-10, P1-18, P1-19 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas. P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V6 desde cero.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9 a P1-13, P1-18, P1-19 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas. P1-8 y P1-14 a P1-17 siguen pendientes. P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V8 desde cero.
 
 ---
 
@@ -642,3 +642,4 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | v2.12 | 2026-10-25 | P1-6 parcial sin fallback model (error 503 y bulkhead 1 s); P1-7 deja pasar lenguaje natural; 305 tests pasan |
 | v2.13 | 2026-10-25 | Evaluación offline del filtro de prompts sin invocar IA: 40 casos balanceados, matriz de confusión y métricas ES/EN; P1-7 registrado como parcial; 306 tests pasan |
 | v2.14 | 2026-10-25 | Aplicado P1-18 (5 MiB/20 MP pre-decodificación) y P1-19 (`$http_host` con puerto); la descarga end-to-end queda pendiente por Docker inactivo; 310 tests pasan |
+| v2.15 | 2026-10-25 | Aplicados P1-11/12/13: delivery por canal fuera de TX, unicidad/transferencia FCM y logout por dispositivo, listeners `AFTER_COMMIT`, purga por umbral, DLQ con hasta 5 reintentos exponenciales y replay `SYSTEM`; V1–V8 verificadas y suites backend/Android/cliente Kotlin pasan |

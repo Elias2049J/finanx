@@ -5,6 +5,7 @@ import com.elias.mismonedas.notifications.outbox.NotificationOutbox;
 import com.elias.mismonedas.notifications.outbox.OutboxState;
 import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxRepository;
 import com.elias.mismonedas.notifications.repository.NotificationRepository;
+import com.elias.mismonedas.notifications.service.impl.NotificationDeliveryService;
 import com.elias.mismonedas.notifications.service.impl.NotificationOutboxDispatcher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class NotificationScheduler {
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationRepository notificationRepository;
     private final NotificationOutboxDispatcher outboxDispatcher;
+    private final NotificationDeliveryService deliveryService;
 
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "notificationScheduler.processOutbox", lockAtMostFor = "PT5M", lockAtLeastFor = "PT30S")
@@ -38,6 +40,20 @@ public class NotificationScheduler {
         }
         if (rescued > 0) {
             log.info("Red de seguridad del outbox: publicadas {} de {} entradas PENDING", rescued, pending.size());
+        }
+
+        OffsetDateTime now = OffsetDateTime.now();
+        List<NotificationOutbox> dueRetries = outboxRepository
+                .findTop50ByStateAndNextRetryAtLessThanEqualOrderByIdAsc(OutboxState.FAILED, now);
+        int requeued = 0;
+        for (NotificationOutbox entry : dueRetries) {
+            if (deliveryService.activateScheduledRetry(entry.getId(), now)) {
+                requeued++;
+            }
+        }
+        if (requeued > 0) {
+            log.info("Notification retries requeued {} of {} due FAILED outbox entries",
+                    requeued, dueRetries.size());
         }
     }
 

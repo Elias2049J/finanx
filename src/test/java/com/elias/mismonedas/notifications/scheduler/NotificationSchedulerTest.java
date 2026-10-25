@@ -5,6 +5,7 @@ import com.elias.mismonedas.notifications.outbox.NotificationOutbox;
 import com.elias.mismonedas.notifications.outbox.OutboxState;
 import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxRepository;
 import com.elias.mismonedas.notifications.repository.NotificationRepository;
+import com.elias.mismonedas.notifications.service.impl.NotificationDeliveryService;
 import com.elias.mismonedas.notifications.service.impl.NotificationOutboxDispatcher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +30,7 @@ class NotificationSchedulerTest {
 
     @Mock private NotificationOutboxRepository outboxRepository;
     @Mock private NotificationRepository notificationRepository;
+    @Mock private NotificationDeliveryService deliveryService;
     @Mock private NotificationOutboxDispatcher outboxDispatcher;
 
     @Captor private ArgumentCaptor<OffsetDateTime> cutoffCaptor;
@@ -37,7 +40,7 @@ class NotificationSchedulerTest {
     @BeforeEach
     void setUp() {
         scheduler = new NotificationScheduler(
-                outboxRepository, notificationRepository, outboxDispatcher);
+                outboxRepository, notificationRepository, outboxDispatcher, deliveryService);
     }
 
     @Test
@@ -51,6 +54,20 @@ class NotificationSchedulerTest {
 
         verify(outboxDispatcher).dispatch(10L);
         verify(outboxDispatcher).dispatch(11L);
+    }
+
+    @Test
+    void processOutboxShouldReactivateDueFailedEntriesForTheNextPendingPoll() {
+        NotificationOutbox failed = NotificationOutbox.builder().id(12L).state(OutboxState.FAILED).build();
+        when(outboxRepository.findTop50ByStateOrderByIdAsc(OutboxState.PENDING)).thenReturn(List.of());
+        when(outboxRepository.findTop50ByStateAndNextRetryAtLessThanEqualOrderByIdAsc(
+                eq(OutboxState.FAILED), any())).thenReturn(List.of(failed));
+        when(deliveryService.activateScheduledRetry(eq(12L), any())).thenReturn(true);
+
+        scheduler.processOutbox();
+
+        verify(deliveryService).activateScheduledRetry(eq(12L), any());
+        verify(outboxDispatcher, never()).dispatch(12L);
     }
 
     @Test

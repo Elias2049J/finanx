@@ -188,6 +188,108 @@ class NotificationDeliveryServiceTest {
     }
 
     @Test
+    void shouldScheduleOneAutomaticRetryWithIncreasingDelayForEachDeadLetter() throws Exception {
+        NotificationOutbox outbox = outbox(18L, OutboxState.FAILED);
+        when(outboxRepository.findByIdForUpdate(18L)).thenReturn(Optional.of(outbox));
+        OffsetDateTime before = OffsetDateTime.now();
+
+        assertThat(service.scheduleAutomaticRetry(18L, "smtp unavailable")).isTrue();
+        assertThat(outbox.getRetryCount()).isEqualTo(1);
+        assertThat(outbox.getNextRetryAt()).isBetween(before.plusMinutes(1), OffsetDateTime.now().plusMinutes(1));
+
+        assertThat(service.scheduleAutomaticRetry(18L, "duplicate dead letter")).isFalse();
+        assertThat(outbox.getRetryCount()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldReconcilePublishedOutboxWhenDeadLetterRecovererCouldNotPersistTheFailure() throws Exception {
+        NotificationOutbox outbox = outbox(23L, OutboxState.PUBLISHED);
+        NotificationDelivery pending = delivery(23L, NotificationDeliveryChannel.EMAIL);
+        when(outboxRepository.findByIdForUpdate(23L)).thenReturn(Optional.of(outbox));
+        when(deliveryRepository.findAllByOutboxIdOrderByChannelAsc(23L)).thenReturn(List.of(pending));
+
+        assertThat(service.scheduleAutomaticRetry(23L, "Rabbit retries exhausted")).isTrue();
+
+        assertThat(outbox.getState()).isEqualTo(OutboxState.FAILED);
+        assertThat(outbox.getRetryCount()).isEqualTo(1);
+        assertThat(outbox.getNextRetryAt()).isNotNull();
+        assertThat(pending.getState()).isEqualTo(NotificationDeliveryState.FAILED);
+        assertThat(pending.getErrorMessage()).isEqualTo("Rabbit retries exhausted");
+    }
+
+    @Test
+    void shouldStopSchedulingAutomaticRetriesAfterTheConfiguredMaximum() throws Exception {
+        NotificationOutbox outbox = outbox(19L, OutboxState.FAILED);
+        outbox.setRetryCount(5);
+        when(outboxRepository.findByIdForUpdate(19L)).thenReturn(Optional.of(outbox));
+
+        assertThat(service.scheduleAutomaticRetry(19L, "smtp unavailable")).isFalse();
+        assertThat(outbox.getRetryCount()).isEqualTo(5);
+        assertThat(outbox.getNextRetryAt()).isNull();
+    }
+
+    @Test
+    void shouldUseExponentialAutomaticRetryIntervals() throws Exception {
+        NotificationOutbox outbox = outbox(22L, OutboxState.FAILED);
+        when(outboxRepository.findByIdForUpdate(22L)).thenReturn(Optional.of(outbox));
+        long[] expectedMinutes = {1, 2, 4, 8, 16};
+
+        for (int attempt = 0; attempt < expectedMinutes.length; attempt++) {
+            OffsetDateTime before = OffsetDateTime.now();
+
+            assertThat(service.scheduleAutomaticRetry(22L, "temporary failure")).isTrue();
+
+            assertThat(outbox.getRetryCount()).isEqualTo(attempt + 1);
+            assertThat(outbox.getNextRetryAt()).isBetween(
+                    before.plusMinutes(expectedMinutes[attempt]),
+                    OffsetDateTime.now().plusMinutes(expectedMinutes[attempt]));
+            outbox.setNextRetryAt(null);
+        }
+    }
+
+    @Test
+    void shouldActivateDueRetryAndResetOnlyFailedChannelDeliveries() throws Exception {
+        NotificationOutbox outbox = outbox(20L, OutboxState.FAILED);
+        outbox.setRetryCount(2);
+        outbox.setNextRetryAt(OffsetDateTime.now().minusSeconds(1));
+        NotificationDelivery failed = delivery(20L, NotificationDeliveryChannel.EMAIL);
+        failed.setState(NotificationDeliveryState.FAILED);
+        failed.setErrorMessage("smtp unavailable");
+        NotificationDelivery sent = delivery(20L, NotificationDeliveryChannel.FCM);
+        sent.setState(NotificationDeliveryState.SENT);
+        when(outboxRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(outbox));
+        when(deliveryRepository.findAllByOutboxIdOrderByChannelAsc(20L)).thenReturn(List.of(failed, sent));
+
+        assertThat(service.activateScheduledRetry(20L, OffsetDateTime.now())).isTrue();
+
+        assertThat(outbox.getState()).isEqualTo(OutboxState.PENDING);
+        assertThat(outbox.getRetryCount()).isEqualTo(2);
+        assertThat(outbox.getNextRetryAt()).isNull();
+        assertThat(failed.getState()).isEqualTo(NotificationDeliveryState.PENDING);
+        assertThat(failed.getErrorMessage()).isNull();
+        assertThat(sent.getState()).isEqualTo(NotificationDeliveryState.SENT);
+    }
+
+    @Test
+    void shouldReplayFailedOutboxAndResetRetryCountIdempotently() throws Exception {
+        NotificationOutbox outbox = outbox(21L, OutboxState.FAILED);
+        outbox.setRetryCount(5);
+        NotificationDelivery failed = delivery(21L, NotificationDeliveryChannel.EMAIL);
+        failed.setState(NotificationDeliveryState.FAILED);
+        failed.setErrorMessage("exhausted");
+        when(outboxRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(outbox));
+        when(deliveryRepository.findAllByOutboxIdOrderByChannelAsc(21L)).thenReturn(List.of(failed));
+
+        assertThat(service.replayFailed(21L)).isTrue();
+        assertThat(service.replayFailed(21L)).isFalse();
+
+        assertThat(outbox.getState()).isEqualTo(OutboxState.PENDING);
+        assertThat(outbox.getRetryCount()).isZero();
+        assertThat(failed.getState()).isEqualTo(NotificationDeliveryState.PENDING);
+        assertThat(failed.getErrorMessage()).isNull();
+    }
+
+    @Test
     void shouldMarkNotificationAndOutboxSentAfterEveryChannelIsTerminal() throws Exception {
         NotificationOutbox outbox = outbox(15L, OutboxState.PUBLISHED);
         Notification notification = notification(25L, NotificationState.SCHEDULED);

@@ -18,6 +18,11 @@ import java.util.Optional;
 public interface NotificationOutboxRepository extends JpaRepository<NotificationOutbox, Long> {
     List<NotificationOutbox> findTop50ByStateOrderByIdAsc(OutboxState state);
 
+    List<NotificationOutbox> findTop50ByStateAndNextRetryAtLessThanEqualOrderByIdAsc(
+            OutboxState state,
+            OffsetDateTime nextRetryAt
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from NotificationOutbox o where o.id = :id")
     Optional<NotificationOutbox> findByIdForUpdate(@Param("id") Long id);
