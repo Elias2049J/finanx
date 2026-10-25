@@ -9,25 +9,38 @@ import com.elias.mismonedas.identity.domain.enums.SupportedLocale;
 import com.elias.mismonedas.identity.security.Constants;
 import com.elias.mismonedas.identity.service.JwtTokenService;
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 @Service
-@Slf4j
 public class JwtTokenServiceImpl implements JwtTokenService {
+
+    private static final int MIN_SECRET_BYTES = 32;
+    private static final long MIN_EXPIRATION_SECONDS = 300;
+    private static final long MAX_EXPIRATION_SECONDS = 900;
+    private static final Set<String> PLACEHOLDER_SECRETS = Set.of(
+            "reemplazar",
+            "replace-me",
+            "change-me",
+            "changeme",
+            "your-secret",
+            "your-secret-here"
+    );
 
     @Value("${spring.security.jwt.issuer:credimacpato-api}")
     private String issuer;
 
-    @Value("${spring.security.jwt.expiration-seconds:3600}")
+    @Value("${spring.security.jwt.expiration-seconds:900}")
     private long expirationSeconds;
 
     @Value("${spring.security.jwt.secret}")
@@ -38,10 +51,16 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     @PostConstruct
     void init() {
         if (secret == null || secret.isBlank()) {
-            throw new IllegalStateException("JWT secret is missing (security.jwt.secret)");
+            throw new IllegalStateException("JWT signing secret is missing");
         }
-        if (secret.length() < 32) {
-            log.warn("JWT secret is too short; use at least 32 characters");
+        String normalizedSecret = secret.trim().toLowerCase(Locale.ROOT);
+        boolean placeholder = PLACEHOLDER_SECRETS.contains(normalizedSecret)
+                || normalizedSecret.startsWith("reemplazar_");
+        if (placeholder || secret.getBytes(StandardCharsets.UTF_8).length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException("JWT signing secret must be a non-placeholder with at least 32 UTF-8 bytes");
+        }
+        if (expirationSeconds < MIN_EXPIRATION_SECONDS || expirationSeconds > MAX_EXPIRATION_SECONDS) {
+            throw new IllegalStateException("JWT access-token expiration must be between 300 and 900 seconds");
         }
         this.algorithm = Algorithm.HMAC256(secret);
     }

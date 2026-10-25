@@ -33,7 +33,7 @@ public class AuthTokenServiceImpl implements AuthTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtTokenService jwtTokenService;
 
-    @Value("${spring.security.jwt.expiration-seconds:3600}")
+    @Value("${spring.security.jwt.expiration-seconds:900}")
     private long accessExpirationSeconds;
 
     @Value("${spring.security.jwt.refresh-expiration-days:30}")

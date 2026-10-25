@@ -17,7 +17,7 @@ class JwtResourceServerConfigTest {
     void setUp() {
         jwtTokenService = new JwtTokenServiceImpl();
         ReflectionTestUtils.setField(jwtTokenService, "issuer", "test-issuer");
-        ReflectionTestUtils.setField(jwtTokenService, "expirationSeconds", 3600L);
+        ReflectionTestUtils.setField(jwtTokenService, "expirationSeconds", 900L);
         ReflectionTestUtils.setField(jwtTokenService, "secret", "test-secret-that-is-at-least-32-characters");
         ReflectionTestUtils.invokeMethod(jwtTokenService, "init");
     }
