@@ -405,7 +405,7 @@ Comparación con la corrida anterior (818 VUs): ~520 req/s con p95 50 ms. El sal
 - Borrado/reset de cuenta completo y en orden de dependencias (P1-15).
 - Billing: validar monto/moneda, comparar webhook, dunning de `PAST_DUE`, plan = `ACTIVE && currentPeriodEnd > now`, cancel-at-period-end (P1-16/17).
 - Límite de píxeles en imágenes y `Host $http_host` para S3 (P1-18/19).
-- Normalización única de email (P1-20).
+- ✅ P1-20: normalización única de email y unique case-insensitive (`255b21d`).
 
 ### Fase 2 — Rendimiento y consistencia (2-4 semanas)
 
@@ -547,7 +547,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **296 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **300 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -565,12 +565,13 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | P1-5 | La recuperación de idempotencia corre fuera de la transacción abortada: el camino HTTP usa `TransactionTemplate` y recupera en una transacción limpia; el scheduler sigue `@Transactional` | `e04c29a` | `TransactionServiceImplTest` (adaptado), `TransactionIdempotencyConcurrencyTest` (2) |
 | P1-9 | El gasto de presupuesto suma solo movimientos cuyo `id_usuario` coincide con el dueño del presupuesto | `27b710d` | `TransactionSpecificationsTest` (+1, PostgreSQL), `BudgetAnalyticsServiceImplTest` |
 | P1-10 | OCR y `TransactionServiceImpl` rechazan importes no positivos antes de completar el recibo o persistir/actualizar saldo | `86038ae` | `ReceiptScanServiceImplTest` (+3), `TransactionServiceImplTest` (+2) |
+| P1-20 | Registro, actualización y Google normalizan email; V6 backfillea y añade unique sobre `lower(email)`, con guard que aborta ante duplicados | `255b21d` | `UserServiceImplTest` (3), `GoogleAuthServiceImplTest` (5), `UserEmailNormalizationTest` (PostgreSQL) |
 | P2-6 | Fallos transitorios conservan `RUNNING` y se reintentan en el siguiente ciclo; presupuesto ya materializado avanza sin duplicar; los fallos permanentes quedan `ERROR` con log estructurado | `de41784` | `ScheduleServiceImplBatchTest` |
-| Deuda | Flyway versiona V1–V5; V4 añade idempotencia de presupuesto; V5 reconcilia `movimientos.id_usuario` y `clave_idempotencia`, backfill desde wallet y los índices | `dc078ef`, `de41784`, `27b710d` | V1–V5 aplican desde esquema vacío; validación de checksum |
+| Deuda | Flyway versiona V1–V6; V4 añade idempotencia de presupuesto; V5 reconcilia columnas de `movimientos`; V6 normaliza email y crea unique case-insensitive | `dc078ef`, `de41784`, `27b710d`, `255b21d` | V1–V6 aplican desde esquema vacío; validación de checksum |
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
-**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9 y P1-10. El resto de P1 sigue abierto.
+**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9, P1-10 y P1-20. El resto de P1 sigue abierto.
 
 **Aplicado en P2:** P2-6. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
 
@@ -603,10 +604,11 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 - Analytics de presupuesto ahora filtra también por `Transaction.user.id`; una prueba PostgreSQL con una categoría compartida de forma inválida confirma que el movimiento de otro usuario no se suma.
 - V1 no creaba `movimientos.id_usuario` ni `movimientos.clave_idempotencia`, aunque `Transaction` los mapea. V5 backfillea el usuario desde `billeteras`, valida la propiedad y crea FK, unique e índice compuesto; V1–V5 se probaron desde una base vacía.
 - El OCR falla el recibo ante monto cero/negativo; `improveWithAi` no sustituye un resultado válido por uno no positivo. `TransactionServiceImpl` verifica el monto efectivo antes de `save`, por lo que no se registra movimiento ni se modifica saldo; no se cambia la precedencia request/OCR.
+- El diagnóstico previo a V6 dio cero grupos duplicados por `lower(email)` y por `lower(trim(email))`, cero emails mixtos y cero emails con espacios en la BD local. V6 vuelve a comprobar duplicados antes del backfill y aborta si encuentra alguno, sin fusionar cuentas; registro, actualización, carga de usuario y Google comparten la normalización.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9 y P1-10 están aplicados; P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V5 desde cero.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9, P1-10 y P1-20 están aplicados; P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V6 desde cero.
 
 ---
 
@@ -626,3 +628,4 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | v2.8 | 2026-10-25 | Aplicados P1-4 (claim realmente atómico, clave determinista y V4) y P2-6 (reintento de fallos transitorios y replay de presupuestos); 290 tests pasan |
 | v2.9 | 2026-10-25 | Aplicado P1-9 (scope por dueño del presupuesto); V5 reconcilia columnas faltantes de `movimientos`; V1–V5 probadas en BD vacía; 291 tests pasan |
 | v2.10 | 2026-10-25 | Aplicado P1-10: rechazar montos no positivos en OCR y antes de persistir; 296 tests pasan |
+| v2.11 | 2026-10-25 | Aplicado P1-20: normalización canónica, diagnóstico sin duplicados en BD local y unique `lower(email)` con guard de migración; V1–V6 probadas en BD vacía; 300 tests pasan |
