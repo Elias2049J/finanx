@@ -127,10 +127,17 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserResponse update(Long id, UserRequest request) {
-        User existing = userRepository.findById(id).orElseThrow();
+        User existing = userRepository.findByIdForUpdate(id).orElseThrow();
+        String storedPasswordHash = existing.getPassword();
+        boolean passwordChanged = !passwordEncoder.matches(request.getPassword(), storedPasswordHash);
         userMapper.updateFromDto(request, existing);
         existing.setEmail(EmailNormalizer.normalize(existing.getEmail()));
-        existing.setPassword(passwordEncoder.encode(request.getPassword()));
+        if (passwordChanged) {
+            existing.setPassword(passwordEncoder.encode(request.getPassword()));
+            authTokenService.revokeAllForUser(id);
+        } else {
+            existing.setPassword(storedPasswordHash);
+        }
         return userMapper.toResponse(userRepository.save(existing));
     }
 

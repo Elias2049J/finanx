@@ -4,12 +4,14 @@ import com.elias.mismonedas.identity.domain.entity.RefreshToken;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.repository.RefreshTokenRepository;
+import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.JwtTokenService;
 import com.elias.mismonedas.shared.exception.InvalidRefreshTokenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,7 @@ import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +34,7 @@ public class AuthTokenServiceImpl implements AuthTokenService {
     private static final int TOKEN_BYTES = 32;
 
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserRepository userRepository;
     private final JwtTokenService jwtTokenService;
 
     @Value("${spring.security.jwt.expiration-seconds:900}")
@@ -42,19 +46,31 @@ public class AuthTokenServiceImpl implements AuthTokenService {
     @Override
     @Transactional
     public AuthResponse issue(User user) {
-        if (isDisabled(user)) {
+        User currentUser = userRepository.findByIdForUpdate(user.getId())
+                .orElseThrow(() -> new BadCredentialsException("User credentials are no longer valid"));
+        if (!Objects.equals(currentUser.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException("User credentials changed; authenticate again");
+        }
+        if (isDisabled(currentUser)) {
             throw new DisabledException("User account is not enabled");
         }
         String familyId = UUID.randomUUID().toString();
-        String refreshToken = createRefreshToken(user, familyId);
-        return respond(user, refreshToken, familyId);
+        String refreshToken = createRefreshToken(currentUser, familyId);
+        return respond(currentUser, refreshToken, familyId);
     }
 
     @Override
     @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
     public AuthResponse refresh(String refreshToken) {
+        Long userId = findUserIdByHash(refreshToken)
+                .orElseThrow(InvalidRefreshTokenException::new);
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(InvalidRefreshTokenException::new);
         RefreshToken current = lockByHash(refreshToken)
                 .orElseThrow(InvalidRefreshTokenException::new);
+        if (!Objects.equals(current.getUser().getId(), userId)) {
+            throw new InvalidRefreshTokenException();
+        }
 
         OffsetDateTime now = OffsetDateTime.now();
 
@@ -66,13 +82,13 @@ public class AuthTokenServiceImpl implements AuthTokenService {
             throw new InvalidRefreshTokenException();
         }
 
-        User user = current.getUser();
         if (isDisabled(user)) {
             throw new DisabledException("User account is not enabled");
         }
 
-        String rotated = createRefreshToken(user, current.getFamilyId());
         current.setRevokedAt(now);
+        refreshTokenRepository.flush();
+        String rotated = createRefreshToken(user, current.getFamilyId());
         current.setReplacedByHash(hash(rotated));
 
         return respond(user, rotated, current.getFamilyId());
@@ -88,12 +104,23 @@ public class AuthTokenServiceImpl implements AuthTokenService {
     @Transactional
     public Optional<Long> revokeAndGetUserId(String refreshToken) {
         OffsetDateTime now = OffsetDateTime.now();
+        Optional<Long> observedUserId = findUserIdByHash(refreshToken);
+        if (observedUserId.isEmpty()) {
+            return Optional.empty();
+        }
+        Long userId = observedUserId.get();
+        if (userRepository.findByIdForUpdate(userId).isEmpty()) {
+            return Optional.empty();
+        }
         Optional<RefreshToken> token = lockByHash(refreshToken);
         if (token.isEmpty()) {
             return Optional.empty();
         }
 
         RefreshToken refreshTokenEntity = token.get();
+        if (!Objects.equals(refreshTokenEntity.getUser().getId(), userId)) {
+            return Optional.empty();
+        }
         refreshTokenRepository.revokeFamily(refreshTokenEntity.getFamilyId(), now);
         if (refreshTokenEntity.getRevokedAt() != null
                 || refreshTokenEntity.getExpiresAt() == null
@@ -106,6 +133,9 @@ public class AuthTokenServiceImpl implements AuthTokenService {
     @Override
     @Transactional
     public void revokeAllForUser(Long userId) {
+        if (userRepository.findByIdForUpdate(userId).isEmpty()) {
+            return;
+        }
         refreshTokenRepository.revokeAllForUser(userId, OffsetDateTime.now());
     }
 
@@ -131,6 +161,13 @@ public class AuthTokenServiceImpl implements AuthTokenService {
             return Optional.empty();
         }
         return refreshTokenRepository.findByTokenHashForUpdate(hash(refreshToken));
+    }
+
+    private Optional<Long> findUserIdByHash(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return Optional.empty();
+        }
+        return refreshTokenRepository.findUserIdByTokenHash(hash(refreshToken));
     }
 
     private static boolean isDisabled(User user) {

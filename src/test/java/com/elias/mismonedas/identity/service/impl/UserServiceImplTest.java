@@ -86,7 +86,7 @@ class UserServiceImplTest {
         existing.setId(7L);
         existing.setEmail("old@example.test");
         UserRequest request = request(" New@Example.test ");
-        when(userRepository.findById(7L)).thenReturn(Optional.of(existing));
+        when(userRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(existing));
         doAnswer(invocation -> {
             existing.setEmail(request.getEmail());
             return null;
@@ -98,6 +98,57 @@ class UserServiceImplTest {
         service.update(7L, request);
 
         assertThat(existing.getEmail()).isEqualTo("new@example.test");
+        verify(authTokenService).revokeAllForUser(7L);
+    }
+
+    @Test
+    void shouldRevokeAllSessionsWhenAdministratorChangesPassword() {
+        User existing = new User();
+        existing.setId(7L);
+        existing.setEmail("user@example.test");
+        existing.setPassword("old-encoded-password");
+        UserRequest request = request("user@example.test");
+        request.setPassword("new-password");
+        when(userRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(existing));
+        when(passwordEncoder.matches("new-password", "old-encoded-password")).thenReturn(false);
+        when(passwordEncoder.encode("new-password")).thenReturn("new-encoded-password");
+        doAnswer(invocation -> {
+            existing.setPassword(request.getPassword());
+            return null;
+        }).when(userMapper).updateFromDto(request, existing);
+        when(userRepository.save(existing)).thenReturn(existing);
+        when(userMapper.toResponse(existing)).thenReturn(mock(UserResponse.class));
+
+        service.update(7L, request);
+
+        assertThat(existing.getPassword()).isEqualTo("new-encoded-password");
+        var lockOrder = inOrder(userRepository, authTokenService);
+        lockOrder.verify(userRepository).findByIdForUpdate(7L);
+        lockOrder.verify(authTokenService).revokeAllForUser(7L);
+    }
+
+    @Test
+    void shouldKeepSessionsWhenAnAdministrativeUpdateDoesNotChangePassword() {
+        User existing = new User();
+        existing.setId(7L);
+        existing.setEmail("user@example.test");
+        existing.setPassword("encoded-same-password");
+        UserRequest request = request("user@example.test");
+        request.setPassword("same-password");
+        when(userRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(existing));
+        when(passwordEncoder.matches("same-password", "encoded-same-password")).thenReturn(true);
+        doAnswer(invocation -> {
+            existing.setPassword(request.getPassword());
+            return null;
+        }).when(userMapper).updateFromDto(request, existing);
+        when(userRepository.save(existing)).thenReturn(existing);
+        when(userMapper.toResponse(existing)).thenReturn(mock(UserResponse.class));
+
+        service.update(7L, request);
+
+        assertThat(existing.getPassword()).isEqualTo("encoded-same-password");
+        verify(authTokenService, never()).revokeAllForUser(any());
+        verify(passwordEncoder, never()).encode("same-password");
     }
 
     private UserRequest request(String email) {
