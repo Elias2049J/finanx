@@ -202,6 +202,29 @@ public class BillingServiceImpl implements BillingService {
 
     @Override
     @Transactional
+    public void cancelForRefund(Long subscriptionId) {
+        Subscription subscription = subscriptionRepository.findById(subscriptionId).orElse(null);
+        if (subscription == null) {
+            log.warn("Refund references missing subscription id={}", subscriptionId);
+            return;
+        }
+
+        SubscriptionState state = subscription.getState();
+        if (state == SubscriptionState.CANCELED || state == SubscriptionState.EXPIRED) {
+            log.info("Subscription id={} already in terminal state {}; refund leaves it unchanged",
+                    subscriptionId, state);
+            return;
+        }
+
+        subscription.transitionTo(SubscriptionState.CANCELED);
+        subscription.setCanceledAt(OffsetDateTime.now());
+        subscription.setAutoRenew(false);
+        subscriptionRepository.save(subscription);
+        log.info("Subscription id={} canceled after refund", subscriptionId);
+    }
+
+    @Override
+    @Transactional
     public void checkExpirations() {
         OffsetDateTime now = OffsetDateTime.now();
         List<Subscription> expiring = subscriptionRepository

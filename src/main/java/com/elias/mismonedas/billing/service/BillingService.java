@@ -41,5 +41,15 @@ public interface BillingService {
      */
     SubscriptionResponse applyConfirmedPayment(Long subscriptionId);
 
+    /**
+     * Cancela la suscripcion asociada a un pago reembolsado.
+     * <p>
+     * No depende del {@code SecurityContext} y es idempotente: si la suscripcion ya esta
+     * en un estado terminal (CANCELED/EXPIRED) o no existe, no hace nada.
+     *
+     * @param subscriptionId suscripcion vinculada al pago
+     */
+    void cancelForRefund(Long subscriptionId);
+
     void checkExpirations();
 }

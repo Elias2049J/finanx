@@ -184,9 +184,14 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public PaymentResponse refund(Long paymentId) {
         Payment payment = getOwned(paymentId);
-        paymentPort.refund(payment);
+        // Validar la transicion antes de tocar al proveedor: un pago PENDING no debe
+        // disparar un reembolso real que despues se rechace con 409.
         payment.transitionTo(PaymentState.REFUNDED);
+        paymentPort.refund(payment);
         Payment saved = paymentRepository.save(payment);
+        if (saved.getSubscription() != null) {
+            billingService.cancelForRefund(saved.getSubscription().getId());
+        }
         log.info("Payment refunded id={}", saved.getId());
         return paymentMapper.toResponse(saved);
     }

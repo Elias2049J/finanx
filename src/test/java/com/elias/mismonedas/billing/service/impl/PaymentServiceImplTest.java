@@ -532,4 +532,65 @@ class PaymentServiceImplTest {
             assertThat(event.getErrorMessage()).isEqualTo("processing failed");
         }
     }
+
+    @Nested
+    class RefundTest {
+
+        @Test
+        void shouldRejectRefundBeforeCallingGatewayWhenStateCannotTransition() {
+            Payment payment = Payment.builder().id(10L).state(PaymentState.PENDING).build();
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(payment));
+
+            assertThatThrownBy(() -> service.refund(10L))
+                    .isInstanceOf(ConflictException.class);
+
+            verify(paymentPort, never()).refund(any());
+            verify(paymentRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldRefundCompletedPaymentAndCancelLinkedSubscription() {
+            Subscription subscription = Subscription.builder().id(500L).build();
+            Payment payment = Payment.builder()
+                    .id(10L)
+                    .state(PaymentState.COMPLETED)
+                    .subscription(subscription)
+                    .build();
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(payment));
+            when(paymentRepository.save(payment)).thenReturn(payment);
+            when(paymentMapper.toResponse(payment)).thenReturn(new PaymentResponse());
+
+            service.refund(10L);
+
+            assertThat(payment.getState()).isEqualTo(PaymentState.REFUNDED);
+            verify(paymentPort).refund(payment);
+            verify(billingService).cancelForRefund(500L);
+        }
+
+        @Test
+        void shouldRefundDisputedPaymentWithoutSubscription() {
+            Payment payment = Payment.builder().id(10L).state(PaymentState.DISPUTED).build();
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentRepository.findByIdAndUser_Id(10L, 1L)).thenReturn(Optional.of(payment));
+            when(paymentRepository.save(payment)).thenReturn(payment);
+            when(paymentMapper.toResponse(payment)).thenReturn(new PaymentResponse());
+
+            service.refund(10L);
+
+            assertThat(payment.getState()).isEqualTo(PaymentState.REFUNDED);
+            verify(paymentPort).refund(payment);
+            verify(billingService, never()).cancelForRefund(any());
+        }
+
+        private User user() {
+            User u = new User();
+            u.setId(1L);
+            return u;
+        }
+    }
 }

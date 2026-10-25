@@ -184,18 +184,56 @@ class BillingServiceImplTest {
                     .isInstanceOf(SubscriptionNotFoundException.class);
         }
 
-        private Subscription subscriptionInState(SubscriptionState state) {
-            User user = new User();
-            user.setId(1L);
-            return Subscription.builder()
-                    .id(7L)
-                    .user(user)
-                    .state(state)
-                    .billingCycle(BillingCycle.MONTHLY)
-                    .amount(new BigDecimal("29.90"))
-                    .currencyCode("PEN")
-                    .autoRenew(true)
-                    .build();
+    }
+
+    @Nested
+    class CancelForRefundTest {
+
+        @Test
+        void shouldCancelActiveSubscription() {
+            Subscription subscription = subscriptionInState(SubscriptionState.ACTIVE);
+            when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+
+            service.cancelForRefund(7L);
+
+            assertThat(subscription.getState()).isEqualTo(SubscriptionState.CANCELED);
+            assertThat(subscription.getAutoRenew()).isFalse();
+            assertThat(subscription.getCanceledAt()).isNotNull();
+            verify(subscriptionRepository).save(subscription);
         }
+
+        @Test
+        void shouldBeIdempotentWhenSubscriptionIsAlreadyTerminal() {
+            Subscription subscription = subscriptionInState(SubscriptionState.CANCELED);
+            when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+
+            service.cancelForRefund(7L);
+
+            assertThat(subscription.getState()).isEqualTo(SubscriptionState.CANCELED);
+            verify(subscriptionRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldIgnoreMissingSubscription() {
+            when(subscriptionRepository.findById(99L)).thenReturn(Optional.empty());
+
+            service.cancelForRefund(99L);
+
+            verify(subscriptionRepository, never()).save(any());
+        }
+    }
+
+    private Subscription subscriptionInState(SubscriptionState state) {
+        User user = new User();
+        user.setId(1L);
+        return Subscription.builder()
+                .id(7L)
+                .user(user)
+                .state(state)
+                .billingCycle(BillingCycle.MONTHLY)
+                .amount(new BigDecimal("29.90"))
+                .currencyCode("PEN")
+                .autoRenew(true)
+                .build();
     }
 }
