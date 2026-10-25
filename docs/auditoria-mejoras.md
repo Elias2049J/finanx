@@ -546,7 +546,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **266 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **268 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -556,7 +556,7 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **26
 | P0-7 | `create()` resuelve `subscriptionId` con ownership y `markCompleted`/webhook aplican `BillingService.applyConfirmedPayment()` (idempotente) | `6dd147d` | `PaymentServiceImplTest` (+6), `BillingServiceImplTest` (+6) |
 | P0-8 | La cuenta de Google se identifica por `sub`; si el email ya pertenece a una cuenta local se rechaza con 409 en vez de auto-vincular; `email_verified` obligatorio | `45980ed` | `GoogleAuthServiceImplTest` (5), `GoogleIdTokenVerifierTest` (5) |
 | P0-2 | `refund()` valida `COMPLETED/DISPUTED → REFUNDED` antes de llamar al gateway y cancela la suscripción con `cancelForRefund()` | `388a08e` | `PaymentServiceImplTest$RefundTest` (3), `BillingServiceImplTest$CancelForRefundTest` (3) |
-| P0-6 | `WebhookController` solo existe con `app.billing.webhooks.enabled=true` (default `false` → 404); `/webhooks/**` queda `permitAll()` para cuando se encienda; `PaymentExpirationScheduler` expira `PENDING` > 24 h y `PROCESSING` > 1 h | `a63d93f` | `PaymentServiceImplTest$ExpireStalePaymentsTest` (2) |
+| P0-6 | `WebhookController` en `/api/v1/webhooks`, solo existe con `app.billing.webhooks.enabled=true` (default `false` → 404); `permitAll()` para cuando se encienda; `PaymentExpirationScheduler` expira `PENDING` > 24 h y `PROCESSING` > 1 h; `NoResourceFoundException` → 404 | `a63d93f`, `7fc3cda` | `PaymentServiceImplTest$ExpireStalePaymentsTest` (2), `WebhookEndpointDisabledTest` (1), `GlobalExceptionHandlerTest` (+1) |
 | Deuda | Flyway reactivado: V1 restaurado (checksum intacto), V2 recoge las columnas `locale` de `database/manual`, V3 añade identidad federada | `dc078ef` | Validación de checksum en el arranque del contexto |
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
@@ -576,6 +576,8 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **26
 - Flyway valida el V1 existente sin baseline y aplica V2/V3 sobre la base de desarrollo; una base limpia se crea desde cero con las tres migraciones.
 - Los scripts de `database/manual/` quedan como histórico: su contenido está versionado en V2.
 - Un reembolso deja la suscripción en `CANCELED` (decisión de producto). Es terminal: para volver a PREMIUM hace falta crear una suscripción nueva.
+- `WebhookController` estaba en `/webhooks`, sin el prefijo `/api/v1` que usan todos los controladores; el e2e nunca llegaba a él. Ahora la ruta es `/api/v1/webhooks/{provider}`.
+- Una ruta sin controlador devuelve 404, no 500: el catch-all de `Exception` convertía `NoResourceFoundException` en 500.
 - Habilitar los webhooks exige implementar `PaymentPort.verifyWebhookSignature` y `parseWebhookPayload`; con el adaptador manual todo request recibe 401 aunque el endpoint esté encendido.
 - La expiración de pagos no toca la suscripción: un pago `FAILED` por timeout deja la suscripción en `PENDING` y el usuario puede reintentar con un pago nuevo.
 
@@ -594,4 +596,4 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **26
 | v2.1 | 2026-10-24 | Aplicados P0-3, P0-4 y P0-5 con tests; nueva sección 12 con el estado de aplicación |
 | v2.2 | 2026-10-24 | Aplicados P0-7 y P0-8; Flyway reactivado con V1/V2/V3 y riesgo residual de identidad documentado |
 | v2.3 | 2026-10-25 | Aplicado P0-2 (validación previa al gateway + cancelación de suscripción); P0-1 pospuesto por dependencia de pasarela |
-| v2.4 | 2026-10-25 | Aplicado P0-6 (webhooks apagados por flag + expiración de pagos estancados); P0-1 sigue pospuesto |
+| v2.4 | 2026-10-25 | Aplicado P0-6 (webhooks apagados por flag + expiración de pagos estancados); corregida la ruta `/api/v1/webhooks` y el 404 de rutas inexistentes; P0-1 sigue pospuesto |
