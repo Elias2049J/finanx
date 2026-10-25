@@ -95,6 +95,11 @@ class AiUtilsPromptFilterEvaluationTest {
         assertThat(falseNegatives).isEqualTo(2);
         assertThat(falsePositives).isEqualTo(1);
         assertThat(trueNegatives).isEqualTo(19);
+
+        assertThat(countBlocked(MALICIOUS, "es")).isEqualTo(9);
+        assertThat(countBlocked(MALICIOUS, "en")).isEqualTo(9);
+        assertThat(countBlocked(BENIGN, "es")).isZero();
+        assertThat(countBlocked(BENIGN, "en")).isEqualTo(1);
     }
 
     private int countBlocked(List<PromptSample> samples) {
