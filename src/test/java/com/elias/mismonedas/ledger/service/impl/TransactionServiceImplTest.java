@@ -34,6 +34,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -61,6 +64,7 @@ class TransactionServiceImplTest {
     @Mock private CurrencyConverter currencyConverter;
     @Mock private SecurityService securityService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private PlatformTransactionManager transactionManager;
 
     @Captor private ArgumentCaptor<Receipt> receiptCaptor;
 
@@ -77,10 +81,13 @@ class TransactionServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        lenient().when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+
         service = new TransactionServiceImpl(
                 transactionRepository, walletService, categoryService,
                 savingGoalService, receiptRepository, transactionMapper, reasonResolver,
-                currencyConverter, securityService, eventPublisher);
+                currencyConverter, securityService, eventPublisher, transactionTemplate);
 
         user = new User();
         user.setId(1L);

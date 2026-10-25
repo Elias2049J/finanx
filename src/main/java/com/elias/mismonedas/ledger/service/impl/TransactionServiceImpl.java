@@ -36,6 +36,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -56,12 +57,38 @@ public class TransactionServiceImpl implements TransactionService {
     private final CurrencyConverter currencyConverter;
     private final SecurityService securityService;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public TransactionResponse create(TransactionRequest request, String idempotencyKey) {
         Long currentUserId = securityService.getCurrentUser().getId();
-        return create(currentUserId, null, request, idempotencyKey);
+        return createWithRecovery(currentUserId, request, idempotencyKey);
+    }
+
+    /**
+     * Camino HTTP: la escritura corre en su propia transaccion y la recuperacion
+     * se hace fuera de ella, cuando el rollback ya solto la conexion. Si el catch
+     * estuviera dentro, la transaccion seguiria abortada (PostgreSQL) y marcada
+     * rollback-only por el proxy del repositorio.
+     */
+    TransactionResponse createWithRecovery(Long userId, TransactionRequest request, String idempotencyKey) {
+        String key = normalizeKey(idempotencyKey);
+        try {
+            return transactionTemplate.execute(status -> create(userId, null, request, idempotencyKey));
+        } catch (DataIntegrityViolationException race) {
+            TransactionResponse replay = transactionTemplate.execute(status -> {
+                Transaction existing = findReplay(key, userId);
+                if (existing != null) {
+                    log.info("Transaction replay on race: idempotencyKey={} maps to transaction id={}",
+                            key, existing.getId());
+                }
+                return existing != null ? transactionMapper.toResponse(existing) : null;
+            });
+            if (replay == null) {
+                throw race;
+            }
+            return replay;
+        }
     }
 
     @Override
@@ -97,7 +124,7 @@ public class TransactionServiceImpl implements TransactionService {
             log.info("currency_conversion receipt_id={} amount={}", request.getReceiptId(), converted.amount());
         }
 
-        Transaction saved = persist(transaction, userId, key);
+        Transaction saved = persist(transaction, userId);
 
         if (receipt != null) {
             receipt.linkTo(saved);
@@ -139,33 +166,22 @@ public class TransactionServiceImpl implements TransactionService {
         return receipt;
     }
 
-    private Transaction persist(Transaction transaction, Long userId, String key) {
-        try {
-            Transaction saved = transactionRepository.save(transaction);
+    private Transaction persist(Transaction transaction, Long userId) {
+        Transaction saved = transactionRepository.save(transaction);
 
-            eventPublisher.publishEvent(new TransactionRegisteredEvent(
-                    saved.getWallet().getId(),
-                    saved.getAmount(),
-                    saved.getId(),
-                    userId,
-                    saved.getType(),
-                    saved.getScheduleId(),
-                    saved.getCategory() != null ? saved.getCategory().getId() : null,
-                    saved.getSavingGoal() != null ? saved.getSavingGoal().getId() : null));
+        eventPublisher.publishEvent(new TransactionRegisteredEvent(
+                saved.getWallet().getId(),
+                saved.getAmount(),
+                saved.getId(),
+                userId,
+                saved.getType(),
+                saved.getScheduleId(),
+                saved.getCategory() != null ? saved.getCategory().getId() : null,
+                saved.getSavingGoal() != null ? saved.getSavingGoal().getId() : null));
 
-            walletService.updateBalance(userId, saved.getWallet().getId(), saved.getType(), saved.getAmount());
+        walletService.updateBalance(userId, saved.getWallet().getId(), saved.getType(), saved.getAmount());
 
-            return saved;
-        } catch (DataIntegrityViolationException race) {
-            Transaction existing = transactionRepository.findByIdempotencyKey(key)
-                    .orElseThrow(() -> race);
-            if (existing.getUser() == null || !existing.getUser().getId().equals(userId)) {
-                throw new ConflictException("Idempotency-Key already used by another user");
-            }
-            log.info("Transaction replay on race: idempotencyKey={} maps to transaction id={}",
-                    key, existing.getId());
-            return existing;
-        }
+        return saved;
     }
 
     @Transactional(readOnly = true)

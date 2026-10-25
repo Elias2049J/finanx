@@ -174,7 +174,7 @@ class ScheduleServiceImplBatchTest {
             TransactionServiceImpl realTransactionService = new TransactionServiceImpl(
                     transactionRepository, walletService, categoryService, savingGoalService,
                     receiptRepository, transactionMapper, reasonResolver, currencyConverter,
-                    transactionSecurityService, eventPublisher);
+                    transactionSecurityService, eventPublisher, transactionTemplate);
 
             ScheduleServiceImpl schedulerService = new ScheduleServiceImpl(
                     scheduleRepository, tsRepository, bsRepository, categoryRepository, tsMapper,
