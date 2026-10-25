@@ -544,6 +544,27 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ---
 
+## 12. Estado de aplicación
+
+Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **236 tests, 0 fallos, BUILD SUCCESS**.
+
+| ID | Cambio | Commit | Tests |
+|---|---|---|---|
+| P0-3 | `BillingListener` condicionado a `app.billing.auto-premium` (default `false`; `true` en `docker-compose.yml` y `.env.example`) | `586c510` | `BillingListenerTest` (3) |
+| P0-4 | `Budget.effectivePercentAlert()` con default 50 y rango [0,100]; `checkAllBudgets` aísla cada presupuesto en un `try/catch` | `91a103a` | `BudgetTest` (+2), `BudgetServiceImplTest` (1) |
+| P0-5 | `TransactionRepository.deactivateIfActive` (UPDATE condicional) y `disable()` revierte saldo solo si gana el claim | `8402e0a` | `TransactionServiceImplTest$DisableTest` (5) |
+
+**Pendiente en P0:** P0-1 y P0-2 (gate de pago y refund), P0-6 (webhooks), P0-7 (pago→suscripción) y P0-8 (pre-hijack de Google). C-05 (`activate`/`renew` a `SYSTEM`) se pospuso a propósito: restringirlo ahora rompe `qa/e2e/billing.js` y deja el premium inalcanzable hasta cerrar P0-7.
+
+**Efectos secundarios verificados:**
+
+- El contexto completo arranca sin `BillingListener` cuando la property está ausente (`TransactionSpecificationsTest`, 14,3 s de bootstrap).
+- El JPQL nuevo se valida al crear el repositorio durante ese mismo bootstrap.
+- `disable()` ya no escribe la entidad desde el persistence context: el UPDATE va directo a la base. Los listeners de `TransactionDisabledEvent` son `AFTER_COMMIT` y solo consumen el payload, así que no leen una entidad obsoleta.
+- El `catch` por presupuesto aísla errores de dominio (NPE, datos corruptos); si el fallo viene de la base, la transacción ya está rollback-only y el commit falla de forma explícita.
+
+---
+
 **Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Los P0 son de bajo esfuerzo y alto impacto, y ahora son **ocho**: además de la monetización burlable y la corrupción de saldo, el flujo de pago está incompleto (pagar no activa) y el auto-link de Google permite pre-hijack. La deuda operacional más cara sigue siendo el esquema sin Flyway, porque impide reproducir cualquiera de estos bugs en un entorno limpio.
 
 ---
@@ -554,3 +575,4 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 |---|---|---|
 | v1 | 2026-10-24 | Auditoría inicial: 6 P0, 9 P1, 14 P2; verificación del informe y auditoría k6 |
 | v2 | 2026-10-24 | Re-auditoría ampliada: +2 P0, +11 P1, +15 P2; correcciones de identity, billing, document, notifications y shared |
+| v2.1 | 2026-10-24 | Aplicados P0-3, P0-4 y P0-5 con tests; nueva sección 12 con el estado de aplicación |
