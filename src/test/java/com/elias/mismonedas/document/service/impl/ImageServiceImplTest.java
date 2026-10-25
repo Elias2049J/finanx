@@ -6,6 +6,7 @@ import com.elias.mismonedas.document.port.ObjectStoragePort;
 import com.elias.mismonedas.document.repository.ImageRepository;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.shared.exception.OcrProcessingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,10 +20,13 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -75,6 +79,30 @@ class ImageServiceImplTest {
         assertThat(keyCaptor.getValue()).isEqualTo(saved.getObjectKey());
         assertThat(bytesCaptor.getValue()).startsWith((byte) 0xff, (byte) 0xd8);
         assertThat(bytesCaptor.getValue()).hasSize(saved.getSizeBytes().intValue());
+    }
+
+    @Test
+    void shouldRejectImageAbovePixelLimitBeforeUploadingOrPersisting() throws Exception {
+        byte[] oversizedImage = pngBytesWithDimensions(5_001, 4_000);
+
+        assertThatThrownBy(() -> imageService.save(user(9L), "large.png", "image/png", oversizedImage))
+                .isInstanceOf(OcrProcessingException.class)
+                .hasMessageContaining("20 megapíxeles");
+
+        verify(objectStoragePort, never()).putObject(any(), any(), any(), any(), any());
+        verify(imageRepository, never()).save(any(Image.class));
+    }
+
+    @Test
+    void shouldRejectImageAboveFiveMiBBeforeDecoding() {
+        byte[] oversizedImage = new byte[5 * 1024 * 1024 + 1];
+
+        assertThatThrownBy(() -> imageService.save(user(9L), "large.png", "image/png", oversizedImage))
+                .isInstanceOf(OcrProcessingException.class)
+                .hasMessageContaining("5 MiB");
+
+        verify(objectStoragePort, never()).putObject(any(), any(), any(), any(), any());
+        verify(imageRepository, never()).save(any(Image.class));
     }
 
     @Test
@@ -140,5 +168,15 @@ class ImageServiceImplTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         ImageIO.write(image, "png", output);
         return output.toByteArray();
+    }
+
+    private byte[] pngBytesWithDimensions(int width, int height) throws Exception {
+        byte[] png = pngBytes();
+        ByteBuffer.wrap(png).putInt(16, width).putInt(20, height);
+
+        CRC32 ihdrCrc = new CRC32();
+        ihdrCrc.update(png, 12, 17);
+        ByteBuffer.wrap(png).putInt(29, (int) ihdrCrc.getValue());
+        return png;
     }
 }

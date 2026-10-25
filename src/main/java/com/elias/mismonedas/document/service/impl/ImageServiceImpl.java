@@ -17,8 +17,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import javax.imageio.ImageIO;
 import javax.imageio.IIOImage;
+import javax.imageio.ImageReader;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -38,6 +40,8 @@ public class ImageServiceImpl implements ImageService {
     private static final String MEDIA_TYPE = "image/jpeg";
     private static final String IMAGE_FORMAT = "jpg";
     private static final float JPEG_QUALITY = 0.92f;
+    private static final int MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+    private static final long MAX_IMAGE_PIXELS = 20_000_000L;
 
     private final ImageRepository imageRepository;
     private final ObjectStoragePort objectStoragePort;
@@ -107,39 +111,74 @@ public class ImageServiceImpl implements ImageService {
     }
 
     private byte[] convertToJpeg(byte[] imageData) {
+        if (imageData == null || imageData.length == 0) {
+            throw new OcrProcessingException("No se pudo leer la imagen");
+        }
+        if (imageData.length > MAX_IMAGE_BYTES) {
+            throw new OcrProcessingException("La imagen supera el límite de 5 MiB");
+        }
+
         try {
-            BufferedImage original = ImageIO.read(new ByteArrayInputStream(imageData));
-            if (original == null) {
-                throw new OcrProcessingException("No se pudo leer la imagen");
-            }
+            try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(imageData))) {
+                if (input == null) {
+                    throw new OcrProcessingException("No se pudo leer la imagen");
+                }
 
-            BufferedImage rgb = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_RGB);
-            java.awt.Graphics2D graphics = rgb.createGraphics();
-            try {
-                graphics.drawImage(original, 0, 0, java.awt.Color.WHITE, null);
-            } finally {
-                graphics.dispose();
-            }
+                Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+                if (!readers.hasNext()) {
+                    throw new OcrProcessingException("No se pudo leer la imagen");
+                }
 
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(IMAGE_FORMAT);
-            if (!writers.hasNext()) {
-                throw new OcrProcessingException("No hay un codificador JPEG disponible");
-            }
-            ImageWriter writer = writers.next();
-            try (ImageOutputStream imageOutput = ImageIO.createImageOutputStream(out)) {
-                writer.setOutput(imageOutput);
-                ImageWriteParam param = writer.getDefaultWriteParam();
-                param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-                param.setCompressionQuality(JPEG_QUALITY);
-                writer.write(null, new IIOImage(rgb, null, null), param);
-            } finally {
-                writer.dispose();
-            }
+                ImageReader reader = readers.next();
+                BufferedImage original;
+                try {
+                    reader.setInput(input, true, true);
+                    int width = reader.getWidth(0);
+                    int height = reader.getHeight(0);
+                    if (width <= 0 || height <= 0 || (long) width * height > MAX_IMAGE_PIXELS) {
+                        throw new OcrProcessingException("La imagen supera el límite de 20 megapíxeles");
+                    }
+                    original = reader.read(0);
+                } finally {
+                    reader.dispose();
+                }
 
-            return out.toByteArray();
+                if (original == null) {
+                    throw new OcrProcessingException("No se pudo leer la imagen");
+                }
+
+                return encodeJpeg(original);
+            }
         } catch (IOException e) {
             throw new OcrProcessingException("Error al convertir imagen a JPEG", e);
         }
+    }
+
+    private byte[] encodeJpeg(BufferedImage original) throws IOException {
+        BufferedImage rgb = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D graphics = rgb.createGraphics();
+        try {
+            graphics.drawImage(original, 0, 0, java.awt.Color.WHITE, null);
+        } finally {
+            graphics.dispose();
+        }
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(IMAGE_FORMAT);
+        if (!writers.hasNext()) {
+            throw new OcrProcessingException("No hay un codificador JPEG disponible");
+        }
+        ImageWriter writer = writers.next();
+        try (ImageOutputStream imageOutput = ImageIO.createImageOutputStream(out)) {
+            writer.setOutput(imageOutput);
+            ImageWriteParam param = writer.getDefaultWriteParam();
+            param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(JPEG_QUALITY);
+            writer.write(null, new IIOImage(rgb, null, null), param);
+        } finally {
+            writer.dispose();
+        }
+
+        return out.toByteArray();
     }
 }
