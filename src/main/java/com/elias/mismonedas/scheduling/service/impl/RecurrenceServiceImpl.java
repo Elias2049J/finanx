@@ -76,11 +76,16 @@ public class RecurrenceServiceImpl implements RecurrenceService {
 
         int interval = Math.max(rule.getInterval(), 1);
 
+        // El dia/mes objetivo sale del ancla de la regla, no de la ocurrencia previa:
+        // si no, 31-ene -> 28-feb -> 28-mar se queda en 28 para siempre, y el 29-feb
+        // de un ano bisiesto no vuelve nunca.
+        ZonedDateTime anchor = rule.getStart().toInstant().atZone(zone);
+
         ZonedDateTime candidate = switch (rule.getRecurrenceType()) {
             case DAILY -> base.plusDays(interval);
             case WEEKLY -> nextWeekly(base, rule, interval);
-            case MONTHLY -> nextMonthly(base, interval);
-            case YEARLY -> nextYearly(base, interval);
+            case MONTHLY -> nextMonthly(base, anchor.getDayOfMonth(), interval);
+            case YEARLY -> nextYearly(base, anchor.getMonthValue(), anchor.getDayOfMonth(), interval);
             case NONE -> throw new IllegalStateException("Unexpected recurrence type NONE");
         };
 
@@ -110,19 +115,16 @@ public class RecurrenceServiceImpl implements RecurrenceService {
         return base.plusDays(delta);
     }
 
-    private ZonedDateTime nextMonthly(ZonedDateTime base, int interval) {
-        int desiredDay = base.getDayOfMonth();
+    private ZonedDateTime nextMonthly(ZonedDateTime base, int anchorDay, int interval) {
         ZonedDateTime plus = base.plusMonths(interval);
-        int day = Math.min(desiredDay, plus.toLocalDate().lengthOfMonth());
+        int day = Math.min(anchorDay, plus.toLocalDate().lengthOfMonth());
         return plus.withDayOfMonth(day);
     }
 
-    private ZonedDateTime nextYearly(ZonedDateTime base, int interval) {
-        int desiredDay = base.getDayOfMonth();
-        int desiredMonth = base.getMonthValue();
+    private ZonedDateTime nextYearly(ZonedDateTime base, int anchorMonth, int anchorDay, int interval) {
         ZonedDateTime plus = base.plusYears(interval);
-        int day = Math.min(desiredDay, LocalDate.of(plus.getYear(), desiredMonth, 1).lengthOfMonth());
-        return plus.withMonth(desiredMonth).withDayOfMonth(day);
+        int day = Math.min(anchorDay, LocalDate.of(plus.getYear(), anchorMonth, 1).lengthOfMonth());
+        return plus.withMonth(anchorMonth).withDayOfMonth(day);
     }
 
     @Override
