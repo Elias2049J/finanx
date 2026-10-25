@@ -396,8 +396,8 @@ Comparación con la corrida anterior (818 VUs): ~520 req/s con p95 50 ms. El sal
 - ✅ P1-4: claim atómico de ocurrencia + clave determinista en `ScheduleServiceImpl` (`de41784`).
 - ✅ P1-5: recuperación de idempotencia fuera de la transacción abortada (`e04c29a`).
 - ✅ P1-9: el gasto analítico filtra movimientos por el usuario propietario del presupuesto (`27b710d`).
-- Fallback real de Gemini + bulkhead con espera + error tipado.
-- Sanitizer sin blocklist de lenguaje natural.
+- ⚠️ P1-6 parcial: bulkhead con espera de 1 s y error tipado 503; el modelo fallback queda sin implementar por decisión explícita.
+- ✅ P1-7: el sanitizer ya no bloquea palabras/frases normales de lenguaje natural.
 - Catch de `CurrencyConversionException` en saving goals (degradar a `partial`).
 - ✅ P1-10: rechazar montos OCR no positivos y validar el monto efectivo antes de persistir (`86038ae`). La precedencia del monto del request frente al OCR queda como decisión separada.
 - Notificaciones: enviar fuera de la TX, FCM solo borra `UNREGISTERED`, token único por usuario, `AFTER_COMMIT`, purga con `threshold` y DLQ con replay (P1-11/12/13).
@@ -547,7 +547,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **300 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **305 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -563,6 +563,8 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | P1-3 | `totalsOf` degrada a parcial si falta una tasa: omite la fila, marca `partial` y expone `missingRates`; sin 503 | `a2aa2d7` | `SavingGoalServiceImplTest` (2), `SavingGoalTest` (+0) |
 | P1-4 | Claim condicional atómico para transacciones y presupuestos; clave `schedule:{id}:{epochMilli}`; V4 versiona la columna y unique de idempotencia de presupuestos | `de41784` | `ScheduleClaimConcurrencyTest` (4, PostgreSQL), `ScheduleServiceImplBatchTest` |
 | P1-5 | La recuperación de idempotencia corre fuera de la transacción abortada: el camino HTTP usa `TransactionTemplate` y recupera en una transacción limpia; el scheduler sigue `@Transactional` | `e04c29a` | `TransactionServiceImplTest` (adaptado), `TransactionIdempotencyConcurrencyTest` (2) |
+| P1-6 | Parcial por decisión: Gemini ya no devuelve/persiste un mensaje sintético; error tipado 503, bulkhead espera 1 s; no se usa modelo fallback | `8ab025b` | `ChatGeminiAdapterTest`, `GlobalExceptionHandlerTest` |
+| P1-7 | AiUtils permite términos naturales como «consulta», «base de datos» y «actúa como asesor»; conserva truncado, escape y detección de overrides explícitos | `8ab025b` | `AiUtilsTest` (3) |
 | P1-9 | El gasto de presupuesto suma solo movimientos cuyo `id_usuario` coincide con el dueño del presupuesto | `27b710d` | `TransactionSpecificationsTest` (+1, PostgreSQL), `BudgetAnalyticsServiceImplTest` |
 | P1-10 | OCR y `TransactionServiceImpl` rechazan importes no positivos antes de completar el recibo o persistir/actualizar saldo | `86038ae` | `ReceiptScanServiceImplTest` (+3), `TransactionServiceImplTest` (+2) |
 | P1-20 | Registro, actualización y Google normalizan email; V6 backfillea y añade unique sobre `lower(email)`, con guard que aborta ante duplicados | `255b21d` | `UserServiceImplTest` (3), `GoogleAuthServiceImplTest` (5), `UserEmailNormalizationTest` (PostgreSQL) |
@@ -571,7 +573,7 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
-**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9, P1-10 y P1-20. El resto de P1 sigue abierto.
+**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-7, P1-9, P1-10 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. El resto de P1 sigue abierto.
 
 **Aplicado en P2:** P2-6. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
 
@@ -605,10 +607,12 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 - V1 no creaba `movimientos.id_usuario` ni `movimientos.clave_idempotencia`, aunque `Transaction` los mapea. V5 backfillea el usuario desde `billeteras`, valida la propiedad y crea FK, unique e índice compuesto; V1–V5 se probaron desde una base vacía.
 - El OCR falla el recibo ante monto cero/negativo; `improveWithAi` no sustituye un resultado válido por uno no positivo. `TransactionServiceImpl` verifica el monto efectivo antes de `save`, por lo que no se registra movimiento ni se modifica saldo; no se cambia la precedencia request/OCR.
 - El diagnóstico previo a V6 dio cero grupos duplicados por `lower(email)` y por `lower(trim(email))`, cero emails mixtos y cero emails con espacios en la BD local. V6 vuelve a comprobar duplicados antes del backfill y aborta si encuentra alguno, sin fusionar cuentas; registro, actualización, carga de usuario y Google comparten la normalización.
+- Chat sin fallback: ante el fallo del modelo primario, `ChatUnavailableException` produce 503 y evita persistir una respuesta sintética como 200. `max-wait-duration` pasa a 1 s. El fallback model se quitó de la configuración/plantilla y no se implementa.
+- `AiUtils` conserva textos normales del usuario y ya no sustituye palabras como «consulta» o «base de datos» por un placeholder; se mantienen el límite, escape de formato y reglas de detección de overrides explícitos.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9, P1-10 y P1-20 están aplicados; P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V6 desde cero.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-7, P1-9, P1-10 y P1-20 están aplicados; P1-6 queda parcial por la decisión de no implementar el fallback. P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V6 desde cero.
 
 ---
 
@@ -629,3 +633,4 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | v2.9 | 2026-10-25 | Aplicado P1-9 (scope por dueño del presupuesto); V5 reconcilia columnas faltantes de `movimientos`; V1–V5 probadas en BD vacía; 291 tests pasan |
 | v2.10 | 2026-10-25 | Aplicado P1-10: rechazar montos no positivos en OCR y antes de persistir; 296 tests pasan |
 | v2.11 | 2026-10-25 | Aplicado P1-20: normalización canónica, diagnóstico sin duplicados en BD local y unique `lower(email)` con guard de migración; V1–V6 probadas en BD vacía; 300 tests pasan |
+| v2.12 | 2026-10-25 | P1-6 parcial sin fallback model (error 503 y bulkhead 1 s); P1-7 deja pasar lenguaje natural; 305 tests pasan |
