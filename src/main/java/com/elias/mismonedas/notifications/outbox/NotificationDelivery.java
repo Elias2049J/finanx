@@ -39,6 +39,15 @@ public class NotificationDelivery {
     @Column(name = "state", nullable = false, length = 16)
     private NotificationDeliveryState state;
 
+    @Column(name = "idempotency_key", nullable = false, length = 128)
+    private String idempotencyKey;
+
+    @Column(name = "attempt_count", nullable = false)
+    private int attemptCount;
+
+    @Column(name = "sending_started_at")
+    private OffsetDateTime sendingStartedAt;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 

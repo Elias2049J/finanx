@@ -33,5 +33,11 @@ public class NotificationOutbox {
     private OffsetDateTime createdAt;
 
     private OffsetDateTime sentAt;
+
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount;
+
+    @Column(name = "next_retry_at")
+    private OffsetDateTime nextRetryAt;
 }
 
