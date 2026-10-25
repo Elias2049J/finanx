@@ -214,7 +214,7 @@ La rama `rr != null` calcula `periodStart` y sigue; la transición a `FINALIZED`
 ### P1-2 · Recurrencias
 
 - **Mensual:** `desiredDay = base.getDayOfMonth()` usa la ocurrencia previa, no el ancla de la regla. 31-ene → 28-feb → 28-mar… para siempre (`RecurrenceServiceImpl.java:113-118`).
-- **Semanal:** `delta = target - base`; si `delta > 0` no suma `7 * interval` (`:95-111`). En el flujo normal `base` ya cae en el día objetivo, así que el bug aparece cuando `nextRunAt`/`start` no es el día objetivo.
+- **Semanal (revisado, sin cambio):** la fórmula actual (`delta <= 0 → delta += 7 * interval`) es equivalente a `Math.floorMod(target - base, 7 * interval)` para todo `delta` en `[-6, 6]`; el caso `delta == 0` ya suma el intervalo. No se reprodujo un escenario distinto del mensual/anual, así que se deja igual y se cubre con tests de regresión (`+intervalo` con base en el día objetivo y búsqueda del día objetivo desde `start`).
 - **Anual:** mismo patrón; **sí maneja mal el 29-feb**. Con `interval=1`, 2024-02-29 → 2025-02-28 y a partir de ahí la base queda en 28, así que nunca vuelve al 29 (ni siquiera en 2028). No lanza excepción: deriva en silencio. Con `interval=4` sí conserva el 29 si la base aún es 29-feb. Verificado ejecutando el método: `2024-02-29 2025-02-28 2026-02-28 2027-02-28 2028-02-28 …`.
 
 **Parche:** calcular siempre desde `rule.start` (ancla) con `YearMonth`/`LocalDate` y `Math.min(anchorDay, lengthOfMonth())`; para semanal, `delta = Math.floorMod(target - base, 7 * interval)`.
@@ -546,7 +546,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **268 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **274 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -557,9 +557,13 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **26
 | P0-8 | La cuenta de Google se identifica por `sub`; si el email ya pertenece a una cuenta local se rechaza con 409 en vez de auto-vincular; `email_verified` obligatorio | `45980ed` | `GoogleAuthServiceImplTest` (5), `GoogleIdTokenVerifierTest` (5) |
 | P0-2 | `refund()` valida `COMPLETED/DISPUTED → REFUNDED` antes de llamar al gateway y cancela la suscripción con `cancelForRefund()` | `388a08e` | `PaymentServiceImplTest$RefundTest` (3), `BillingServiceImplTest$CancelForRefundTest` (3) |
 | P0-6 | `WebhookController` en `/api/v1/webhooks`, solo existe con `app.billing.webhooks.enabled=true` (default `false` → 404); `permitAll()` para cuando se encienda; `PaymentExpirationScheduler` expira `PENDING` > 24 h y `PROCESSING` > 1 h; `NoResourceFoundException` → 404 | `a63d93f`, `7fc3cda` | `PaymentServiceImplTest$ExpireStalePaymentsTest` (2), `WebhookEndpointDisabledTest` (1), `GlobalExceptionHandlerTest` (+1) |
+| P1-1 | Un presupuesto recurrente se finaliza cuando `now >= end` y congela el gasto de su propia ventana `[start, end]` | `bbb3d00` | `BudgetServiceImplTest` (+2) |
+| P1-2 | Mensual y anual toman el día (y el mes) del ancla `rule.start`, no de la ocurrencia previa | `aafe06e` | `RecurrenceServiceImplTest` (4) |
 | Deuda | Flyway reactivado: V1 restaurado (checksum intacto), V2 recoge las columnas `locale` de `database/manual`, V3 añade identidad federada | `dc078ef` | Validación de checksum en el arranque del contexto |
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
+
+**Aplicado en P1:** P1-1 y P1-2. El resto de P1 sigue abierto.
 
 **Riesgo residual de P0-8 (decisión explícita: no ampliar alcance):**
 
@@ -580,10 +584,12 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **26
 - Una ruta sin controlador devuelve 404, no 500: el catch-all de `Exception` convertía `NoResourceFoundException` en 500.
 - Habilitar los webhooks exige implementar `PaymentPort.verifyWebhookSignature` y `parseWebhookPayload`; con el adaptador manual todo request recibe 401 aunque el endpoint esté encendido.
 - La expiración de pagos no toca la suscripción: un pago `FAILED` por timeout deja la suscripción en `PENDING` y el usuario puede reintentar con un pago nuevo.
+- Un presupuesto recurrente finaliza con el gasto de su ventana `[start, end]`, no con el del periodo actual; `BudgetScheduler` sigue creando una fila por ocurrencia.
+- El ancla mensual/anual se toma de `rule.start`; si el día no existe en el mes destino se usa el último día (31-ene → 28/29-feb → 31-mar).
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. El resto de P0 está corregido y el esquema está versionado con Flyway, así que los bugs se pueden reproducir en un entorno limpio.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. El resto de P0 está corregido, los dos primeros P1 también, y el esquema está versionado con Flyway, así que los bugs se pueden reproducir en un entorno limpio.
 
 ---
 
@@ -597,3 +603,4 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **26
 | v2.2 | 2026-10-24 | Aplicados P0-7 y P0-8; Flyway reactivado con V1/V2/V3 y riesgo residual de identidad documentado |
 | v2.3 | 2026-10-25 | Aplicado P0-2 (validación previa al gateway + cancelación de suscripción); P0-1 pospuesto por dependencia de pasarela |
 | v2.4 | 2026-10-25 | Aplicado P0-6 (webhooks apagados por flag + expiración de pagos estancados); corregida la ruta `/api/v1/webhooks` y el 404 de rutas inexistentes; P0-1 sigue pospuesto |
+| v2.5 | 2026-10-25 | Aplicados P1-1 (finalización de presupuestos recurrentes) y P1-2 (ancla mensual/anual); semanal revisado sin cambio |
