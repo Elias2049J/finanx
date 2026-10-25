@@ -32,7 +32,7 @@ public class EmailNotificationAdapter implements NotificationPort {
 
     @Override
     @CircuitBreaker(name = "email")
-    public void send(NotificationDTO notification) {
+    public void send(NotificationDTO notification, String idempotencyKey) {
         if (!notification.isEmailNotifications()) {
             log.debug("Email skip: user {} tiene notificaciones email deshabilitadas", notification.getUserId());
             return;
@@ -41,7 +41,7 @@ public class EmailNotificationAdapter implements NotificationPort {
         String text = notification.getMessage() != null ? notification.getMessage() : "";
         String html = notification.getHtmlMessage();
 
-        sendEmail(notification.getUserEmail(), subject, text, html);
+        sendEmail(notification.getUserEmail(), subject, text, html, idempotencyKey);
     }
 
     private String localizedTitle(NotificationDTO notification) {
@@ -54,7 +54,7 @@ public class EmailNotificationAdapter implements NotificationPort {
                 SupportedLocale.toLocale(notification.getLocale()));
     }
 
-    private void sendEmail(String to, String subject, String text, String html) {
+    private void sendEmail(String to, String subject, String text, String html, String idempotencyKey) {
         String host = emailProperties.getHost();
         int port = emailProperties.getPort();
 
@@ -77,6 +77,9 @@ public class EmailNotificationAdapter implements NotificationPort {
             message.setFrom(new InternetAddress(from));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
             message.setSubject(subject, "UTF-8");
+            if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                message.setHeader("X-Finanx-Delivery-Key", idempotencyKey);
+            }
 
             if (html != null && !html.isBlank()) {
                 MimeMultipart multipart = new MimeMultipart("alternative");

@@ -57,7 +57,7 @@ public class FCMNotificationAdapter implements NotificationPort {
 
     @Override
     @CircuitBreaker(name = "fcm")
-    public void send(NotificationDTO notification) {
+    public void send(NotificationDTO notification, String idempotencyKey) {
         Long userId = notification.getUserId();
         List<String> tokens = userId == null
                 ? List.of()
@@ -82,6 +82,7 @@ public class FCMNotificationAdapter implements NotificationPort {
         if (notification.getBudgetState() != null) data.put("budgetState", notification.getBudgetState().name());
         if (notification.getSavingGoalId() != null) data.put("savingGoalId", notification.getSavingGoalId().toString());
         if (notification.getSavingGoalDescription() != null) data.put("savingGoalDescription", notification.getSavingGoalDescription());
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) data.put("deliveryKey", idempotencyKey);
 
         List<Message> messages = tokens.stream()
                 .map(token -> Message.builder()

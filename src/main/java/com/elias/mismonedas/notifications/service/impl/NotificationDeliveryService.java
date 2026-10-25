@@ -37,11 +37,15 @@ public class NotificationDeliveryService {
     private final NotificationDeliveryRepository deliveryRepository;
     private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper;
+    private final NotificationDeliveryTransactionService deliveryTransactions;
 
     @Transactional
     public Optional<NotificationDTO> prepare(Long outboxId, List<NotificationPort> notificationPorts) {
         NotificationOutbox outbox = getOutboxForUpdate(outboxId);
         if (isTerminal(outbox.getState())) {
+            return Optional.empty();
+        }
+        if (outbox.getState() == OutboxState.FAILED) {
             return Optional.empty();
         }
 
@@ -64,16 +68,6 @@ public class NotificationDeliveryService {
 
         NotificationDTO dto = readPayload(outbox);
 
-        if (outbox.getState() == OutboxState.FAILED) {
-            for (NotificationDelivery delivery : deliveries) {
-                if (delivery.getState() == NotificationDeliveryState.FAILED) {
-                    delivery.setState(NotificationDeliveryState.PENDING);
-                    delivery.setErrorMessage(null);
-                }
-            }
-            outbox.setState(OutboxState.PUBLISHED);
-        }
-
         if (deliveries.isEmpty()) {
             outbox.setState(OutboxState.SENT);
             OffsetDateTime sentAt = OffsetDateTime.now();
@@ -85,36 +79,32 @@ public class NotificationDeliveryService {
         return Optional.of(dto);
     }
 
-    @Transactional
     public void deliverChannel(Long outboxId, NotificationPort port, NotificationDTO dto) {
-        NotificationOutbox outbox = getOutboxForUpdate(outboxId);
-        if (isTerminal(outbox.getState())) {
+        Optional<NotificationDeliveryTransactionService.DeliveryClaim> claim =
+                deliveryTransactions.claim(outboxId, port.channel());
+        if (claim.isEmpty()) {
             return;
         }
 
-        NotificationDelivery delivery = deliveryRepository
-                .findByOutboxIdAndChannelForUpdate(outboxId, port.channel())
-                .orElseThrow(() -> new IllegalStateException(
-                        "No delivery record for outboxId=" + outboxId + " channel=" + port.channel()));
-        if (delivery.getState() == NotificationDeliveryState.SENT
-                || delivery.getState() == NotificationDeliveryState.SKIPPED) {
-            return;
+        NotificationDeliveryTransactionService.DeliveryClaim deliveryClaim = claim.get();
+        try {
+            port.send(dto, deliveryClaim.idempotencyKey());
+        } catch (RuntimeException sendFailure) {
+            try {
+                deliveryTransactions.markFailed(
+                        outboxId, port.channel(), deliveryClaim.attemptCount(), sendFailure.getMessage());
+            } catch (RuntimeException persistenceFailure) {
+                sendFailure.addSuppressed(persistenceFailure);
+            }
+            throw sendFailure;
         }
 
-        Notification notification = findNotification(outbox);
-        if (notification != null && notification.getState() == NotificationState.DISCARD) {
-            delivery.setState(NotificationDeliveryState.SKIPPED);
-            return;
+        boolean recorded = deliveryTransactions.markSent(
+                outboxId, port.channel(), deliveryClaim.attemptCount());
+        if (!recorded) {
+            log.warn("Notification delivery claim superseded after send outboxId={} channel={} attempt={}",
+                    outboxId, port.channel(), deliveryClaim.attemptCount());
         }
-        if (notification != null && notification.getState() == NotificationState.SENT) {
-            delivery.setState(NotificationDeliveryState.SKIPPED);
-            return;
-        }
-
-        port.send(dto);
-        delivery.setState(NotificationDeliveryState.SENT);
-        delivery.setSentAt(OffsetDateTime.now());
-        delivery.setErrorMessage(null);
     }
 
     @Transactional
@@ -127,6 +117,7 @@ public class NotificationDeliveryService {
         List<NotificationDelivery> deliveries = deliveryRepository.findAllByOutboxIdOrderByChannelAsc(outboxId);
         if (deliveries.stream().anyMatch(delivery ->
                 delivery.getState() == NotificationDeliveryState.PENDING
+                        || delivery.getState() == NotificationDeliveryState.SENDING
                         || delivery.getState() == NotificationDeliveryState.FAILED)) {
             throw new IllegalStateException("Notification outbox still has undelivered channels id=" + outboxId);
         }
@@ -156,8 +147,10 @@ public class NotificationDeliveryService {
 
         outbox.setState(OutboxState.FAILED);
         for (NotificationDelivery delivery : deliveryRepository.findAllByOutboxIdOrderByChannelAsc(outboxId)) {
-            if (delivery.getState() == NotificationDeliveryState.PENDING) {
+            if (delivery.getState() == NotificationDeliveryState.PENDING
+                    || delivery.getState() == NotificationDeliveryState.SENDING) {
                 delivery.setState(NotificationDeliveryState.FAILED);
+                delivery.setSendingStartedAt(null);
                 delivery.setErrorMessage(abbreviate(errorMessage, 255));
             }
         }
@@ -180,6 +173,7 @@ public class NotificationDeliveryService {
                         .outboxId(outboxId)
                         .channel(port.channel())
                         .state(NotificationDeliveryState.PENDING)
+                        .idempotencyKey(idempotencyKey(outboxId, port.channel()))
                         .createdAt(OffsetDateTime.now())
                         .build());
             }
@@ -194,8 +188,12 @@ public class NotificationDeliveryService {
     private void markPendingDeliveriesSkipped(List<NotificationDelivery> deliveries) {
         deliveries.stream()
                 .filter(delivery -> delivery.getState() == NotificationDeliveryState.PENDING
+                        || delivery.getState() == NotificationDeliveryState.SENDING
                         || delivery.getState() == NotificationDeliveryState.FAILED)
-                .forEach(delivery -> delivery.setState(NotificationDeliveryState.SKIPPED));
+                .forEach(delivery -> {
+                    delivery.setState(NotificationDeliveryState.SKIPPED);
+                    delivery.setSendingStartedAt(null);
+                });
     }
 
     private NotificationOutbox getOutboxForUpdate(Long outboxId) {
@@ -234,5 +232,9 @@ public class NotificationDeliveryService {
             return value;
         }
         return value.substring(0, maxLength);
+    }
+
+    private String idempotencyKey(Long outboxId, NotificationDeliveryChannel channel) {
+        return "notification-outbox:" + outboxId + ":" + channel.name();
     }
 }

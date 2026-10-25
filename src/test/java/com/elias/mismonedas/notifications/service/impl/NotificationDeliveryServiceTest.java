@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +39,7 @@ class NotificationDeliveryServiceTest {
     @Mock private NotificationOutboxRepository outboxRepository;
     @Mock private NotificationDeliveryRepository deliveryRepository;
     @Mock private NotificationRepository notificationRepository;
+    @Mock private NotificationDeliveryTransactionService deliveryTransactions;
     @Mock private NotificationPort fcmPort;
     @Mock private NotificationPort emailPort;
 
@@ -47,7 +49,7 @@ class NotificationDeliveryServiceTest {
     @BeforeEach
     void setUp() {
         service = new NotificationDeliveryService(
-                outboxRepository, deliveryRepository, notificationRepository, objectMapper);
+                outboxRepository, deliveryRepository, notificationRepository, objectMapper, deliveryTransactions);
     }
 
     @Test
@@ -96,42 +98,48 @@ class NotificationDeliveryServiceTest {
     }
 
     @Test
-    void shouldRecordSuccessfulChannelSoLaterRetrySkipsIt() throws Exception {
-        when(fcmPort.channel()).thenReturn(NotificationDeliveryChannel.FCM);
-        NotificationOutbox outbox = outbox(12L, OutboxState.PUBLISHED);
-        NotificationDTO dto = objectMapper.readValue(outbox.getPayload(), NotificationDTO.class);
-        NotificationDelivery fcmDelivery = delivery(12L, NotificationDeliveryChannel.FCM);
-        when(outboxRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(outbox));
-        when(notificationRepository.findById(22L)).thenReturn(Optional.of(notification(22L, NotificationState.SCHEDULED)));
-        when(deliveryRepository.findByOutboxIdAndChannelForUpdate(12L, NotificationDeliveryChannel.FCM))
-                .thenReturn(Optional.of(fcmDelivery));
+    void shouldNotImmediatelyRetryOutboxThatIsWaitingForScheduledRetry() throws Exception {
+        NotificationOutbox outbox = outbox(18L, OutboxState.FAILED);
+        outbox.setNextRetryAt(OffsetDateTime.now().plusMinutes(1));
+        when(outboxRepository.findByIdForUpdate(18L)).thenReturn(Optional.of(outbox));
 
-        service.deliverChannel(12L, fcmPort, dto);
+        Optional<NotificationDTO> prepared = service.prepare(18L, List.of(fcmPort));
 
-        assertThat(fcmDelivery.getState()).isEqualTo(NotificationDeliveryState.SENT);
-        assertThat(fcmDelivery.getSentAt()).isNotNull();
-
-        service.deliverChannel(12L, fcmPort, dto);
-
-        verify(fcmPort).send(dto);
+        assertThat(prepared).isEmpty();
+        verify(deliveryRepository, never()).findAllByOutboxIdOrderByChannelAsc(18L);
+        assertThat(outbox.getState()).isEqualTo(OutboxState.FAILED);
     }
 
     @Test
-    void shouldLeaveChannelPendingWhenDeliveryThrowsSoBrokerRetryCanRetryIt() throws Exception {
+    void shouldSendOutsideTransactionUsingStableKeyAndRecordTheClaimedAttempt() throws Exception {
+        when(fcmPort.channel()).thenReturn(NotificationDeliveryChannel.FCM);
+        NotificationDTO dto = NotificationDTO.builder().id(22L).userId(1L).build();
+        var claim = new NotificationDeliveryTransactionService.DeliveryClaim("stable-key", 3);
+        when(deliveryTransactions.claim(12L, NotificationDeliveryChannel.FCM))
+                .thenReturn(Optional.of(claim), Optional.empty());
+        when(deliveryTransactions.markSent(12L, NotificationDeliveryChannel.FCM, 3)).thenReturn(true);
+
+        service.deliverChannel(12L, fcmPort, dto);
+        service.deliverChannel(12L, fcmPort, dto);
+
+        verify(fcmPort).send(dto, "stable-key");
+        verify(deliveryTransactions).markSent(12L, NotificationDeliveryChannel.FCM, 3);
+    }
+
+    @Test
+    void shouldRecordFailedAttemptAndRethrowSoBrokerRetryCanRetryIt() throws Exception {
         when(emailPort.channel()).thenReturn(NotificationDeliveryChannel.EMAIL);
-        NotificationOutbox outbox = outbox(13L, OutboxState.PUBLISHED);
-        NotificationDTO dto = objectMapper.readValue(outbox.getPayload(), NotificationDTO.class);
-        NotificationDelivery emailDelivery = delivery(13L, NotificationDeliveryChannel.EMAIL);
-        when(outboxRepository.findByIdForUpdate(13L)).thenReturn(Optional.of(outbox));
-        when(notificationRepository.findById(23L)).thenReturn(Optional.of(notification(23L, NotificationState.SCHEDULED)));
-        when(deliveryRepository.findByOutboxIdAndChannelForUpdate(13L, NotificationDeliveryChannel.EMAIL))
-                .thenReturn(Optional.of(emailDelivery));
-        doThrow(new IllegalStateException("SMTP unavailable")).when(emailPort).send(dto);
+        NotificationDTO dto = NotificationDTO.builder().id(23L).userId(1L).build();
+        var claim = new NotificationDeliveryTransactionService.DeliveryClaim("email-key", 1);
+        when(deliveryTransactions.claim(13L, NotificationDeliveryChannel.EMAIL)).thenReturn(Optional.of(claim));
+        doThrow(new IllegalStateException("SMTP unavailable"))
+                .when(emailPort).send(dto, "email-key");
 
         assertThatThrownBy(() -> service.deliverChannel(13L, emailPort, dto))
                 .isInstanceOf(IllegalStateException.class);
 
-        assertThat(emailDelivery.getState()).isEqualTo(NotificationDeliveryState.PENDING);
+        verify(deliveryTransactions).markFailed(
+                13L, NotificationDeliveryChannel.EMAIL, 1, "SMTP unavailable");
     }
 
     @Test
@@ -146,6 +154,37 @@ class NotificationDeliveryServiceTest {
         assertThat(outbox.getState()).isEqualTo(OutboxState.FAILED);
         assertThat(pending.getState()).isEqualTo(NotificationDeliveryState.FAILED);
         assertThat(pending.getErrorMessage()).isEqualTo("SMTP unavailable");
+    }
+
+    @Test
+    void shouldMarkAnAbandonedSendingDeliveryFailedAfterRetryExhaustion() throws Exception {
+        NotificationOutbox outbox = outbox(16L, OutboxState.PUBLISHED);
+        NotificationDelivery sending = delivery(16L, NotificationDeliveryChannel.EMAIL);
+        sending.setState(NotificationDeliveryState.SENDING);
+        sending.setSendingStartedAt(OffsetDateTime.now().minusMinutes(2));
+        when(outboxRepository.findByIdForUpdate(16L)).thenReturn(Optional.of(outbox));
+        when(deliveryRepository.findAllByOutboxIdOrderByChannelAsc(16L)).thenReturn(List.of(sending));
+
+        service.markFailed(16L, "SMTP worker stopped");
+
+        assertThat(outbox.getState()).isEqualTo(OutboxState.FAILED);
+        assertThat(sending.getState()).isEqualTo(NotificationDeliveryState.FAILED);
+        assertThat(sending.getSendingStartedAt()).isNull();
+        assertThat(sending.getErrorMessage()).isEqualTo("SMTP worker stopped");
+    }
+
+    @Test
+    void shouldNotCompleteOutboxWhileAChannelClaimIsStillSending() throws Exception {
+        NotificationOutbox outbox = outbox(17L, OutboxState.PUBLISHED);
+        NotificationDelivery sending = delivery(17L, NotificationDeliveryChannel.EMAIL);
+        sending.setState(NotificationDeliveryState.SENDING);
+        when(outboxRepository.findByIdForUpdate(17L)).thenReturn(Optional.of(outbox));
+        when(deliveryRepository.findAllByOutboxIdOrderByChannelAsc(17L)).thenReturn(List.of(sending));
+
+        assertThatThrownBy(() -> service.complete(17L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("undelivered channels");
+        assertThat(outbox.getState()).isEqualTo(OutboxState.PUBLISHED);
     }
 
     @Test
