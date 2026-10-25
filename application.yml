@@ -5,9 +5,6 @@ spring:
   application:
     name: "mis-monedas"
   config:
-    # Toda la configuracion por entorno vive en `.env` (gitignored). Spring lo
-    # lee como un archivo de properties; `.env.example` es la plantilla.
-    # El bootstrap esta documentado en README.md.
     import: "optional:file:./.env[.properties]"
 
   threads:

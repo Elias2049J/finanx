@@ -2,9 +2,6 @@ services:
   mismonedas:
     build: .
     container_name: spring_app
-    # Puerto SOLO para QA/stress: expone el backend directo al host (127.0.0.1)
-    # para saltar el rate limit de nginx en /api/v1/auth/ (rate=10r/m).
-    # Bind a loopback para no exponer el backend a la red.
     ports:
       - "127.0.0.1:8082:8080"
     env_file:
@@ -29,9 +26,6 @@ services:
       SPRING_RABBITMQ_PUBLISHER_RETURNS: "true"
       SPRING_RABBITMQ_TEMPLATE_MANDATORY: "true"
       APP_STORAGE_SEAWEEDFS_INTERNAL_ENDPOINT: http://seaweedfs:8333
-      # Host PÚBLICO del storage: es el que se firma en las URLs prefirmadas y
-      # el que debe poder abrir el móvil. Debe llegar a nginx:8081, que es el
-      # único punto de entrada a SeaweedFS.
       APP_STORAGE_SEAWEEDFS_PUBLIC_ENDPOINT: ${SEAWEEDFS_PUBLIC_ENDPOINT:-http://localhost:8081}
       APP_STORAGE_SEAWEEDFS_BUCKET: ${SEAWEEDFS_BUCKET:-finanx-images}
       APP_STORAGE_SEAWEEDFS_ACCESS_KEY: ${SEAWEEDFS_ACCESS_KEY}
@@ -39,9 +33,6 @@ services:
       APP_STORAGE_SEAWEEDFS_PRESIGNED_URL_TTL: 5m
       FCM_CREDENTIALS_PATH: /run/secrets/firebase-sa
     healthcheck:
-      # /actuator/health esta permitAll en WebSecurityConfig, asi que no pide
-      # token. Si la app reporta DOWN, Spring responde 503 y wget falla ->
-      # el contenedor queda unhealthy.
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 5s
@@ -115,6 +106,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    ports:
+      - "127.0.0.1:15672:15672"
 
   seaweedfs:
     image: chrislusf/seaweedfs:4.48
@@ -151,9 +144,6 @@ networks:
 
 secrets:
   firebase-sa:
-    # Service account de Firebase en el HOST. Se monta dentro del contenedor en
-    # /run/secrets/firebase-sa (ver FCM_CREDENTIALS_PATH en environment:).
-    # Ajusta FCM_CREDENTIALS_FILE en tu .env si tu archivo se llama distinto.
     file: ${FCM_CREDENTIALS_FILE:-./secrets/firebase-service-account.json}
 
 volumes:

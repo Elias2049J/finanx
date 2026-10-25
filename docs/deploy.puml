@@ -1,0 +1,34 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+node "Dispositivo" {
+  component "App Android\nKotlin / Compose" as app
+}
+
+cloud "FCM / SMTP\nGemini API\nCurrencyBeacon" as ext
+
+node "VPS" {
+  node "Docker Compose" {
+    node "nginx" as nginx
+    node "api\nSpring Boot" as api
+    storage "SeaweedFS\nS3" as s3
+    queue "RabbitMQ" as mq
+    database "PostgreSQL" as db
+    node "doc-processing\nPython + RapidOCR" as ocr
+  }
+}
+
+app -down-> nginx : HTTPS\n/api/v1 y URL prefirmada
+
+nginx -down-> api : HTTP
+nginx -down-> s3 : HTTP\nendpoint publico
+
+api -left-> s3 : S3 interno\nput / delete
+api -down-> db : JDBC
+api -down-> mq : AMQP
+api -right-> ext : push, email,\nHTTPS
+
+mq -left-> ocr : receipt.scan.job\nreceipt.scan.result
+ocr -up-> s3 : S3 get
+@enduml
