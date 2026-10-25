@@ -399,7 +399,7 @@ Comparación con la corrida anterior (818 VUs): ~520 req/s con p95 50 ms. El sal
 - Fallback real de Gemini + bulkhead con espera + error tipado.
 - Sanitizer sin blocklist de lenguaje natural.
 - Catch de `CurrencyConversionException` en saving goals (degradar a `partial`).
-- Guard de monto positivo en OCR + no sobrescribir el monto del request (P1-10).
+- ✅ P1-10: rechazar montos OCR no positivos y validar el monto efectivo antes de persistir (`86038ae`). La precedencia del monto del request frente al OCR queda como decisión separada.
 - Notificaciones: enviar fuera de la TX, FCM solo borra `UNREGISTERED`, token único por usuario, `AFTER_COMMIT`, purga con `threshold` y DLQ con replay (P1-11/12/13).
 - Sesiones: access TTL 5-15 min, `jti`/`tokenVersion`, revocación en logout/password change y secreto fail-fast (P1-14).
 - Borrado/reset de cuenta completo y en orden de dependencias (P1-15).
@@ -547,7 +547,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **291 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **296 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -564,12 +564,13 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | P1-4 | Claim condicional atómico para transacciones y presupuestos; clave `schedule:{id}:{epochMilli}`; V4 versiona la columna y unique de idempotencia de presupuestos | `de41784` | `ScheduleClaimConcurrencyTest` (4, PostgreSQL), `ScheduleServiceImplBatchTest` |
 | P1-5 | La recuperación de idempotencia corre fuera de la transacción abortada: el camino HTTP usa `TransactionTemplate` y recupera en una transacción limpia; el scheduler sigue `@Transactional` | `e04c29a` | `TransactionServiceImplTest` (adaptado), `TransactionIdempotencyConcurrencyTest` (2) |
 | P1-9 | El gasto de presupuesto suma solo movimientos cuyo `id_usuario` coincide con el dueño del presupuesto | `27b710d` | `TransactionSpecificationsTest` (+1, PostgreSQL), `BudgetAnalyticsServiceImplTest` |
+| P1-10 | OCR y `TransactionServiceImpl` rechazan importes no positivos antes de completar el recibo o persistir/actualizar saldo | `86038ae` | `ReceiptScanServiceImplTest` (+3), `TransactionServiceImplTest` (+2) |
 | P2-6 | Fallos transitorios conservan `RUNNING` y se reintentan en el siguiente ciclo; presupuesto ya materializado avanza sin duplicar; los fallos permanentes quedan `ERROR` con log estructurado | `de41784` | `ScheduleServiceImplBatchTest` |
 | Deuda | Flyway versiona V1–V5; V4 añade idempotencia de presupuesto; V5 reconcilia `movimientos.id_usuario` y `clave_idempotencia`, backfill desde wallet y los índices | `dc078ef`, `de41784`, `27b710d` | V1–V5 aplican desde esquema vacío; validación de checksum |
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
-**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5 y P1-9. El resto de P1 sigue abierto.
+**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9 y P1-10. El resto de P1 sigue abierto.
 
 **Aplicado en P2:** P2-6. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
 
@@ -601,10 +602,11 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 - Un fallo transitorio reconocido por Spring/JDBC deja intacta la ocurrencia y la programación `RUNNING`; el próximo ciclo la reintenta. Los errores permanentes quedan `ERROR` y se registran con campos estructurados.
 - Analytics de presupuesto ahora filtra también por `Transaction.user.id`; una prueba PostgreSQL con una categoría compartida de forma inválida confirma que el movimiento de otro usuario no se suma.
 - V1 no creaba `movimientos.id_usuario` ni `movimientos.clave_idempotencia`, aunque `Transaction` los mapea. V5 backfillea el usuario desde `billeteras`, valida la propiedad y crea FK, unique e índice compuesto; V1–V5 se probaron desde una base vacía.
+- El OCR falla el recibo ante monto cero/negativo; `improveWithAi` no sustituye un resultado válido por uno no positivo. `TransactionServiceImpl` verifica el monto efectivo antes de `save`, por lo que no se registra movimiento ni se modifica saldo; no se cambia la precedencia request/OCR.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5 y P1-9 están aplicados; P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V5 desde cero.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9 y P1-10 están aplicados; P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V5 desde cero.
 
 ---
 
@@ -623,3 +625,4 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | v2.7 | 2026-10-25 | Aplicado P1-5 (recuperación de idempotencia tras el rollback; scheduler sin cambios) |
 | v2.8 | 2026-10-25 | Aplicados P1-4 (claim realmente atómico, clave determinista y V4) y P2-6 (reintento de fallos transitorios y replay de presupuestos); 290 tests pasan |
 | v2.9 | 2026-10-25 | Aplicado P1-9 (scope por dueño del presupuesto); V5 reconcilia columnas faltantes de `movimientos`; V1–V5 probadas en BD vacía; 291 tests pasan |
+| v2.10 | 2026-10-25 | Aplicado P1-10: rechazar montos no positivos en OCR y antes de persistir; 296 tests pasan |
