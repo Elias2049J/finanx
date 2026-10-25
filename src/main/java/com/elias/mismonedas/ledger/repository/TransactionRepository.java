@@ -3,6 +3,8 @@ package com.elias.mismonedas.ledger.repository;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.repository.projection.AmountByCurrency;
+import com.elias.mismonedas.ledger.repository.projection.AnalyticsDailyAggregate;
+import com.elias.mismonedas.ledger.repository.projection.AnalyticsDimensionAggregate;
 import com.elias.mismonedas.ledger.repository.projection.SavingGoalAggregate;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -92,6 +94,56 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
             @Param("type") TransactionType type,
             @Param("from") OffsetDateTime from,
             @Param("to") OffsetDateTime to);
+
+    @Query("""
+            SELECT t.wallet.currencyCode AS currencyCode,
+                   t.type AS type,
+                   t.paymentMethod AS paymentMethod,
+                   t.category.id AS categoryId,
+                   t.category.name AS categoryName,
+                   t.reason.id AS reasonId,
+                   t.reason.description AS reasonDescription,
+                   SUM(t.amount) AS total,
+                   COUNT(t) AS occurrences,
+                   MIN(t.amount) AS minAmount,
+                   MAX(t.amount) AS maxAmount
+              FROM Transaction t
+             WHERE t.user.id = :userId
+               AND t.active = true
+               AND t.createdAt >= :from
+               AND t.createdAt < :to
+               AND (:walletId IS NULL OR t.wallet.id = :walletId)
+             GROUP BY t.wallet.currencyCode, t.type, t.paymentMethod,
+                      t.category.id, t.category.name, t.reason.id, t.reason.description
+            """)
+    List<AnalyticsDimensionAggregate> aggregateByDimensions(
+            @Param("userId") Long userId,
+            @Param("walletId") Long walletId,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to);
+
+    @Query(value = """
+            SELECT CAST(t.fecha_creacion AT TIME ZONE :zone AS date) AS day,
+                   t.tipo AS type,
+                   w.moneda AS currencyCode,
+                   SUM(t.monto) AS total,
+                   COUNT(*) AS occurrences
+              FROM movimientos t
+              JOIN billeteras w ON w.id = t.id_billetera
+             WHERE t.id_usuario = :userId
+               AND t.activo = true
+               AND t.fecha_creacion >= :from
+               AND t.fecha_creacion < :to
+               AND (:walletId IS NULL OR t.id_billetera = :walletId)
+             GROUP BY 1, 2, 3
+             ORDER BY 1
+            """, nativeQuery = true)
+    List<AnalyticsDailyAggregate> aggregateDaily(
+            @Param("userId") Long userId,
+            @Param("walletId") Long walletId,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to,
+            @Param("zone") String zone);
 
     Optional<Transaction> findFirstBySavingGoal_IdAndActiveTrueOrderByCreatedAtDesc(Long savingGoalId);
 
