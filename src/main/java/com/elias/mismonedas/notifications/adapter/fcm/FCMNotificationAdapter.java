@@ -114,15 +114,19 @@ public class FCMNotificationAdapter implements NotificationPort {
             if (ex == null) continue;
 
             MessagingErrorCode errorCode = ex.getMessagingErrorCode();
-            if (errorCode == MessagingErrorCode.UNREGISTERED || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+            if (isInvalidTokenError(errorCode)) {
                 String failedToken = tokens.get(i);
-                log.warn("Token FCM invalido ({}), eliminando: {}", errorCode, failedToken);
-                fcmTokenRepository.findByToken(failedToken)
-                        .ifPresent(t -> fcmTokenRepository.deleteById(t.getId()));
+                int deleted = fcmTokenRepository.deleteByTokenAndUserId(failedToken, userId);
+                log.warn("Token FCM invalido ({}), borrados={} userId={}", errorCode, deleted, userId);
             } else {
-                log.warn("Error transitorio en token FCM ({}): {}", errorCode, tokens.get(i));
+                log.warn("Error en token FCM ({}), userId={}", errorCode, userId);
             }
         }
+    }
+
+    static boolean isInvalidTokenError(MessagingErrorCode errorCode) {
+        return errorCode == MessagingErrorCode.UNREGISTERED
+                || errorCode == MessagingErrorCode.SENDER_ID_MISMATCH;
     }
 
     private String localizedTitle(NotificationDTO notification) {

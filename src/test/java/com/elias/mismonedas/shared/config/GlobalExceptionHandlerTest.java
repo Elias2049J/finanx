@@ -87,7 +87,7 @@ class GlobalExceptionHandlerTest {
         HttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/fcm-tokens");
 
         var response = handler.handleDataIntegrity(
-                new DataIntegrityViolationException("uq_fcm_token_user_token"), request);
+                new DataIntegrityViolationException("uq_fcm_tokens_token"), request);
 
         assertThat(response.getBody().getCode()).isEqualTo("FCM_TOKEN_ALREADY_REGISTERED");
         assertThat(response.getBody().getMessage())

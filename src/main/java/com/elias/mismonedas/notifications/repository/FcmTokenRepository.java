@@ -24,12 +24,8 @@ public interface FcmTokenRepository extends JpaRepository<FcmToken, Long> {
 
     Optional<FcmToken> findByToken(String token);
 
-    Optional<FcmToken> findFirstByUser_IdAndToken(Long userId, String token);
-
     int deleteByUpdatedAtBefore(LocalDateTime cutoff);
 
-    @Query("SELECT f FROM FcmToken f WHERE f.user.id = :userId AND f.token = :token ORDER BY f.id ASC")
-    List<FcmToken> findAllByUser_IdAndToken(@Param("userId") Long userId, @Param("token") String token);
 
 
 
@@ -39,4 +35,25 @@ public interface FcmTokenRepository extends JpaRepository<FcmToken, Long> {
     @Modifying
     @Query("delete from FcmToken f where f.id = :id and f.user.id = :userId")
     int deleteByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            insert into public.fcm_tokens
+                (user_id, token, nombre_dispositivo, fecha_creacion, fecha_actualizacion)
+            values (:userId, :token, :deviceName, :now, :now)
+            on conflict on constraint uq_fcm_tokens_token
+            do update set user_id = excluded.user_id,
+                          nombre_dispositivo = coalesce(excluded.nombre_dispositivo, public.fcm_tokens.nombre_dispositivo),
+                          fecha_actualizacion = excluded.fecha_actualizacion
+            """, nativeQuery = true)
+    void upsertByToken(
+            @Param("userId") Long userId,
+            @Param("token") String token,
+            @Param("deviceName") String deviceName,
+            @Param("now") LocalDateTime now
+    );
+
+    @Modifying
+    @Query("delete from FcmToken f where f.token = :token and f.user.id = :userId")
+    int deleteByTokenAndUserId(@Param("token") String token, @Param("userId") Long userId);
 }

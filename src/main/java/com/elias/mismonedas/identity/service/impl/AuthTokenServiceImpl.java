@@ -80,8 +80,26 @@ public class AuthTokenServiceImpl implements AuthTokenService {
     @Override
     @Transactional
     public void revoke(String refreshToken) {
-        lockByHash(refreshToken)
-                .ifPresent(token -> refreshTokenRepository.revokeFamily(token.getFamilyId(), OffsetDateTime.now()));
+        revokeAndGetUserId(refreshToken);
+    }
+
+    @Override
+    @Transactional
+    public Optional<Long> revokeAndGetUserId(String refreshToken) {
+        OffsetDateTime now = OffsetDateTime.now();
+        Optional<RefreshToken> token = lockByHash(refreshToken);
+        if (token.isEmpty()) {
+            return Optional.empty();
+        }
+
+        RefreshToken refreshTokenEntity = token.get();
+        refreshTokenRepository.revokeFamily(refreshTokenEntity.getFamilyId(), now);
+        if (refreshTokenEntity.getRevokedAt() != null
+                || refreshTokenEntity.getExpiresAt() == null
+                || !refreshTokenEntity.getExpiresAt().isAfter(now)) {
+            return Optional.empty();
+        }
+        return Optional.of(refreshTokenEntity.getUser().getId());
     }
 
     @Override

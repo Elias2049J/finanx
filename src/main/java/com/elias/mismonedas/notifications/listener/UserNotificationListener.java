@@ -2,6 +2,7 @@ package com.elias.mismonedas.notifications.listener;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.event.UserDeletedEvent;
+import com.elias.mismonedas.identity.domain.event.UserLoggedOutEvent;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
@@ -18,6 +19,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -32,5 +34,15 @@ public class UserNotificationListener {
         notificationRepository.deleteAllByUser_Id(event.userId());
         fcmTokenRepository.deleteAllByUser_Id(event.userId());
         log.info("Deleted notifications and FCM tokens for user {}", event.userId());
+    }
+
+    @EventListener
+    @Transactional
+    public void onUserLoggedOut(UserLoggedOutEvent event) {
+        if (event.userId() == null || event.fcmToken() == null || event.fcmToken().isBlank()) {
+            return;
+        }
+        int deleted = fcmTokenRepository.deleteByTokenAndUserId(event.fcmToken(), event.userId());
+        log.info("FCM token removed on logout userId={} deleted={}", event.userId(), deleted);
     }
 }

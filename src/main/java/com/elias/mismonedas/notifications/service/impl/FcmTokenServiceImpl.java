@@ -34,41 +34,11 @@ public class FcmTokenServiceImpl implements FcmTokenService {
     public FcmTokenResponse register(RegisterFcmTokenRequest request) {
         User user = securityService.getCurrentUser();
         Long userId = user.getId();
-
-        FcmToken existing = fcmTokenRepository.findFirstByUser_IdAndToken(userId, request.getToken())
-                .orElse(null);
-
-        if (existing != null) {
-            existing.setUpdatedAt(LocalDateTime.now());
-            if (request.getDeviceName() != null) {
-                existing.setDeviceName(request.getDeviceName());
-            }
-            fcmTokenRepository.save(existing);
-
-            cleanDuplicates(userId, request.getToken(), existing.getId());
-
-            return toResponse(existing);
-        }
-
-        FcmToken fcmToken = FcmToken.builder()
-                .user(user)
-                .token(request.getToken())
-                .deviceName(request.getDeviceName())
-                .build();
-
-        fcmToken = fcmTokenRepository.save(fcmToken);
-        log.info("Token FCM registrado para userId={}, deviceName={}", userId, request.getDeviceName());
+        fcmTokenRepository.upsertByToken(userId, request.getToken(), request.getDeviceName(), LocalDateTime.now());
+        FcmToken fcmToken = fcmTokenRepository.findByToken(request.getToken())
+                .orElseThrow(() -> new IllegalStateException("FCM token disappeared after registration"));
+        log.info("Token FCM registrado o transferido para userId={}, deviceName={}", userId, request.getDeviceName());
         return toResponse(fcmToken);
-    }
-
-    private void cleanDuplicates(Long userId, String token, Long keepId) {
-        List<FcmToken> duplicates = fcmTokenRepository.findAllByUser_IdAndToken(userId, token);
-        for (FcmToken dup : duplicates) {
-            if (!dup.getId().equals(keepId)) {
-                fcmTokenRepository.deleteById(dup.getId());
-                log.warn("Token FCM duplicado eliminado: id={}, userId={}", dup.getId(), userId);
-            }
-        }
     }
 
     @Override

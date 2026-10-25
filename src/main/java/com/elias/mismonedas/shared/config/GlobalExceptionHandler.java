@@ -119,7 +119,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
         boolean duplicateFcmToken = ex.getMessage() != null
-                && ex.getMessage().contains("uq_fcm_token_user_token");
+                && ex.getMessage().contains("uq_fcm_tokens_token");
         return duplicateFcmToken
                 ? respond(HttpStatus.CONFLICT, "FCM_TOKEN_ALREADY_REGISTERED", "error.fcm_token_duplicate", request, ex)
                 : respond(HttpStatus.CONFLICT, "DATA_CONFLICT", "error.data_conflict", request, ex);

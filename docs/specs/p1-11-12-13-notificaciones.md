@@ -10,7 +10,7 @@ Se considera listo cuando:
 2. Una clave estable identifica cada combinación outbox/canal. El contrato es *at-least-once*, no exactly-once.
 3. Una migración Flyway impone unicidad global de FCM y aborta con diagnóstico si ya hay tokens compartidos; no corrige datos automáticamente.
 4. Registrar un token existente lo transfiere al usuario autenticado; respuestas `INVALID_ARGUMENT` no borran tokens.
-5. Logout conserva `refreshToken` requerido, acepta `fcmToken` opcional y elimina solo el token del propietario identificado por ese refresh token. El cliente Android actualiza el contrato y envía ambos valores.
+5. Logout usa `LogoutRequest` con `refreshToken` requerido y `fcmToken` opcional; el contrato de refresh no cambia. El cliente Android envía ambos valores y el backend elimina solo el token del propietario identificado por ese refresh token.
 6. Los eventos de negocio crean notificaciones después del commit; la purga usa el umbral solicitado.
 7. La DLQ se consume; el outbox programa como máximo cinco reintentos (1, 2, 4, 8 y 16 minutos). Después queda `FAILED` para replay manual exclusivo de `SYSTEM`.
 
@@ -19,7 +19,7 @@ Se considera listo cuando:
 - Stack backend: Java 21, Spring Boot 4, PostgreSQL 17, RabbitMQ 4, Flyway y JUnit. Cliente: Android/Kotlin/Compose, OpenAPI y Kotlin Retrofit generado.
 - Clave por envío: estable para `outboxId + channel`; puede correlacionar/deduplicar donde el proveedor lo soporte, pero no cierra la ventana de caída después de aceptación del proveedor.
 - La migración de tokens detecta duplicados entre usuarios y aborta; nunca elige propietario automáticamente.
-- El campo `fcmToken` del logout es opcional y aditivo para compatibilidad. El cliente borra localmente aunque falle la llamada remota.
+- El campo `fcmToken` de `LogoutRequest` es opcional y aditivo para compatibilidad. El cliente borra localmente aunque falle la llamada remota.
 - Se mantienen roles existentes; replay será `SYSTEM`, no se crea rol nuevo.
 - No se alteran otras reglas de sesión ni se añaden proveedores de notificaciones.
 
@@ -37,7 +37,7 @@ Se considera listo cuando:
 - Flyway V8: comprobar grupos duplicados, retirar unique `(user_id, token)` y crear unique global por token.
 - Implementar transferencia atómica al usuario actual y eliminación condicional por token + propietario del envío.
 - Limitar borrado FCM a `UNREGISTERED`/`SENDER_ID_MISMATCH`.
-- Agregar `fcmToken` opcional al contrato de logout; resolver el propietario vía refresh token y actualizar repositorio/ViewModel Android.
+- Agregar `LogoutRequest` con `fcmToken` opcional; resolver el propietario vía refresh token y actualizar repositorio/ViewModel Android y el modelo Kotlin generado.
 - Tests: migración con y sin duplicados, transferencia/race, clasificación de error y logout de un dispositivo sin tocar otros.
 
 ### 3. P1-13 — fase de eventos y purga

@@ -4,7 +4,9 @@ import com.elias.mismonedas.identity.adapter.auth.GoogleAuthService;
 import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.auth.GoogleLoginRequest;
 import com.elias.mismonedas.identity.dto.auth.LoginRequest;
+import com.elias.mismonedas.identity.dto.auth.LogoutRequest;
 import com.elias.mismonedas.identity.dto.auth.RefreshRequest;
+import com.elias.mismonedas.identity.domain.event.UserLoggedOutEvent;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
 import com.elias.mismonedas.identity.service.AuthService;
 import com.elias.mismonedas.identity.service.AuthTokenService;
@@ -14,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,6 +31,7 @@ public class AuthController {
     private final GoogleAuthService googleAuthService;
     private final UserService userService;
     private final AuthTokenService authTokenService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Operation(
             summary = "Login",
@@ -91,7 +95,7 @@ public class AuthController {
 
     @Operation(
             summary = "Logout",
-            description = "Revoca la sesion asociada al refresh token.",
+            description = "Revoca la sesion asociada al refresh token y, si se envía, elimina el token FCM de ese dispositivo.",
             operationId = "logout",
             tags = {"Auth"},
             responses = {
@@ -99,8 +103,11 @@ public class AuthController {
             }
     )
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest request) {
-        authTokenService.revoke(request.getRefreshToken());
+    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
+        authTokenService.revokeAndGetUserId(request.getRefreshToken())
+                .filter(userId -> request.getFcmToken() != null && !request.getFcmToken().isBlank())
+                .ifPresent(userId -> eventPublisher.publishEvent(
+                        new UserLoggedOutEvent(userId, request.getFcmToken())));
         return ResponseEntity.noContent().build();
     }
 }
