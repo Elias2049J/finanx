@@ -98,6 +98,7 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(restAuthenticationEntryPoint)
                         .bearerTokenResolver(bearerTokenResolver)
                         .jwt(jwt ->
                                 jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)

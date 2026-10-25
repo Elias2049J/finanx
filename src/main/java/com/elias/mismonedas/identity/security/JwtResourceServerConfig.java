@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -50,7 +51,7 @@ public class JwtResourceServerConfig {
 
                 return new Jwt(token, issuedAt, expiresAt, headers, claims);
             } catch (Exception ex) {
-                throw new JwtException("Invalid JWT", ex);
+                throw new BadJwtException("Invalid JWT", ex);
             }
         };
     }

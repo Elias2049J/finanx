@@ -8,6 +8,7 @@ import com.elias.mismonedas.identity.service.impl.JwtTokenServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 
 import java.time.Instant;
 import java.util.Date;
@@ -54,7 +55,13 @@ class JwtResourceServerConfigTest {
                 .sign(Algorithm.HMAC256(TEST_SECRET));
 
         assertThatThrownBy(() -> new JwtResourceServerConfig(jwtTokenService).jwtDecoder().decode(token))
-                .isInstanceOf(org.springframework.security.oauth2.jwt.JwtException.class);
+                .isInstanceOf(BadJwtException.class);
+    }
+
+    @Test
+    void shouldClassifyMalformedJwtAsAnInvalidTokenRatherThanAnInfrastructureFailure() {
+        assertThatThrownBy(() -> new JwtResourceServerConfig(jwtTokenService).jwtDecoder().decode("not-a-jwt"))
+                .isInstanceOf(BadJwtException.class);
     }
 
     @Test
@@ -68,6 +75,6 @@ class JwtResourceServerConfigTest {
                 .sign(Algorithm.HMAC256(TEST_SECRET));
 
         assertThatThrownBy(() -> new JwtResourceServerConfig(jwtTokenService).jwtDecoder().decode(token))
-                .isInstanceOf(org.springframework.security.oauth2.jwt.JwtException.class);
+                .isInstanceOf(BadJwtException.class);
     }
 }
