@@ -546,15 +546,24 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **236 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **258 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
 | P0-3 | `BillingListener` condicionado a `app.billing.auto-premium` (default `false`; `true` en `docker-compose.yml` y `.env.example`) | `586c510` | `BillingListenerTest` (3) |
 | P0-4 | `Budget.effectivePercentAlert()` con default 50 y rango [0,100]; `checkAllBudgets` aísla cada presupuesto en un `try/catch` | `91a103a` | `BudgetTest` (+2), `BudgetServiceImplTest` (1) |
 | P0-5 | `TransactionRepository.deactivateIfActive` (UPDATE condicional) y `disable()` revierte saldo solo si gana el claim | `8402e0a` | `TransactionServiceImplTest$DisableTest` (5) |
+| P0-7 | `create()` resuelve `subscriptionId` con ownership y `markCompleted`/webhook aplican `BillingService.applyConfirmedPayment()` (idempotente) | `6dd147d` | `PaymentServiceImplTest` (+6), `BillingServiceImplTest` (+6) |
+| P0-8 | La cuenta de Google se identifica por `sub`; si el email ya pertenece a una cuenta local se rechaza con 409 en vez de auto-vincular; `email_verified` obligatorio | `45980ed` | `GoogleAuthServiceImplTest` (5), `GoogleIdTokenVerifierTest` (5) |
+| Deuda | Flyway reactivado: V1 restaurado (checksum intacto), V2 recoge las columnas `locale` de `database/manual`, V3 añade identidad federada | `dc078ef` | Validación de checksum en el arranque del contexto |
 
-**Pendiente en P0:** P0-1 y P0-2 (gate de pago y refund), P0-6 (webhooks), P0-7 (pago→suscripción) y P0-8 (pre-hijack de Google). C-05 (`activate`/`renew` a `SYSTEM`) se pospuso a propósito: restringirlo ahora rompe `qa/e2e/billing.js` y deja el premium inalcanzable hasta cerrar P0-7.
+**Pendiente en P0:** P0-1 y P0-2 (gate de pago y refund) y P0-6 (webhooks). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto: P0-7 dejó el camino de activación listo, pero la pasarela manual no tiene forma de completar un pago, así que restringir los endpoints dejaría el premium inalcanzable.
+
+**Riesgo residual de P0-8 (decisión explícita: no ampliar alcance):**
+
+- El registro local sigue sin verificar el email, así que persiste el *email squatting*: un atacante puede registrar el email de otra persona y bloquearle el alta. Ya no obtiene acceso a la cuenta de la víctima, porque Google nunca auto-vincula.
+- No existe flujo de vinculación explícita, así que una cuenta local no puede pasar a usar Google.
+- La solución de raíz (verificación de email en el registro + `POST /auth/google/link` autenticado) queda como follow-up.
 
 **Efectos secundarios verificados:**
 
@@ -562,10 +571,12 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **23
 - El JPQL nuevo se valida al crear el repositorio durante ese mismo bootstrap.
 - `disable()` ya no escribe la entidad desde el persistence context: el UPDATE va directo a la base. Los listeners de `TransactionDisabledEvent` son `AFTER_COMMIT` y solo consumen el payload, así que no leen una entidad obsoleta.
 - El `catch` por presupuesto aísla errores de dominio (NPE, datos corruptos); si el fallo viene de la base, la transacción ya está rollback-only y el commit falla de forma explícita.
+- Flyway valida el V1 existente sin baseline y aplica V2/V3 sobre la base de desarrollo; una base limpia se crea desde cero con las tres migraciones.
+- Los scripts de `database/manual/` quedan como histórico: su contenido está versionado en V2.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Los P0 son de bajo esfuerzo y alto impacto, y ahora son **ocho**: además de la monetización burlable y la corrupción de saldo, el flujo de pago está incompleto (pagar no activa) y el auto-link de Google permite pre-hijack. La deuda operacional más cara sigue siendo el esquema sin Flyway, porque impide reproducir cualquiera de estos bugs en un entorno limpio.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Quedan tres P0: el gate de pago (P0-1), el refund sin ownership (P0-2) y los webhooks (P0-6). El esquema ya está versionado con Flyway, así que estos bugs se pueden reproducir en un entorno limpio.
 
 ---
 
@@ -576,3 +587,4 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **23
 | v1 | 2026-10-24 | Auditoría inicial: 6 P0, 9 P1, 14 P2; verificación del informe y auditoría k6 |
 | v2 | 2026-10-24 | Re-auditoría ampliada: +2 P0, +11 P1, +15 P2; correcciones de identity, billing, document, notifications y shared |
 | v2.1 | 2026-10-24 | Aplicados P0-3, P0-4 y P0-5 con tests; nueva sección 12 con el estado de aplicación |
+| v2.2 | 2026-10-24 | Aplicados P0-7 y P0-8; Flyway reactivado con V1/V2/V3 y riesgo residual de identidad documentado |
