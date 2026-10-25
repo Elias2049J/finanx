@@ -144,9 +144,9 @@ El host de esa URL se toma de `app.storage.seaweedfs.public-endpoint`
 endpoint debe ser alcanzable desde el cliente (el móvil)**, no solo desde el
 backend, porque el redirect lo sigue el dispositivo.
 
-La firma SigV4 incluye el **host**, así que el túnel/proxy que pongas delante
+La firma SigV4 incluye el **host y el puerto**, así que el túnel/proxy que pongas delante
 debe reenviar el `Host` original y no reescribir la ruta (ngrok y cloudflared lo
-hacen; en nginx es `proxy_set_header Host $host;`).
+hacen; en nginx usa `proxy_set_header Host $http_host;` para conservar el puerto).
 
 ### Desarrollo (ngrok) — la opción recomendada
 

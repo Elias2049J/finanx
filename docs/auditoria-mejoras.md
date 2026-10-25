@@ -404,7 +404,8 @@ Comparación con la corrida anterior (818 VUs): ~520 req/s con p95 50 ms. El sal
 - Sesiones: access TTL 5-15 min, `jti`/`tokenVersion`, revocación en logout/password change y secreto fail-fast (P1-14).
 - Borrado/reset de cuenta completo y en orden de dependencias (P1-15).
 - Billing: validar monto/moneda, comparar webhook, dunning de `PAST_DUE`, plan = `ACTIVE && currentPeriodEnd > now`, cancel-at-period-end (P1-16/17).
-- Límite de píxeles en imágenes y `Host $http_host` para S3 (P1-18/19).
+- ✅ P1-18: límite de 5 MiB y 20 megapíxeles comprobado antes de decodificar (`d502ef6`).
+- ✅ P1-19: nginx conserva el host y puerto requeridos por SigV4 (`6521d01`); falta validar la descarga end-to-end con Docker.
 - ✅ P1-20: normalización única de email y unique case-insensitive (`255b21d`).
 
 ### Fase 2 — Rendimiento y consistencia (2-4 semanas)
@@ -547,7 +548,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **306 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **310 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -565,6 +566,8 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | P1-5 | La recuperación de idempotencia corre fuera de la transacción abortada: el camino HTTP usa `TransactionTemplate` y recupera en una transacción limpia; el scheduler sigue `@Transactional` | `e04c29a` | `TransactionServiceImplTest` (adaptado), `TransactionIdempotencyConcurrencyTest` (2) |
 | P1-6 | Parcial por decisión: Gemini ya no devuelve/persiste un mensaje sintético; error tipado 503, bulkhead espera 1 s; no se usa modelo fallback | `8ab025b` | `ChatGeminiAdapterTest`, `GlobalExceptionHandlerTest` |
 | P1-7 | AiUtils permite términos naturales como «consulta», «base de datos» y «actúa como asesor»; su recall y falsos positivos se midieron offline | `8ab025b`, `6985747` | `AiUtilsTest` (3), evaluación balanceada (40 prompts) |
+| P1-18 | Rechazo de imágenes mayores de 5 MiB o 20 MP; dimensiones inspeccionadas con `ImageReader` antes de decodificar | `d502ef6` | `ImageServiceImplTest` (+2) |
+| P1-19 | Nginx reenvía `$http_host` en el proxy de storage para preservar el puerto de la URL SigV4 | `6521d01` | `NginxStorageProxyConfigurationTest`, `SeaweedFsConfigurationTest`; descarga real pendiente por Docker no disponible |
 | P1-9 | El gasto de presupuesto suma solo movimientos cuyo `id_usuario` coincide con el dueño del presupuesto | `27b710d` | `TransactionSpecificationsTest` (+1, PostgreSQL), `BudgetAnalyticsServiceImplTest` |
 | P1-10 | OCR y `TransactionServiceImpl` rechazan importes no positivos antes de completar el recibo o persistir/actualizar saldo | `86038ae` | `ReceiptScanServiceImplTest` (+3), `TransactionServiceImplTest` (+2) |
 | P1-20 | Registro, actualización y Google normalizan email; V6 backfillea y añade unique sobre `lower(email)`, con guard que aborta ante duplicados | `255b21d` | `UserServiceImplTest` (3), `GoogleAuthServiceImplTest` (5), `UserEmailNormalizationTest` (PostgreSQL) |
@@ -573,7 +576,7 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
-**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9, P1-10 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. **P1-7 parcial:** ya no bloquea frases comunes, pero la evaluación muestra falsos positivos y evasiones. El resto de P1 sigue abierto.
+**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9, P1-10, P1-18, P1-19 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. **P1-7 parcial:** ya no bloquea frases comunes, pero la evaluación muestra falsos positivos y evasiones. El resto de P1 sigue abierto.
 
 **Aplicado en P2:** P2-6. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
 
@@ -610,10 +613,12 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 - Chat sin fallback: ante el fallo del modelo primario, `ChatUnavailableException` produce 503 y evita persistir una respuesta sintética como 200. `max-wait-duration` pasa a 1 s. El fallback model se quitó de la configuración/plantilla y no se implementa.
 - `AiUtils` conserva textos normales del usuario y ya no sustituye palabras como «consulta» o «base de datos» por un placeholder; se mantienen el límite, escape de formato y reglas de detección de overrides explícitos.
 - Evaluación de `AiUtils.sanitizeUserPrompt` exclusivamente (sin llamar a Gemini): corpus artesanal balanceado de 40 textos, 20 benignos y 20 maliciosos, mitad español y mitad inglés por clase. Global: TP=18, FN=2, FP=1, TN=19; precisión 94,7%, recall 90%, especificidad 95%, exactitud 92,5%. Español (10+10): TP=9, FN=1, FP=0, TN=10; inglés (10+10): TP=9, FN=1, FP=1, TN=9. El FP es una frase benigna sobre ignorar un consejo previo; los FN son variantes de roleplay. Es una medición dirigida, no una estimación estadística de tráfico real ni una garantía de seguridad.
+- `ImageServiceImpl` rechaza cargas sobre 5 MiB y usa `ImageReader` para comprobar dimensiones antes de decodificar; el máximo es 20 MP. Ambos límites se refuerzan en el servicio, además del límite HTTP.
+- El presigner conserva el puerto público configurado (`localhost:8081`) y nginx ahora reenvía el `Host` original (`$http_host`) al upstream de SeaweedFS. Se verificó con tests locales la URL firmada y la directiva; la descarga real a través de Docker no pudo probarse porque el daemon de Docker Desktop no estaba activo.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9, P1-10 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas. P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V6 desde cero.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9, P1-10, P1-18, P1-19 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas. P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V6 desde cero.
 
 ---
 
@@ -636,3 +641,4 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → *
 | v2.11 | 2026-10-25 | Aplicado P1-20: normalización canónica, diagnóstico sin duplicados en BD local y unique `lower(email)` con guard de migración; V1–V6 probadas en BD vacía; 300 tests pasan |
 | v2.12 | 2026-10-25 | P1-6 parcial sin fallback model (error 503 y bulkhead 1 s); P1-7 deja pasar lenguaje natural; 305 tests pasan |
 | v2.13 | 2026-10-25 | Evaluación offline del filtro de prompts sin invocar IA: 40 casos balanceados, matriz de confusión y métricas ES/EN; P1-7 registrado como parcial; 306 tests pasan |
+| v2.14 | 2026-10-25 | Aplicado P1-18 (5 MiB/20 MP pre-decodificación) y P1-19 (`$http_host` con puerto); la descarga end-to-end queda pendiente por Docker inactivo; 310 tests pasan |
