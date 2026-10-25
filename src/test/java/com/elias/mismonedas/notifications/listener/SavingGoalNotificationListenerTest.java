@@ -43,7 +43,7 @@ class SavingGoalNotificationListenerTest {
     @BeforeEach
     void setUp() {
         listener = new SavingGoalNotificationListener(
-                notificationService, formatter, userRepository, savingGoalRepository);
+                notificationService, formatter, userRepository, savingGoalRepository, Runnable::run);
     }
 
     @Test

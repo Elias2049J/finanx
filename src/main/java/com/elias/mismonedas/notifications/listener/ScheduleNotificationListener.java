@@ -4,6 +4,7 @@ import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
+import com.elias.mismonedas.notifications.port.NotificationTransactionRunner;
 import com.elias.mismonedas.notifications.service.NotificationService;
 import com.elias.mismonedas.notifications.template.NotificationMessageFormatter;
 import com.elias.mismonedas.notifications.template.RenderedNotification;
@@ -18,6 +19,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ScheduleNotificationListener {
 
     private final NotificationService notificationService;
@@ -25,36 +27,49 @@ public class ScheduleNotificationListener {
     private final UserRepository userRepository;
     private final BudgetRepository budgetRepository;
     private final ScheduleRepository scheduleRepository;
+    private final NotificationTransactionRunner transactionRunner;
 
-    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTransactionRegistered(TransactionRegisteredEvent event) {
         if (event.scheduleId() == null) {
             return;
         }
 
-        User user = userRepository.getReferenceById(event.userId());
+        try {
+            transactionRunner.runInNewTransaction(() -> {
+                User user = userRepository.getReferenceById(event.userId());
+                RenderedNotification rendered = formatter.transactionScheduleExecuted(event, user);
 
-        RenderedNotification rendered = formatter.transactionScheduleExecuted(event, user);
-
-        notificationService.generate(builder -> builder
-                .user(user)
-                .schedule(scheduleRepository.getReferenceById(event.scheduleId()))
-                .type(NotificationType.INFO)
-                .message(rendered.text())
-                .htmlMessage(rendered.html()));
+                notificationService.generate(builder -> builder
+                        .user(user)
+                        .schedule(scheduleRepository.getReferenceById(event.scheduleId()))
+                        .type(NotificationType.INFO)
+                        .message(rendered.text())
+                        .htmlMessage(rendered.html()));
+            });
+        } catch (RuntimeException ex) {
+            log.error("scheduled_transaction_notification_failed_after_commit user_id={} schedule_id={}",
+                    event.userId(), event.scheduleId(), ex);
+        }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBudgetRegistered(BudgetRegisteredEvent event) {
-        User user = userRepository.getReferenceById(event.userId());
+        try {
+            transactionRunner.runInNewTransaction(() -> {
+                User user = userRepository.getReferenceById(event.userId());
+                RenderedNotification rendered = formatter.budgetScheduleExecuted(event, user);
 
-        RenderedNotification rendered = formatter.budgetScheduleExecuted(event, user);
-
-        notificationService.generate(builder -> builder
-                .user(user)
-                .budget(budgetRepository.getReferenceById(event.budgetId()))
-                .type(NotificationType.INFO)
-                .message(rendered.text())
-                .htmlMessage(rendered.html()));
+                notificationService.generate(builder -> builder
+                        .user(user)
+                        .budget(budgetRepository.getReferenceById(event.budgetId()))
+                        .type(NotificationType.INFO)
+                        .message(rendered.text())
+                        .htmlMessage(rendered.html()));
+            });
+        } catch (RuntimeException ex) {
+            log.error("scheduled_budget_notification_failed_after_commit user_id={} budget_id={}",
+                    event.userId(), event.budgetId(), ex);
+        }
     }
 }

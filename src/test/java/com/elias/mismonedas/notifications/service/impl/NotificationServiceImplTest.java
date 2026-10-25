@@ -6,6 +6,7 @@ import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.notifications.domain.entity.Notification;
+import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
 import com.elias.mismonedas.notifications.dto.notification.NotificationDTO;
 import com.elias.mismonedas.notifications.mapper.NotificationMapper;
@@ -22,8 +23,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -94,5 +101,28 @@ class NotificationServiceImplTest {
         assertThat(payload.getTitle()).isEqualTo("Finanx - Notice");
         assertThat(payload.getMessage()).isEqualTo("You exceeded your budget.");
         assertThat(payload.isEmailNotifications()).isTrue();
+    }
+
+    @Test
+    void shouldUseTheRequestedPurgeThresholdInTheUsersTimeZone() {
+        User user = new User();
+        user.setId(7L);
+        user.setPreferences(UserPreferences.builder()
+                .locale("es-PE")
+                .timeZone(TimeZone.AMERICA_LIMA)
+                .emailNotifications(true)
+                .build());
+        LocalDateTime threshold = LocalDateTime.of(2026, 4, 10, 9, 30);
+        when(securityService.getCurrentUser()).thenReturn(user);
+        when(notificationRepository.findAllByUser_IdAndStateAndSentAtBefore(
+                eq(7L), eq(NotificationState.SENT), any())).thenReturn(List.of());
+
+        service.purgeOlderThan(threshold);
+
+        ArgumentCaptor<OffsetDateTime> cutoff = ArgumentCaptor.forClass(OffsetDateTime.class);
+        verify(notificationRepository).findAllByUser_IdAndStateAndSentAtBefore(
+                eq(7L), eq(NotificationState.SENT), cutoff.capture());
+        assertThat(cutoff.getValue()).isEqualTo(
+                threshold.atZone(ZoneId.of("America/Lima")).toOffsetDateTime());
     }
 }

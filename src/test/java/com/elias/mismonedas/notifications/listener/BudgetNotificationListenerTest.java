@@ -24,6 +24,7 @@ import java.time.OffsetDateTime;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -44,7 +45,7 @@ class BudgetNotificationListenerTest {
     @BeforeEach
     void setUp() {
         listener = new BudgetNotificationListener(
-                notificationService, formatter, userRepository, budgetRepository);
+                notificationService, formatter, userRepository, budgetRepository, Runnable::run);
     }
 
     @Test
@@ -82,6 +83,16 @@ class BudgetNotificationListenerTest {
         assertThat(notification.getType()).isEqualTo(NotificationType.WARNING);
         assertThat(notification.getMessage()).isEqualTo("NEAR");
         assertThat(notification.getBudget()).isSameAs(budget);
+    }
+
+    @Test
+    void shouldNotFailCommittedBudgetOperationWhenNotificationCreationFails() {
+        when(userRepository.getReferenceById(2L)).thenThrow(new IllegalStateException("read failed"));
+
+        assertThatCode(() -> listener.onBudgetExceeded(new BudgetExceededEvent(
+                1L, 2L, "Comida", BigDecimal.ONE, BigDecimal.TEN, "PEN",
+                OffsetDateTime.now(), BigDecimal.ONE, "Efectivo")))
+                .doesNotThrowAnyException();
     }
 
     private Notification capturedNotification() {

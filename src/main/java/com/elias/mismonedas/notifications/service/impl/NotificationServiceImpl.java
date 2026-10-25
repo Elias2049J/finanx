@@ -154,7 +154,10 @@ public class NotificationServiceImpl implements NotificationService {
     public void purgeOlderThan(LocalDateTime threshold) {
         User u = securityService.getCurrentUser();
         Long userId = u.getId();
-        List<Notification> nList = notificationRepository.findAllByUser_IdAndStateAndSentAtBefore(userId, NotificationState.SENT, OffsetDateTime.now(u.getTimeZone().toZoneId()));
+        ZoneId zoneId = u.getTimeZone().toZoneId();
+        OffsetDateTime cutoff = threshold.atZone(zoneId).toOffsetDateTime();
+        List<Notification> nList = notificationRepository.findAllByUser_IdAndStateAndSentAtBefore(
+                userId, NotificationState.SENT, cutoff);
         nList.forEach(this::disable);
         notificationRepository.saveAll(nList);
     }
