@@ -27,7 +27,7 @@ class JwtResourceServerConfigTest {
         User user = new User();
         user.setId(42L);
         user.setPreferences(UserPreferences.builder().locale("en-US").build());
-        String token = jwtTokenService.generateToken(user);
+        String token = jwtTokenService.generateToken(user, "device-family");
 
         var decoded = new JwtResourceServerConfig(jwtTokenService).jwtDecoder().decode(token);
 

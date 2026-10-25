@@ -30,9 +30,10 @@ class JwtTokenServiceImplTest {
         user.setId(42L);
         user.setPreferences(UserPreferences.builder().locale("en-US").build());
 
-        String token = jwtTokenService.generateToken(user);
+        String token = jwtTokenService.generateToken(user, "device-family");
 
         assertThat(JWT.decode(token).getClaim("locale").asString()).isEqualTo("en-US");
+        assertThat(JWT.decode(token).getClaim("sid").asString()).isEqualTo("device-family");
     }
 
     @Test
@@ -40,9 +41,29 @@ class JwtTokenServiceImplTest {
         User user = new User();
         user.setId(42L);
 
-        String token = jwtTokenService.generateToken(user);
+        String token = jwtTokenService.generateToken(user, "device-family");
 
         assertThat(JWT.decode(token).getClaim("locale").asString()).isEqualTo("es-PE");
+    }
+
+    @Test
+    void shouldSetTheAccessTokenLifetimeTo900Seconds() {
+        User user = new User();
+        user.setId(42L);
+
+        var jwt = JWT.decode(jwtTokenService.generateToken(user, "device-family"));
+
+        assertThat(jwt.getExpiresAtAsInstant().getEpochSecond()
+                - jwt.getIssuedAtAsInstant().getEpochSecond()).isEqualTo(900L);
+    }
+
+    @Test
+    void shouldRejectMissingSessionFamilyWhenGeneratingToken() {
+        User user = new User();
+        user.setId(42L);
+
+        assertThatThrownBy(() -> jwtTokenService.generateToken(user, " "))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

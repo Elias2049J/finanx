@@ -8,6 +8,7 @@ public final class Constants {
     public static final String AUTH_HEADER = "Authorization";
     public static final String BEARER_PREFIX = "Bearer ";
     public static final String AUTHORITIES_CLAIM = "authorities";
+    public static final String SESSION_ID_CLAIM = "sid";
 
     public static final String EMAIL_CLAIM = "email";
     public static final String NAME_CLAIM = "name";

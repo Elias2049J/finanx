@@ -45,8 +45,9 @@ public class AuthTokenServiceImpl implements AuthTokenService {
         if (isDisabled(user)) {
             throw new DisabledException("User account is not enabled");
         }
-        String refreshToken = createRefreshToken(user, UUID.randomUUID().toString());
-        return respond(user, refreshToken);
+        String familyId = UUID.randomUUID().toString();
+        String refreshToken = createRefreshToken(user, familyId);
+        return respond(user, refreshToken, familyId);
     }
 
     @Override
@@ -74,7 +75,7 @@ public class AuthTokenServiceImpl implements AuthTokenService {
         current.setRevokedAt(now);
         current.setReplacedByHash(hash(rotated));
 
-        return respond(user, rotated);
+        return respond(user, rotated, current.getFamilyId());
     }
 
     @Override
@@ -108,8 +109,8 @@ public class AuthTokenServiceImpl implements AuthTokenService {
         refreshTokenRepository.revokeAllForUser(userId, OffsetDateTime.now());
     }
 
-    private AuthResponse respond(User user, String refreshToken) {
-        return new AuthResponse(jwtTokenService.generateToken(user), refreshToken, accessExpirationSeconds);
+    private AuthResponse respond(User user, String refreshToken, String familyId) {
+        return new AuthResponse(jwtTokenService.generateToken(user, familyId), refreshToken, accessExpirationSeconds);
     }
 
     private String createRefreshToken(User user, String familyId) {

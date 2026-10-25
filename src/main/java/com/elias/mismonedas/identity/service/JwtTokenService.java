@@ -6,7 +6,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 
 public interface JwtTokenService {
-    String generateToken(UserDetails user);
+    String generateToken(UserDetails user, String sessionId);
 
     DecodedJWT verify(String token);
 

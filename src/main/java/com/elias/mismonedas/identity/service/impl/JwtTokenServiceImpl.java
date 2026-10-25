@@ -66,7 +66,10 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     }
 
     @Override
-    public String generateToken(UserDetails details) {
+    public String generateToken(UserDetails details, String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new IllegalArgumentException("JWT session id is required");
+        }
         Instant now = Instant.now();
 
         List<String> authorities = details.getAuthorities().stream()
@@ -98,6 +101,7 @@ public class JwtTokenServiceImpl implements JwtTokenService {
                 .withSubject(subject)
                 .withIssuedAt(Date.from(now))
                 .withExpiresAt(Date.from(now.plusSeconds(expirationSeconds)))
+                .withClaim(Constants.SESSION_ID_CLAIM, sessionId)
                 .withClaim(Constants.AUTHORITIES_CLAIM, authorities)
                 .withClaim(Constants.LOCALE_CLAIM, locale);
 

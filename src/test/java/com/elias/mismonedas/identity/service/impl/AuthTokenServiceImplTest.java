@@ -2,6 +2,7 @@ package com.elias.mismonedas.identity.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.RefreshToken;
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.repository.RefreshTokenRepository;
 import com.elias.mismonedas.identity.service.JwtTokenService;
 import org.junit.jupiter.api.Test;
@@ -12,9 +13,13 @@ import java.time.OffsetDateTime;
 import java.util.HexFormat;
 import java.util.Optional;
 
+import org.springframework.security.core.userdetails.UserDetails;
+import org.mockito.ArgumentCaptor;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -25,6 +30,41 @@ class AuthTokenServiceImplTest {
     private final RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
     private final JwtTokenService jwtTokenService = mock(JwtTokenService.class);
     private final AuthTokenServiceImpl service = new AuthTokenServiceImpl(refreshTokenRepository, jwtTokenService);
+
+    @Test
+    void shouldBindIssuedAccessTokenToTheCreatedRefreshFamily() {
+        User user = user(80L);
+        when(jwtTokenService.generateToken(any(UserDetails.class), anyString())).thenReturn("access-token");
+
+        AuthResponse response = service.issue(user);
+
+        ArgumentCaptor<RefreshToken> refreshToken = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository).save(refreshToken.capture());
+        verify(jwtTokenService).generateToken(user, refreshToken.getValue().getFamilyId());
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+    }
+
+    @Test
+    void shouldKeepTheRefreshFamilyWhenRotatingAccessToken() throws Exception {
+        User user = user(80L);
+        RefreshToken current = RefreshToken.builder()
+                .user(user)
+                .familyId("same-device-family")
+                .tokenHash(hash("refresh-token"))
+                .expiresAt(OffsetDateTime.now().plusDays(1))
+                .build();
+        when(refreshTokenRepository.findByTokenHashForUpdate(hash("refresh-token")))
+                .thenReturn(Optional.of(current));
+        when(jwtTokenService.generateToken(any(UserDetails.class), anyString())).thenReturn("rotated-access-token");
+
+        AuthResponse response = service.refresh("refresh-token");
+
+        ArgumentCaptor<RefreshToken> rotated = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository).save(rotated.capture());
+        verify(jwtTokenService).generateToken(user, "same-device-family");
+        assertThat(rotated.getValue().getFamilyId()).isEqualTo("same-device-family");
+        assertThat(response.getAccessToken()).isEqualTo("rotated-access-token");
+    }
 
     @Test
     void shouldResolveRefreshTokenOwnerWhileRevokingItsFamily() throws Exception {
