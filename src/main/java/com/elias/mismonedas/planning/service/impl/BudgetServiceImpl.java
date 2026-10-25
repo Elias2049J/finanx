@@ -199,6 +199,23 @@ public class BudgetServiceImpl implements BudgetService {
                 log.debug("Budget {} con schedule no tiene periodo válido", b.getId());
                 return;
             }
+
+            // Cada materializacion recurrente cubre su propia ventana [start, end].
+            // Cuando la ventana cierra hay que congelar lo gastado en ELLA, no en el
+            // periodo actual: si no, el presupuesto queda ACTIVE para siempre y el
+            // recheck lo compara contra el periodo equivocado.
+            if (b.getEnd() != null && !now.isBefore(b.getEnd())) {
+                OffsetDateTime frozenStart = Optional.ofNullable(b.getStart()).orElse(periodStart);
+                BigDecimal finalSpent = ConvertedAmounts.sumConverted(
+                        transactionRepository.sumAmountsByCurrencyForCategory(
+                                userId, c.getId(), TransactionType.SPENT, frozenStart, b.getEnd()),
+                        b.getCurrencyCode(), currencyConverter);
+                b.setFrozenSpent(finalSpent);
+                b.setState(BudgetState.FINALIZED);
+                log.info("FINALIZED recurring Budget id={} desc={} frozenSpent={}",
+                        b.getId(), b.getDescription(), finalSpent);
+                return;
+            }
         } else {
             periodStart = Optional.ofNullable(b.getStart()).orElse(b.getCreatedAt());
             if (b.getEnd() != null && now.isAfter(b.getEnd())) {
