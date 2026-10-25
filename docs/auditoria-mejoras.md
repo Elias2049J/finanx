@@ -392,9 +392,9 @@ Comparación con la corrida anterior (818 VUs): ~520 req/s con p95 50 ms. El sal
 
 ### Fase 1 — P1 (1-2 semanas)
 
-- Ancla de recurrencia (`RecurrenceServiceImpl`) + tests de 31-ene, 29-feb, bisemanal.
-- Claim atómico de ocurrencia + clave determinista en `ScheduleServiceImpl`.
-- `REQUIRES_NEW` para la recuperación de idempotencia.
+- ✅ P1-1/P1-2: ancla de recurrencia (`RecurrenceServiceImpl`) + tests de 31-ene y ancla mensual/anual.
+- ✅ P1-4: claim atómico de ocurrencia + clave determinista en `ScheduleServiceImpl` (`de41784`).
+- ✅ P1-5: recuperación de idempotencia fuera de la transacción abortada (`e04c29a`).
 - Fallback real de Gemini + bulkhead con espera + error tipado.
 - Sanitizer sin blocklist de lenguaje natural.
 - Catch de `CurrencyConversionException` en saving goals (degradar a `partial`).
@@ -546,7 +546,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **278 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o test` → **290 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -560,12 +560,16 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **27
 | P1-1 | Un presupuesto recurrente se finaliza cuando `now >= end` y congela el gasto de su propia ventana `[start, end]` | `bbb3d00` | `BudgetServiceImplTest` (+2) |
 | P1-2 | Mensual y anual toman el día (y el mes) del ancla `rule.start`, no de la ocurrencia previa | `aafe06e` | `RecurrenceServiceImplTest` (4) |
 | P1-3 | `totalsOf` degrada a parcial si falta una tasa: omite la fila, marca `partial` y expone `missingRates`; sin 503 | `a2aa2d7` | `SavingGoalServiceImplTest` (2), `SavingGoalTest` (+0) |
+| P1-4 | Claim condicional atómico para transacciones y presupuestos; clave `schedule:{id}:{epochMilli}`; V4 versiona la columna y unique de idempotencia de presupuestos | `de41784` | `ScheduleClaimConcurrencyTest` (4, PostgreSQL), `ScheduleServiceImplBatchTest` |
 | P1-5 | La recuperación de idempotencia corre fuera de la transacción abortada: el camino HTTP usa `TransactionTemplate` y recupera en una transacción limpia; el scheduler sigue `@Transactional` | `e04c29a` | `TransactionServiceImplTest` (adaptado), `TransactionIdempotencyConcurrencyTest` (2) |
+| P2-6 | Fallos transitorios conservan `RUNNING` y se reintentan en el siguiente ciclo; presupuesto ya materializado avanza sin duplicar; los fallos permanentes quedan `ERROR` con log estructurado | `de41784` | `ScheduleServiceImplBatchTest` |
 | Deuda | Flyway reactivado: V1 restaurado (checksum intacto), V2 recoge las columnas `locale` de `database/manual`, V3 añade identidad federada | `dc078ef` | Validación de checksum en el arranque del contexto |
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
-**Aplicado en P1:** P1-1, P1-2, P1-3 y P1-5. El resto de P1 sigue abierto.
+**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4 y P1-5. El resto de P1 sigue abierto.
+
+**Aplicado en P2:** P2-6. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
 
 **Riesgo residual de P0-8 (decisión explícita: no ampliar alcance):**
 
@@ -590,10 +594,13 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **27
 - El ancla mensual/anual se toma de `rule.start`; si el día no existe en el mes destino se usa el último día (31-ene → 28/29-feb → 31-mar).
 - Una tasa ausente en una meta de ahorro ya no devuelve 503: la meta se marca `partial`, se omite la fila no convertible y el par afectado aparece en `missingRates` (mismo contrato que `WalletBalanceResponse`).
 - `POST /transactions` ya no devuelve 500 si dos peticiones con la misma `Idempotency-Key` chocan: la segunda recupera la fila de la primera en una transacción limpia. El camino del scheduler no cambia y sigue unido a su transacción.
+- El claim de scheduler usa `UPDATE programacion ... WHERE proxima_ejecucion = :expected`; la concurrencia real confirma un ganador para transacciones y presupuestos. Se descartó JPQL sobre `Schedule`: Hibernate 7 traduce el update de herencia `JOINED` a un CTE cuya selección no revalida el predicado después de esperar el lock de fila.
+- El claim, materialización de la ocurrencia y avance de `nextRunAt` siguen en la misma transacción. Si el presupuesto determinista ya existe, el scheduler avanza sin publicar otra vez el evento.
+- Un fallo transitorio reconocido por Spring/JDBC deja intacta la ocurrencia y la programación `RUNNING`; el próximo ciclo la reintenta. Los errores permanentes quedan `ERROR` y se registran con campos estructurados.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. El resto de P0 está corregido, los dos primeros P1 también, y el esquema está versionado con Flyway, así que los bugs se pueden reproducir en un entorno limpio.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5 están aplicados, P2-6 ya reintenta fallos transitorios, y el esquema está versionado con Flyway, así que los bugs se pueden reproducir en un entorno limpio.
 
 ---
 
@@ -610,3 +617,4 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **27
 | v2.5 | 2026-10-25 | Aplicados P1-1 (finalización de presupuestos recurrentes) y P1-2 (ancla mensual/anual); semanal revisado sin cambio |
 | v2.6 | 2026-10-25 | Aplicado P1-3 (degradación parcial de metas de ahorro ante tasas ausentes) |
 | v2.7 | 2026-10-25 | Aplicado P1-5 (recuperación de idempotencia tras el rollback; scheduler sin cambios) |
+| v2.8 | 2026-10-25 | Aplicados P1-4 (claim realmente atómico, clave determinista y V4) y P2-6 (reintento de fallos transitorios y replay de presupuestos); 290 tests pasan |
