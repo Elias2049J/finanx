@@ -10,11 +10,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.io.IOException;
 
@@ -49,6 +51,19 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getCode()).isEqualTo("AUTHENTICATION_REQUIRED");
         assertThat(response.getBody().getMessage())
                 .isEqualTo("Se requiere autenticación o la sesión no es válida.");
+    }
+
+    @Test
+    void shouldReturnNotFoundForUnmappedPath() {
+        HttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/webhooks/stripe");
+
+        var response = handler.handleNoResourceFound(
+                new NoResourceFoundException(HttpMethod.POST, "/api/v1/webhooks/stripe", "No resource"),
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().getCode()).isEqualTo("RESOURCE_NOT_FOUND");
     }
 
     @Test

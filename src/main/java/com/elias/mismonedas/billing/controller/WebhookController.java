@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/webhooks")
+@RequestMapping("/api/v1/webhooks")
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "app.billing.webhooks.enabled", havingValue = "true")
 public class WebhookController {

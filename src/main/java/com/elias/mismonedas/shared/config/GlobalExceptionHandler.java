@@ -26,6 +26,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.io.IOException;
@@ -125,6 +126,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex, HttpServletRequest request) {
+        return respond(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "error.not_found", request, ex);
+    }
+
+    /**
+     * Una ruta sin controlador debe ser 404, no 500. Sin este handler el catch-all
+     * de {@link Exception} convierte el {@code NoResourceFoundException} en 500.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request) {
         return respond(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "error.not_found", request, ex);
     }
 
