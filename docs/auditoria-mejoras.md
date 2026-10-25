@@ -546,7 +546,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **258 tests, 0 fallos, BUILD SUCCESS**.
+Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **266 tests, 0 fallos, BUILD SUCCESS**.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -556,9 +556,10 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **25
 | P0-7 | `create()` resuelve `subscriptionId` con ownership y `markCompleted`/webhook aplican `BillingService.applyConfirmedPayment()` (idempotente) | `6dd147d` | `PaymentServiceImplTest` (+6), `BillingServiceImplTest` (+6) |
 | P0-8 | La cuenta de Google se identifica por `sub`; si el email ya pertenece a una cuenta local se rechaza con 409 en vez de auto-vincular; `email_verified` obligatorio | `45980ed` | `GoogleAuthServiceImplTest` (5), `GoogleIdTokenVerifierTest` (5) |
 | P0-2 | `refund()` valida `COMPLETED/DISPUTED → REFUNDED` antes de llamar al gateway y cancela la suscripción con `cancelForRefund()` | `388a08e` | `PaymentServiceImplTest$RefundTest` (3), `BillingServiceImplTest$CancelForRefundTest` (3) |
+| P0-6 | `WebhookController` solo existe con `app.billing.webhooks.enabled=true` (default `false` → 404); `/webhooks/**` queda `permitAll()` para cuando se encienda; `PaymentExpirationScheduler` expira `PENDING` > 24 h y `PROCESSING` > 1 h | `a63d93f` | `PaymentServiceImplTest$ExpireStalePaymentsTest` (2) |
 | Deuda | Flyway reactivado: V1 restaurado (checksum intacto), V2 recoge las columnas `locale` de `database/manual`, V3 añade identidad federada | `dc078ef` | Validación de checksum en el arranque del contexto |
 
-**Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable) y P0-6 (webhooks). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
+**Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
 **Riesgo residual de P0-8 (decisión explícita: no ampliar alcance):**
 
@@ -575,10 +576,12 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **25
 - Flyway valida el V1 existente sin baseline y aplica V2/V3 sobre la base de desarrollo; una base limpia se crea desde cero con las tres migraciones.
 - Los scripts de `database/manual/` quedan como histórico: su contenido está versionado en V2.
 - Un reembolso deja la suscripción en `CANCELED` (decisión de producto). Es terminal: para volver a PREMIUM hace falta crear una suscripción nueva.
+- Habilitar los webhooks exige implementar `PaymentPort.verifyWebhookSignature` y `parseWebhookPayload`; con el adaptador manual todo request recibe 401 aunque el endpoint esté encendido.
+- La expiración de pagos no toca la suscripción: un pago `FAILED` por timeout deja la suscripción en `PENDING` y el usuario puede reintentar con un pago nuevo.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Quedan dos P0 abiertos: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real, y los webhooks (P0-6). El esquema ya está versionado con Flyway, así que estos bugs se pueden reproducir en un entorno limpio.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. El resto de P0 está corregido y el esquema está versionado con Flyway, así que los bugs se pueden reproducir en un entorno limpio.
 
 ---
 
@@ -591,3 +594,4 @@ Aplicado sobre `master` el 2026-10-24. Verificación: `.\mvnw.cmd test` → **25
 | v2.1 | 2026-10-24 | Aplicados P0-3, P0-4 y P0-5 con tests; nueva sección 12 con el estado de aplicación |
 | v2.2 | 2026-10-24 | Aplicados P0-7 y P0-8; Flyway reactivado con V1/V2/V3 y riesgo residual de identidad documentado |
 | v2.3 | 2026-10-25 | Aplicado P0-2 (validación previa al gateway + cancelación de suscripción); P0-1 pospuesto por dependencia de pasarela |
+| v2.4 | 2026-10-25 | Aplicado P0-6 (webhooks apagados por flag + expiración de pagos estancados); P0-1 sigue pospuesto |
