@@ -155,6 +155,42 @@ class TransactionServiceImplTest {
         }
 
         @Test
+        void shouldRejectNonPositiveAmountBeforePersisting() {
+            request.setAmount(new BigDecimal("-0.01"));
+            transaction.setAmount(request.getAmount());
+            when(transactionMapper.toEntity(request)).thenReturn(transaction);
+            when(walletService.getOwned(10L, 1L)).thenReturn(wallet);
+            when(categoryService.getOwned(100L, 1L)).thenReturn(category);
+            when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
+
+            assertThatThrownBy(() -> service.create(request, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("mayor a cero");
+
+            verify(transactionRepository, never()).save(any(Transaction.class));
+            verify(walletService, never()).updateBalance(anyLong(), anyLong(), any(), any());
+            verifyNoInteractions(eventPublisher);
+        }
+
+        @Test
+        void shouldRejectZeroAmountBeforePersisting() {
+            request.setAmount(BigDecimal.ZERO);
+            transaction.setAmount(request.getAmount());
+            when(transactionMapper.toEntity(request)).thenReturn(transaction);
+            when(walletService.getOwned(10L, 1L)).thenReturn(wallet);
+            when(categoryService.getOwned(100L, 1L)).thenReturn(category);
+            when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.of(reason));
+
+            assertThatThrownBy(() -> service.create(request, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("mayor a cero");
+
+            verify(transactionRepository, never()).save(any(Transaction.class));
+            verify(walletService, never()).updateBalance(anyLong(), anyLong(), any(), any());
+            verifyNoInteractions(eventPublisher);
+        }
+
+        @Test
         void shouldPropagateScheduleIdWhenCreatedByScheduler() throws Exception {
             when(transactionMapper.toEntity(request)).thenReturn(transaction);
             when(walletService.getOwned(10L, 1L)).thenReturn(wallet);

@@ -452,7 +452,12 @@ class ScheduleServiceImplBatchTest {
             when(walletService.getOwned(10L, 1L)).thenReturn(wallet);
             when(categoryService.getOwned(100L, 1L)).thenReturn(category);
             when(reasonResolver.resolveOrCreate(anyLong(), any(), any())).thenReturn(Optional.empty());
-            when(transactionMapper.toEntity(any())).thenReturn(new Transaction());
+            when(transactionMapper.toEntity(any())).thenAnswer(invocation -> {
+                Transaction mapped = new Transaction();
+                mapped.setAmount(new BigDecimal("50.00"));
+                mapped.setType(TransactionType.SPENT);
+                return mapped;
+            });
             when(transactionRepository.save(any(Transaction.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
             when(transactionMapper.toResponse(any(Transaction.class))).thenReturn(new TransactionResponse());

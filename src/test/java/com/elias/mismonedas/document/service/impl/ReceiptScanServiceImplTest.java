@@ -198,6 +198,38 @@ class ReceiptScanServiceImplTest {
         }
 
         @Test
+        void shouldFailWhenOcrAmountIsZero() {
+            Receipt receipt = pendingReceipt(1L);
+            when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
+            when(regexParser.parse("total cero")).thenReturn(new ReceiptData(
+                    BigDecimal.ZERO, LocalDate.of(2026, 7, 1), "Tienda",
+                    "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
+
+            service.applyScanResult(new ReceiptScanResultMessage(
+                    1L, "DONE", "total cero", "rapidocr-ppocrv6", 0.9, 1000L, null));
+
+            assertThat(receipt.getStatus()).isEqualTo(ReceiptScanStatus.FAILED);
+            assertThat(receipt.getDetectedAmount()).isNull();
+            assertThat(receipt.getErrorMessage()).contains("mayor a cero");
+        }
+
+        @Test
+        void shouldFailWhenOcrAmountIsNegative() {
+            Receipt receipt = pendingReceipt(1L);
+            when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(receipt));
+            when(regexParser.parse("total negativo")).thenReturn(new ReceiptData(
+                    new BigDecimal("-12.50"), LocalDate.of(2026, 7, 1), "Tienda",
+                    "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
+
+            service.applyScanResult(new ReceiptScanResultMessage(
+                    1L, "DONE", "total negativo", "rapidocr-ppocrv6", 0.9, 1000L, null));
+
+            assertThat(receipt.getStatus()).isEqualTo(ReceiptScanStatus.FAILED);
+            assertThat(receipt.getDetectedAmount()).isNull();
+            assertThat(receipt.getErrorMessage()).contains("mayor a cero");
+        }
+
+        @Test
         void shouldIgnoreResultForAlreadyTerminalReceipt() {
             Receipt receipt = pendingReceipt(1L);
             receipt.setStatus(ReceiptScanStatus.DONE);
@@ -306,6 +338,27 @@ class ReceiptScanServiceImplTest {
 
             assertThatThrownBy(() -> service.improveWithAi(1L))
                     .isInstanceOf(OcrProcessingException.class);
+        }
+
+        @Test
+        void shouldNotApplyImprovedOcrResultWithNonPositiveAmount() {
+            when(securityService.getCurrentUser()).thenReturn(createTestUser());
+            Receipt receipt = pendingReceipt(1L);
+            receipt.setStatus(ReceiptScanStatus.DONE);
+            receipt.setRawOcrText("TOTAL S/. 45.00");
+            receipt.setDetectedAmount(new BigDecimal("45.00"));
+            receipt.setConfidenceScore(0.5);
+            when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
+            when(aiParser.parse("TOTAL S/. 45.00")).thenReturn(new ReceiptData(
+                    new BigDecimal("-10.00"), LocalDate.of(2026, 7, 1), "Supermercado ABC",
+                    "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
+
+            assertThatThrownBy(() -> service.improveWithAi(1L))
+                    .isInstanceOf(OcrProcessingException.class)
+                    .hasMessageContaining("monto");
+
+            assertThat(receipt.getDetectedAmount()).isEqualByComparingTo("45.00");
+            verify(receiptRepository, never()).save(any(Receipt.class));
         }
     }
 

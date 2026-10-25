@@ -167,6 +167,10 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private Transaction persist(Transaction transaction, Long userId) {
+        if (transaction.getAmount() == null || transaction.getAmount().signum() <= 0) {
+            throw new IllegalArgumentException("El monto de la transacción debe ser mayor a cero");
+        }
+
         Transaction saved = transactionRepository.save(transaction);
 
         eventPublisher.publishEvent(new TransactionRegisteredEvent(

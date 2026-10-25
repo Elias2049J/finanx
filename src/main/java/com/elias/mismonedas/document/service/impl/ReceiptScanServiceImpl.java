@@ -163,6 +163,10 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
             fail(receipt, "No se detectó el monto en el recibo");
             return;
         }
+        if (data.amount().signum() <= 0) {
+            fail(receipt, "El monto detectado debe ser mayor a cero");
+            return;
+        }
 
         receipt.setDetectedAmount(data.amount());
         receipt.setDetectedDate(data.date());
@@ -220,6 +224,9 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
         double oldConfidence = receipt.getConfidenceScore() != null ? receipt.getConfidenceScore() : 0.0;
         ReceiptData improved = aiParser.parse(rawText);
         if (improved.parseConfidence() > oldConfidence) {
+            if (improved.amount() == null || improved.amount().signum() <= 0) {
+                throw new OcrProcessingException("El monto detectado debe ser mayor a cero");
+            }
             Long detectedCategoryId = matchCategory(userId, improved, rawText);
             receipt.setDetectedAmount(improved.amount());
             receipt.setDetectedDate(improved.date());
