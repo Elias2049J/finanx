@@ -1,6 +1,7 @@
 package com.elias.mismonedas.billing.service.impl;
 
 import com.elias.mismonedas.billing.domain.entity.Payment;
+import com.elias.mismonedas.billing.domain.entity.Subscription;
 import com.elias.mismonedas.billing.domain.entity.WebhookEvent;
 import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
 import com.elias.mismonedas.billing.domain.enums.PaymentState;
@@ -13,12 +14,15 @@ import com.elias.mismonedas.billing.mapper.PaymentMapper;
 import com.elias.mismonedas.billing.port.PaymentPort;
 import com.elias.mismonedas.billing.port.PaymentWebhookPublisher;
 import com.elias.mismonedas.billing.repository.PaymentRepository;
+import com.elias.mismonedas.billing.repository.SubscriptionRepository;
 import com.elias.mismonedas.billing.repository.WebhookEventRepository;
+import com.elias.mismonedas.billing.service.BillingService;
 import com.elias.mismonedas.billing.service.impl.PaymentServiceImpl;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.shared.exception.ConflictException;
+import com.elias.mismonedas.shared.exception.SubscriptionNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,6 +54,8 @@ class PaymentServiceImplTest {
     @Mock private PaymentPort paymentPort;
     @Mock private PaymentWebhookPublisher webhookPublisher;
     @Mock private SecurityService securityService;
+    @Mock private SubscriptionRepository subscriptionRepository;
+    @Mock private BillingService billingService;
 
     @Captor private ArgumentCaptor<WebhookEvent> eventCaptor;
 
@@ -59,7 +65,7 @@ class PaymentServiceImplTest {
     void setUp() {
         service = new PaymentServiceImpl(
                 paymentRepository, webhookEventRepository, userRepository, paymentMapper, paymentPort, webhookPublisher,
-                securityService);
+                securityService, subscriptionRepository, billingService);
     }
 
     private PaymentWebhookNotification notification(String externalEventId, String externalReference, String status) {
@@ -153,10 +159,93 @@ class PaymentServiceImplTest {
             assertThat(mapped.getIdempotencyKey()).isEqualTo("key-new");
         }
 
+        @Test
+        void shouldLinkSubscriptionOwnedByCurrentUser() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .subscriptionId(500L)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currency("PEN")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .build();
+            User user = user();
+            Subscription subscription = Subscription.builder().id(500L).user(user).build();
+            Payment mapped = new Payment();
+
+            when(securityService.getCurrentUser()).thenReturn(user);
+            when(subscriptionRepository.findByIdAndUser_Id(500L, 1L)).thenReturn(Optional.of(subscription));
+            when(paymentMapper.toEntity(request)).thenReturn(mapped);
+            when(paymentPort.createPaymentIntent(any())).thenReturn("EXT-500");
+            when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            when(paymentMapper.toResponse(any())).thenReturn(new PaymentResponse());
+
+            service.create(request);
+
+            assertThat(mapped.getSubscription()).isSameAs(subscription);
+        }
+
+        @Test
+        void shouldRejectSubscriptionOwnedByAnotherUser() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .subscriptionId(500L)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currency("PEN")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .build();
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentMapper.toEntity(request)).thenReturn(new Payment());
+            when(subscriptionRepository.findByIdAndUser_Id(500L, 1L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.create(request))
+                    .isInstanceOf(SubscriptionNotFoundException.class);
+
+            verify(paymentPort, never()).createPaymentIntent(any());
+            verify(paymentRepository, never()).save(any());
+        }
+
         private User user() {
             User u = new User();
             u.setId(1L);
             return u;
+        }
+    }
+
+    @Nested
+    class MarkCompletedTest {
+
+        @Test
+        void shouldActivateLinkedSubscription() {
+            Subscription subscription = Subscription.builder().id(500L).build();
+            Payment payment = Payment.builder()
+                    .id(10L)
+                    .state(PaymentState.PENDING)
+                    .subscription(subscription)
+                    .build();
+
+            when(paymentRepository.findById(10L)).thenReturn(Optional.of(payment));
+            when(paymentRepository.save(payment)).thenReturn(payment);
+            when(paymentMapper.toResponse(payment)).thenReturn(new PaymentResponse());
+
+            service.markCompleted(10L);
+
+            assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
+            verify(billingService).applyConfirmedPayment(500L);
+        }
+
+        @Test
+        void shouldCompletePaymentWithoutSubscription() {
+            Payment payment = Payment.builder().id(10L).state(PaymentState.PENDING).build();
+
+            when(paymentRepository.findById(10L)).thenReturn(Optional.of(payment));
+            when(paymentRepository.save(payment)).thenReturn(payment);
+            when(paymentMapper.toResponse(payment)).thenReturn(new PaymentResponse());
+
+            service.markCompleted(10L);
+
+            assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
+            verify(billingService, never()).applyConfirmedPayment(any());
         }
     }
 
@@ -280,6 +369,54 @@ class PaymentServiceImplTest {
             assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
             verify(paymentRepository).save(payment);
             assertThat(event.getState()).isEqualTo(WebhookEventState.PROCESSED);
+        }
+
+        @Test
+        void shouldActivateSubscriptionWhenWebhookCompletesPayment() {
+            WebhookEvent event = WebhookEvent.builder()
+                    .id(7L)
+                    .externalEventId("EVT-7")
+                    .rawPayload("{}")
+                    .state(WebhookEventState.RECEIVED)
+                    .build();
+            Subscription subscription = Subscription.builder().id(500L).build();
+            Payment payment = Payment.builder()
+                    .id(10L)
+                    .state(PaymentState.PENDING)
+                    .subscription(subscription)
+                    .build();
+            when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-7", "REF-7", "approved"));
+            when(webhookEventRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(event));
+            when(paymentRepository.findByExternalReference("REF-7")).thenReturn(Optional.of(payment));
+
+            service.processWebhookEvent(7L);
+
+            assertThat(payment.getState()).isEqualTo(PaymentState.COMPLETED);
+            verify(billingService).applyConfirmedPayment(500L);
+        }
+
+        @Test
+        void shouldNotActivateSubscriptionWhenWebhookDoesNotCompletePayment() {
+            WebhookEvent event = WebhookEvent.builder()
+                    .id(8L)
+                    .externalEventId("EVT-8")
+                    .rawPayload("{}")
+                    .state(WebhookEventState.RECEIVED)
+                    .build();
+            Subscription subscription = Subscription.builder().id(500L).build();
+            Payment payment = Payment.builder()
+                    .id(10L)
+                    .state(PaymentState.PENDING)
+                    .subscription(subscription)
+                    .build();
+            when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-8", "REF-8", "failed"));
+            when(webhookEventRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(event));
+            when(paymentRepository.findByExternalReference("REF-8")).thenReturn(Optional.of(payment));
+
+            service.processWebhookEvent(8L);
+
+            assertThat(payment.getState()).isEqualTo(PaymentState.FAILED);
+            verify(billingService, never()).applyConfirmedPayment(any());
         }
 
         @Test

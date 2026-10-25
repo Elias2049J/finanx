@@ -29,5 +29,17 @@ public interface BillingService {
 
     SubscriptionResponse renew(Long subscriptionId);
 
+    /**
+     * Aplica el resultado de un pago confirmado sobre la suscripcion asociada.
+     * <p>
+     * No depende del {@code SecurityContext}: lo invocan el servicio de pagos y el consumidor de webhooks,
+     * que actuan en nombre del sistema. Es idempotente: si el periodo sigue abierto no lo extiende, y una
+     * suscripcion en estado terminal (CANCELED/EXPIRED) no se reactiva.
+     *
+     * @param subscriptionId suscripcion vinculada al pago
+     * @return la suscripcion resultante
+     */
+    SubscriptionResponse applyConfirmedPayment(Long subscriptionId);
+
     void checkExpirations();
 }

@@ -164,6 +164,44 @@ public class BillingServiceImpl implements BillingService {
 
     @Override
     @Transactional
+    public SubscriptionResponse applyConfirmedPayment(Long subscriptionId) {
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new SubscriptionNotFoundException(subscriptionId));
+
+        SubscriptionState state = subscription.getState();
+        if (state == SubscriptionState.CANCELED || state == SubscriptionState.EXPIRED) {
+            log.warn("Confirmed payment for subscription id={} in terminal state {}; not reactivated",
+                    subscriptionId, state);
+            return subscriptionMapper.toResponse(subscription);
+        }
+
+        OffsetDateTime now = OffsetDateTime.now();
+        if (state == SubscriptionState.ACTIVE
+                && subscription.getCurrentPeriodEnd() != null
+                && now.isBefore(subscription.getCurrentPeriodEnd())) {
+            log.info("Subscription id={} already covered until {}; payment applied as no-op",
+                    subscriptionId, subscription.getCurrentPeriodEnd());
+            return subscriptionMapper.toResponse(subscription);
+        }
+
+        OffsetDateTime newStart = subscription.getCurrentPeriodEnd() != null
+                ? subscription.getCurrentPeriodEnd()
+                : now;
+
+        subscription.setCurrentPeriodStart(newStart);
+        subscription.setCurrentPeriodEnd(nextPeriodEnd(newStart, subscription.getBillingCycle()));
+        if (state != SubscriptionState.ACTIVE) {
+            subscription.transitionTo(SubscriptionState.ACTIVE);
+        }
+
+        Subscription saved = subscriptionRepository.save(subscription);
+        log.info("Subscription id={} activated/renewed by payment, newPeriodEnd={}",
+                saved.getId(), saved.getCurrentPeriodEnd());
+        return subscriptionMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
     public void checkExpirations() {
         OffsetDateTime now = OffsetDateTime.now();
         List<Subscription> expiring = subscriptionRepository

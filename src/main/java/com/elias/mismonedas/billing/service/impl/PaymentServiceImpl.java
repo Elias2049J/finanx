@@ -1,6 +1,7 @@
 package com.elias.mismonedas.billing.service.impl;
 
 import com.elias.mismonedas.billing.domain.entity.Payment;
+import com.elias.mismonedas.billing.domain.entity.Subscription;
 import com.elias.mismonedas.billing.domain.entity.WebhookEvent;
 import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
 import com.elias.mismonedas.billing.domain.enums.PaymentState;
@@ -14,7 +15,9 @@ import com.elias.mismonedas.billing.port.PaymentPort;
 import com.elias.mismonedas.billing.port.PaymentWebhookPublisher;
 import com.elias.mismonedas.billing.repository.PaymentRepository;
 import com.elias.mismonedas.billing.repository.PaymentSpecifications;
+import com.elias.mismonedas.billing.repository.SubscriptionRepository;
 import com.elias.mismonedas.billing.repository.WebhookEventRepository;
+import com.elias.mismonedas.billing.service.BillingService;
 import com.elias.mismonedas.billing.service.PaymentService;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.repository.UserRepository;
@@ -25,6 +28,7 @@ import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import com.elias.mismonedas.shared.exception.ConflictException;
 import com.elias.mismonedas.shared.exception.PaymentNotFoundException;
+import com.elias.mismonedas.shared.exception.SubscriptionNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +60,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentPort paymentPort;
     private final PaymentWebhookPublisher webhookPublisher;
     private final SecurityService securityService;
+    private final SubscriptionRepository subscriptionRepository;
+    private final BillingService billingService;
 
     @Override
     @Transactional
@@ -77,6 +83,12 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment payment = paymentMapper.toEntity(request);
         payment.setUser(user);
+        if (request.getSubscriptionId() != null) {
+            Subscription subscription = subscriptionRepository
+                    .findByIdAndUser_Id(request.getSubscriptionId(), user.getId())
+                    .orElseThrow(() -> new SubscriptionNotFoundException(request.getSubscriptionId()));
+            payment.setSubscription(subscription);
+        }
         payment.setIdempotencyKey(
                 request.getIdempotencyKey() != null ? request.getIdempotencyKey() : UUID.randomUUID().toString());
 
@@ -152,6 +164,7 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = getPaymentOrThrow(paymentId);
         payment.transitionTo(PaymentState.COMPLETED);
         Payment saved = paymentRepository.save(payment);
+        applyToSubscription(saved);
         log.info("Payment completed id={}", saved.getId());
         return paymentMapper.toResponse(saved);
     }
@@ -297,6 +310,20 @@ public class PaymentServiceImpl implements PaymentService {
         }
         payment.transitionTo(target);
         paymentRepository.save(payment);
+        if (target == PaymentState.COMPLETED) {
+            applyToSubscription(payment);
+        }
+    }
+
+    /**
+     * Refleja un pago confirmado en la suscripcion vinculada, si existe.
+     * La idempotencia la resuelve {@link BillingService#applyConfirmedPayment(Long)}.
+     */
+    private void applyToSubscription(Payment payment) {
+        if (payment.getSubscription() == null) {
+            return;
+        }
+        billingService.applyConfirmedPayment(payment.getSubscription().getId());
     }
 
     private void publishReceivedEvent(WebhookEvent event) {
