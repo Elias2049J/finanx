@@ -5,6 +5,7 @@ import com.elias.mismonedas.chat.domain.entity.ChatSession;
 import com.elias.mismonedas.chat.domain.enums.ChatRole;
 import com.elias.mismonedas.chat.domain.enums.ChatSkill;
 import com.elias.mismonedas.chat.dto.ai.ChatMessageRequest;
+import com.elias.mismonedas.chat.exception.ChatUnavailableException;
 import com.elias.mismonedas.chat.port.ChatPort;
 import com.elias.mismonedas.shared.adapter.ai.gemini.InteractionClient;
 import com.elias.mismonedas.shared.adapter.ai.gemini.dto.InteractionRequest;
@@ -41,9 +42,6 @@ public class ChatGeminiAdapter implements ChatPort {
     @Value("${app.gemini.model.primary}")
     private String primaryModel;
 
-    @Value("${app.gemini.model.fallback}")
-    private String fallbackModel;
-
     private final AiProperties aiProperties;
 
     private final InteractionClient geminiClient;
@@ -55,13 +53,10 @@ public class ChatGeminiAdapter implements ChatPort {
         ChatSession session = resolveSession(request);
 
         ChatMessage result = tryModel(primaryModel, request, session);
-        if (result != null) return result;
-
-
-
-
-        log.error("[GEMINI] Ambos modelos fallaron, retornando mensaje de emergencia");
-        return fallbackMessage();
+        if (result == null) {
+            throw new ChatUnavailableException();
+        }
+        return result;
     }
 
     private ChatMessage tryModel(String model, ChatMessageRequest request, ChatSession session) {
@@ -229,14 +224,4 @@ public class ChatGeminiAdapter implements ChatPort {
         return empty;
     }
 
-    private ChatMessage fallbackMessage() {
-        ChatMessage msg = new ChatMessage();
-        msg.setRole(ChatRole.AI);
-        msg.setMessage("Lo siento, no pude procesar tu mensaje en este momento. Por favor, intenta de nuevo en unos instantes.");
-        msg.setModel("emergency-fallback");
-        msg.setLatencyMs(0L);
-        msg.setFinishReason("ERROR");
-        msg.setCreatedAt(OffsetDateTime.now());
-        return msg;
-    }
 }

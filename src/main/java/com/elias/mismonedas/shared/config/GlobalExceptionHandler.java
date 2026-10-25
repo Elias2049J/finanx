@@ -1,5 +1,6 @@
 package com.elias.mismonedas.shared.config;
 
+import com.elias.mismonedas.chat.exception.ChatUnavailableException;
 import com.elias.mismonedas.shared.dto.ErrorResponse;
 import com.elias.mismonedas.shared.exception.*;
 import com.elias.mismonedas.shared.i18n.CurrentLocaleProvider;
@@ -88,6 +89,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CurrencyConversionException.class)
     public ResponseEntity<ErrorResponse> handleCurrencyConversion(CurrencyConversionException ex, HttpServletRequest request) {
         return respond(HttpStatus.SERVICE_UNAVAILABLE, "CURRENCY_CONVERSION_UNAVAILABLE", "error.currency_conversion", request, ex);
+    }
+
+    @ExceptionHandler(ChatUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleChatUnavailable(ChatUnavailableException ex, HttpServletRequest request) {
+        return respond(HttpStatus.SERVICE_UNAVAILABLE, "CHAT_UNAVAILABLE", "error.service_busy", request, ex);
     }
 
     @ExceptionHandler(IOException.class)

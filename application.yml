@@ -99,7 +99,6 @@ app:
     api-key: ${GEMINI_API_KEY}
     model:
       primary: ${APP_GEMINI_MODEL_PRIMARY}
-      fallback: ${APP_GEMINI_MODEL_FALLBACK}
   google:
     issuer: ${GOOGLE_ISSUER_URI}
     jwks: ${GOOGLE_JWKS_URI}
@@ -172,7 +171,7 @@ resilience4j:
     instances:
       gemini:
         max-concurrent-calls: 8
-        max-wait-duration: 0s
+        max-wait-duration: 1s
 
 management:
   endpoints:

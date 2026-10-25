@@ -1,5 +1,6 @@
 package com.elias.mismonedas.shared.config;
 
+import com.elias.mismonedas.chat.exception.ChatUnavailableException;
 import com.elias.mismonedas.billing.exception.InvalidWebhookSignatureException;
 import com.elias.mismonedas.shared.i18n.CurrentLocaleProvider;
 import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
@@ -113,5 +114,17 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody().getCode()).isEqualTo("INTERNAL_ERROR");
         assertThat(response.getBody().getMessage()).isEqualTo("Ocurrió un error interno.");
+    }
+
+    @Test
+    void shouldReturnServiceUnavailableWhenChatProviderFails() {
+        HttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/chat/sessions/1/messages");
+
+        var response = handler.handleChatUnavailable(new ChatUnavailableException(), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody().getCode()).isEqualTo("CHAT_UNAVAILABLE");
+        assertThat(response.getBody().getMessage())
+                .isEqualTo("El servicio está ocupado. Inténtalo nuevamente en unos segundos.");
     }
 }

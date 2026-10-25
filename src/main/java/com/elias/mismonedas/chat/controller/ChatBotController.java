@@ -115,7 +115,8 @@ public class ChatBotController {
             @ApiResponse(responseCode = "200", description = "Mensaje procesado y respuesta generada"),
             @ApiResponse(responseCode = "400", description = "Mensaje vacio o invalido"),
             @ApiResponse(responseCode = "404", description = "Sesion no encontrada"),
-            @ApiResponse(responseCode = "409", description = "La sesion no esta activa")
+            @ApiResponse(responseCode = "409", description = "La sesion no esta activa"),
+            @ApiResponse(responseCode = "503", description = "Servicio de chat temporalmente no disponible")
     })
     @PostMapping("/sessions/{sessionId}/messages")
     public ResponseEntity<ChatMessageResponse> sendMessage(

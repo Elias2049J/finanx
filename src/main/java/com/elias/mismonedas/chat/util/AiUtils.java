@@ -16,9 +16,8 @@ public final class AiUtils {
 
     private static final List<Pattern> SUSPICIOUS_PATTERNS = List.of(
             Pattern.compile("(?i)(ignore|forget|disregard|olvida|ignora|no consideres|descarta).{0,30}(previous|above|instruction|system|prompt|instrucci[oo]n|contexto|mensaje)"),
-            Pattern.compile("(?i)(you are now|act as|pretend|roleplay|jailbreak|ahora eres|act[úu]a como|finge|haz de cuenta|simula)"),
+            Pattern.compile("(?i)\\b(jailbreak|prompt injection)\\b"),
             Pattern.compile("(?i)<\\s*(script|iframe|img|svg|object|embed|link|etiqueta|javascript)[^>]*>"),
-            Pattern.compile("(?i)(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|UNION|--|;\\s*--|SQL|consulta|base de datos)"),
             Pattern.compile("(?i)(api[_\\-]?key|secret|token|password|bearer|authorization|contrase[ñn]a|clave|llave|credencial|secreto)\\s*[:=]\\s*\\S+"),
             Pattern.compile("(?i)\\$\\{.*?\\}"),
             Pattern.compile("(?i)\\{\\{.*?\\}\\}"),
