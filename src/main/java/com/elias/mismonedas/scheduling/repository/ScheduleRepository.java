@@ -3,10 +3,14 @@ package com.elias.mismonedas.scheduling.repository;
 import com.elias.mismonedas.scheduling.domain.entity.Schedule;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,4 +30,26 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     Page<Schedule> findAllByUser_IdAndActiveAndState(Long userId, Boolean active, ScheduleState state, Pageable pageable);
 
     void deleteAllByUser_Id(Long userId);
+
+    /**
+     * Toma la ocurrencia solo si sigue siendo la esperada.
+     *
+     * <p>Debe ser SQL nativo: un UPDATE JPQL sobre {@link Schedule} (herencia
+     * JOINED) se traduce a un UPDATE con CTE. El SELECT del CTE se evalua antes
+     * de esperar el lock de fila, por lo que un segundo nodo ve la fila vieja y
+     * actualiza por id sin revalidar {@code proxima_ejecucion}. El UPDATE nativo
+     * revalida el WHERE despues del lock y garantiza que solo un nodo gane.</p>
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE programacion
+               SET ultima_ejecucion = :expected
+             WHERE id = :id
+               AND proxima_ejecucion = :expected
+               AND estado = :state
+               AND activo = true
+            """, nativeQuery = true)
+    int claimOccurrence(@Param("id") Long id,
+                        @Param("expected") OffsetDateTime expected,
+                        @Param("state") String state);
 }

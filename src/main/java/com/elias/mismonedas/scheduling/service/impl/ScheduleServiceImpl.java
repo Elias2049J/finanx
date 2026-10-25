@@ -41,19 +41,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.dao.RecoverableDataAccessException;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.SQLRecoverableException;
+import java.sql.SQLTransientException;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -223,8 +226,24 @@ public class ScheduleServiceImpl implements ScheduleService {
                 try {
                     transactionTemplate.execute(status -> processTransactionOccurrence(id));
                 } catch (Exception e) {
-                    log.error("Error processing TransactionSchedule: id={}", id, e);
-                    markTransactionScheduleError(id);
+                    if (isTransientFailure(e)) {
+                        log.atError()
+                                .addKeyValue("event", "schedule_occurrence_retry")
+                                .addKeyValue("schedule_id", id)
+                                .addKeyValue("schedule_type", "transaction")
+                                .addKeyValue("scheduler_interval_ms", 60_000)
+                                .setCause(e)
+                                .log("Transient scheduled occurrence failed; it remains RUNNING for the next scheduler cycle");
+                    } else {
+                        log.atError()
+                                .addKeyValue("event", "schedule_occurrence_failed")
+                                .addKeyValue("schedule_id", id)
+                                .addKeyValue("schedule_type", "transaction")
+                                .addKeyValue("action", "mark_error")
+                                .setCause(e)
+                                .log("Non-retryable scheduled occurrence failed; marking schedule ERROR");
+                        markTransactionScheduleError(id);
+                    }
                 }
             }
 
@@ -252,7 +271,17 @@ public class ScheduleServiceImpl implements ScheduleService {
             return null;
         }
 
-        executeTransaction(st);
+        OffsetDateTime expected = st.getNextRunAt();
+        if (scheduleRepository.claimOccurrence(id, expected, ScheduleState.RUNNING.name()) == 0) {
+            log.atInfo()
+                    .addKeyValue("event", "schedule_occurrence_claim_skipped")
+                    .addKeyValue("schedule_id", id)
+                    .addKeyValue("occurrence_key", occurrenceKey(st, expected))
+                    .log("Scheduled transaction occurrence was already claimed");
+            return null;
+        }
+
+        executeTransaction(st, expected);
 
         scheduleRepository.save(st);
         return st.getUser().getId();
@@ -295,8 +324,24 @@ public class ScheduleServiceImpl implements ScheduleService {
                         return null;
                     });
                 } catch (Exception e) {
-                    log.error("Error processing BudgetSchedule: id={}", id, e);
-                    markBudgetScheduleError(id);
+                    if (isTransientFailure(e)) {
+                        log.atError()
+                                .addKeyValue("event", "schedule_occurrence_retry")
+                                .addKeyValue("schedule_id", id)
+                                .addKeyValue("schedule_type", "budget")
+                                .addKeyValue("scheduler_interval_ms", 60_000)
+                                .setCause(e)
+                                .log("Transient scheduled occurrence failed; it remains RUNNING for the next scheduler cycle");
+                    } else {
+                        log.atError()
+                                .addKeyValue("event", "schedule_occurrence_failed")
+                                .addKeyValue("schedule_id", id)
+                                .addKeyValue("schedule_type", "budget")
+                                .addKeyValue("action", "mark_error")
+                                .setCause(e)
+                                .log("Non-retryable scheduled occurrence failed; marking schedule ERROR");
+                        markBudgetScheduleError(id);
+                    }
                 }
             }
 
@@ -324,7 +369,17 @@ public class ScheduleServiceImpl implements ScheduleService {
             return;
         }
 
-        executeBudget(st);
+        OffsetDateTime expected = st.getNextRunAt();
+        if (scheduleRepository.claimOccurrence(id, expected, ScheduleState.RUNNING.name()) == 0) {
+            log.atInfo()
+                    .addKeyValue("event", "schedule_occurrence_claim_skipped")
+                    .addKeyValue("schedule_id", id)
+                    .addKeyValue("occurrence_key", occurrenceKey(st, expected))
+                    .log("Scheduled budget occurrence was already claimed");
+            return;
+        }
+
+        executeBudget(st, expected);
 
         scheduleRepository.save(st);
     }
@@ -346,9 +401,19 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     private record BudgetBatchPage(List<Long> dueIds, Long nextCursor) {}
 
-    private void executeTransaction(TransactionSchedule st) {
-        OffsetDateTime executedAt = st.getNextRunAt();
+    private boolean isTransientFailure(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof TransientDataAccessException
+                    || cause instanceof RecoverableDataAccessException
+                    || cause instanceof SQLTransientException
+                    || cause instanceof SQLRecoverableException) {
+                return true;
+            }
+        }
+        return false;
+    }
 
+    private void executeTransaction(TransactionSchedule st, OffsetDateTime executedAt) {
         st.setLastRunAt(executedAt);
 
         TransactionRequest txRequest = new TransactionRequest();
@@ -363,7 +428,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         txRequest.setType(st.getTransactionType());
         txRequest.setConvertCurrency(false);
 
-        transactionService.create(st.getUser().getId(), st.getId(), txRequest, UUID.randomUUID().toString());
+        transactionService.create(st.getUser().getId(), st.getId(), txRequest, occurrenceKey(st, executedAt));
 
         boolean hasNext = advanceOrFinalize(st);
 
@@ -376,10 +441,19 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
     }
 
-    private void executeBudget(BudgetSchedule st) {
-        OffsetDateTime executedAt = st.getNextRunAt();
-
+    private void executeBudget(BudgetSchedule st, OffsetDateTime executedAt) {
         st.setLastRunAt(executedAt);
+
+        String idempotencyKey = occurrenceKey(st, executedAt);
+        if (budgetRepository.findByIdempotencyKey(idempotencyKey).isPresent()) {
+            advanceOrFinalize(st);
+            log.atWarn()
+                    .addKeyValue("event", "schedule_occurrence_replayed")
+                    .addKeyValue("schedule_id", st.getId())
+                    .addKeyValue("occurrence_key", idempotencyKey)
+                    .log("Budget occurrence already materialized; advanced the schedule");
+            return;
+        }
 
         OffsetDateTime budgetEnd = rcService.computeNextRunAt(st)
                 .orElse(st.getRecurrenceRule().getEnd());
@@ -402,6 +476,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .description(st.getDescription())
                 .start(executedAt)
                 .end(budgetEnd)
+                .idempotencyKey(idempotencyKey)
                 .build());
 
         boolean hasNext = advanceOrFinalize(st);
@@ -420,6 +495,10 @@ public class ScheduleServiceImpl implements ScheduleService {
     private boolean isDue(Schedule st) {
         OffsetDateTime nowForUser = OffsetDateTime.now(st.getUser().getTimeZone().toZoneId());
         return !st.getNextRunAt().isAfter(nowForUser);
+    }
+
+    private String occurrenceKey(Schedule st, OffsetDateTime expected) {
+        return "schedule:" + st.getId() + ":" + expected.toInstant().toEpochMilli();
     }
 
     private boolean advanceOrFinalize(Schedule st) {
