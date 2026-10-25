@@ -169,89 +169,103 @@ public class BudgetServiceImpl implements BudgetService {
         OffsetDateTime now = OffsetDateTime.now(zoneId);
 
         for (Budget b : budgets) {
-            Category c = b.getCategory();
-
-            OffsetDateTime periodStart;
-            RecurrenceRule rr = Optional.ofNullable(b.getSchedule())
-                    .map(BudgetSchedule::getRecurrenceRule)
-                    .orElse(null);
-
-            if (rr != null) {
-                periodStart = rcService.computeCurrentPeriodStart(rr, now, zoneId);
-                if (periodStart == null) {
-                    log.debug("Budget {} con schedule no tiene periodo válido", b.getId());
-                    continue;
-                }
-            } else {
-                periodStart = Optional.ofNullable(b.getStart()).orElse(b.getCreatedAt());
-                if (b.getEnd() != null && now.isAfter(b.getEnd())) {
-                    String budgetCurrency = b.getCurrencyCode();
-                    BigDecimal finalSpent = ConvertedAmounts.sumConverted(
-                            transactionRepository.sumAmountsByCurrencyForCategory(
-                                    userId, c.getId(), TransactionType.SPENT, periodStart, b.getEnd()),
-                            budgetCurrency, currencyConverter);
-                    b.setFrozenSpent(finalSpent);
-                    b.setState(BudgetState.FINALIZED);
-                    log.info("FINALIZED Budget id={} desc={} frozenSpent={}", b.getId(), b.getDescription(), finalSpent);
-                    continue;
-                }
-            }
-
-            String budgetCurrency = b.getCurrencyCode();
-            BigDecimal spent = ConvertedAmounts.sumConverted(
-                    transactionRepository.sumAmountsByCurrencyForCategory(
-                            userId, c.getId(), TransactionType.SPENT, periodStart, now),
-                    budgetCurrency, currencyConverter);
-
-            BudgetHealth previousHealth = b.getHealth();
-            BudgetHealth currentHealth = b.updateHealth(spent);
-            boolean alertable = Boolean.TRUE.equals(b.getAlertable());
-
-            if (alertable && currentHealth == BudgetHealth.EXCEEDED) {
-                log.info("Budget {} superó el límite (spent={}, limit={})",
-                        b.getId(), spent, b.getLimitAmount());
-
-                Transaction lastTx = lastTxOf(c.getId(), periodStart, now);
-                if (lastTx != null && b.markExceededNotified()) {
-                    eventPublisher.publishEvent(new BudgetExceededEvent(
-                            b.getId(),
-                            u.getId(),
-                            c.getName(),
-                            spent,
-                            b.getLimitAmount(),
-                            b.getCurrencyCode(),
-                            lastTx.getCreatedAt(),
-                            lastTx.getAmount(),
-                            lastTx.getPaymentMethod().getDisplayName()
-                    ));
-                }
-            } else if (alertable && currentHealth == BudgetHealth.NEAR_LIMIT) {
-                int alertPercent = Math.clamp(b.getPercentAlert(), 0, 100);
-                log.info("Budget {} alcanzó {}% (spent={}, limit={})",
-                        b.getId(), alertPercent, spent, b.getLimitAmount());
-
-                Transaction lastTx = lastTxOf(c.getId(), periodStart, now);
-                if (lastTx != null && b.markNearLimitNotified()) {
-                    eventPublisher.publishEvent(new BudgetNearLimitEvent(
-                            b.getId(),
-                            u.getId(),
-                            c.getName(),
-                            spent,
-                            b.getLimitAmount(),
-                            alertPercent,
-                            b.getCurrencyCode(),
-                            lastTx.getCreatedAt(),
-                            lastTx.getAmount(),
-                            lastTx.getPaymentMethod().getDisplayName()
-                    ));
-                }
-            } else if (alertable && previousHealth != BudgetHealth.OK) {
-                log.info("Budget {} volvió a estado OK (spent={}, limit={})",
-                        b.getId(), spent, b.getLimitAmount());
+            try {
+                recheckBudget(b, u, zoneId, now);
+            } catch (RuntimeException e) {
+                // Un presupuesto corrupto no debe abortar el recalculo de los demas.
+                // Si el fallo viene de la BD la transaccion ya esta rollback-only y
+                // el commit fallara; este catch cubre errores de dominio (NPE, datos
+                // invalidos) que antes apagaban el recheck de todo el usuario.
+                log.error("Fallo al recalcular el presupuesto {} del usuario {}; se omite",
+                        b.getId(), userId, e);
             }
         }
 
         budgetRepository.saveAll(budgets);
+    }
+
+    private void recheckBudget(Budget b, User u, ZoneId zoneId, OffsetDateTime now) {
+        Long userId = u.getId();
+        Category c = b.getCategory();
+
+        OffsetDateTime periodStart;
+        RecurrenceRule rr = Optional.ofNullable(b.getSchedule())
+                .map(BudgetSchedule::getRecurrenceRule)
+                .orElse(null);
+
+        if (rr != null) {
+            periodStart = rcService.computeCurrentPeriodStart(rr, now, zoneId);
+            if (periodStart == null) {
+                log.debug("Budget {} con schedule no tiene periodo válido", b.getId());
+                return;
+            }
+        } else {
+            periodStart = Optional.ofNullable(b.getStart()).orElse(b.getCreatedAt());
+            if (b.getEnd() != null && now.isAfter(b.getEnd())) {
+                String budgetCurrency = b.getCurrencyCode();
+                BigDecimal finalSpent = ConvertedAmounts.sumConverted(
+                        transactionRepository.sumAmountsByCurrencyForCategory(
+                                userId, c.getId(), TransactionType.SPENT, periodStart, b.getEnd()),
+                        budgetCurrency, currencyConverter);
+                b.setFrozenSpent(finalSpent);
+                b.setState(BudgetState.FINALIZED);
+                log.info("FINALIZED Budget id={} desc={} frozenSpent={}", b.getId(), b.getDescription(), finalSpent);
+                return;
+            }
+        }
+
+        String budgetCurrency = b.getCurrencyCode();
+        BigDecimal spent = ConvertedAmounts.sumConverted(
+                transactionRepository.sumAmountsByCurrencyForCategory(
+                        userId, c.getId(), TransactionType.SPENT, periodStart, now),
+                budgetCurrency, currencyConverter);
+
+        BudgetHealth previousHealth = b.getHealth();
+        BudgetHealth currentHealth = b.updateHealth(spent);
+        boolean alertable = Boolean.TRUE.equals(b.getAlertable());
+
+        if (alertable && currentHealth == BudgetHealth.EXCEEDED) {
+            log.info("Budget {} superó el límite (spent={}, limit={})",
+                    b.getId(), spent, b.getLimitAmount());
+
+            Transaction lastTx = lastTxOf(c.getId(), periodStart, now);
+            if (lastTx != null && b.markExceededNotified()) {
+                eventPublisher.publishEvent(new BudgetExceededEvent(
+                        b.getId(),
+                        u.getId(),
+                        c.getName(),
+                        spent,
+                        b.getLimitAmount(),
+                        b.getCurrencyCode(),
+                        lastTx.getCreatedAt(),
+                        lastTx.getAmount(),
+                        lastTx.getPaymentMethod().getDisplayName()
+                ));
+            }
+        } else if (alertable && currentHealth == BudgetHealth.NEAR_LIMIT) {
+            int alertPercent = b.effectivePercentAlert();
+            log.info("Budget {} alcanzó {}% (spent={}, limit={})",
+                    b.getId(), alertPercent, spent, b.getLimitAmount());
+
+            Transaction lastTx = lastTxOf(c.getId(), periodStart, now);
+            if (lastTx != null && b.markNearLimitNotified()) {
+                eventPublisher.publishEvent(new BudgetNearLimitEvent(
+                        b.getId(),
+                        u.getId(),
+                        c.getName(),
+                        spent,
+                        b.getLimitAmount(),
+                        alertPercent,
+                        b.getCurrencyCode(),
+                        lastTx.getCreatedAt(),
+                        lastTx.getAmount(),
+                        lastTx.getPaymentMethod().getDisplayName()
+                ));
+            }
+        } else if (alertable && previousHealth != BudgetHealth.OK) {
+            log.info("Budget {} volvió a estado OK (spent={}, limit={})",
+                    b.getId(), spent, b.getLimitAmount());
+        }
     }
 
 

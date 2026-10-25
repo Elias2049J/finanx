@@ -21,6 +21,9 @@ import java.time.OffsetDateTime;
 @Builder
 public class Budget {
 
+    /** Umbral usado cuando el presupuesto es notificable pero no define porcentaje. */
+    public static final int DEFAULT_ALERT_PERCENT = 50;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -90,6 +93,18 @@ public class Budget {
     @JoinColumn(name = "id_programacion")
     private BudgetSchedule schedule;
 
+    /**
+     * Porcentaje de alerta efectivo, acotado a [0, 100].
+     *
+     * <p>Un {@code percentAlert} nulo (columna opcional) no debe romper el recalculo:
+     * se usa {@link #DEFAULT_ALERT_PERCENT} en su lugar.
+     */
+    public int effectivePercentAlert() {
+        return percentAlert == null
+                ? DEFAULT_ALERT_PERCENT
+                : Math.clamp(percentAlert, 0, 100);
+    }
+
     public BudgetHealth updateHealth(BigDecimal spent) {
         if (!Boolean.TRUE.equals(alertable)) {
             if (spent.compareTo(limitAmount) >= 0) {
@@ -100,7 +115,7 @@ public class Budget {
             return health;
         }
 
-        int alertPercent = Math.clamp(percentAlert, 0, 100);
+        int alertPercent = effectivePercentAlert();
         BigDecimal alertThreshold = limitAmount
                 .multiply(BigDecimal.valueOf(alertPercent))
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);

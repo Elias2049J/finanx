@@ -63,6 +63,35 @@ class BudgetTest {
         assertThat(budget.getExceededNotified()).isTrue();
     }
 
+    @Test
+    void shouldUseDefaultThresholdWhenPercentAlertIsNull() {
+        // percentAlert es una columna opcional: un presupuesto notificable sin
+        // porcentaje no debe lanzar NPE ni abortar el recalculo del usuario.
+        Budget budget = Budget.builder()
+                .alertable(true)
+                .percentAlert(null)
+                .limitAmount(new BigDecimal("100.00"))
+                .health(BudgetHealth.OK)
+                .build();
+
+        BudgetHealth health = budget.updateHealth(new BigDecimal("50.00"));
+
+        assertThat(budget.effectivePercentAlert()).isEqualTo(Budget.DEFAULT_ALERT_PERCENT);
+        assertThat(health).isEqualTo(BudgetHealth.NEAR_LIMIT);
+    }
+
+    @Test
+    void shouldClampPercentAlertToValidRange() {
+        Budget budget = Budget.builder()
+                .alertable(true)
+                .percentAlert(150)
+                .limitAmount(new BigDecimal("100.00"))
+                .health(BudgetHealth.OK)
+                .build();
+
+        assertThat(budget.effectivePercentAlert()).isEqualTo(100);
+    }
+
     private Budget budget(boolean alertable, BudgetHealth health) {
         return Budget.builder()
                 .alertable(alertable)
