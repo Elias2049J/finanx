@@ -40,6 +40,7 @@ public class JwtResourceServerConfig {
                 claims.put("sub", decoded.getSubject());
                 claims.put("iss", decoded.getIssuer());
                 claims.put(Constants.AUTHORITIES_CLAIM, jwtTokenService.extractAuthorities(decoded));
+                copyRequiredStringClaim(claims, decoded, Constants.SESSION_ID_CLAIM);
                 copyClaim(claims, decoded, Constants.EMAIL_CLAIM);
                 copyClaim(claims, decoded, Constants.NAME_CLAIM);
                 copyClaim(claims, decoded, Constants.LASTNAME_CLAIM);
@@ -59,6 +60,14 @@ public class JwtResourceServerConfig {
         if (value != null) {
             claims.put(name, value);
         }
+    }
+
+    private static void copyRequiredStringClaim(Map<String, Object> claims, DecodedJWT decoded, String name) {
+        String value = decoded.getClaim(name).asString();
+        if (value == null || value.isBlank()) {
+            throw new JwtException("Invalid JWT session id");
+        }
+        claims.put(name, value);
     }
 
     @Bean
