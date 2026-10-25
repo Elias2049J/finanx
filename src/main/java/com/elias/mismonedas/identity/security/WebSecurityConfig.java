@@ -65,6 +65,10 @@ public class WebSecurityConfig {
 
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 
+                        // Los webhooks se autentican por firma HMAC, no por JWT. El controlador
+                        // solo existe si app.billing.webhooks.enabled=true; si esta apagado, 404.
+                        .requestMatchers("/api/v1/webhooks/**").permitAll()
+
                         .requestMatchers("/api/v1/users/{id}/delete").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/api/v1/users/{id}/disable").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/api/v1/users/{id}/reset-data").hasAnyRole("USER", "SYSTEM")

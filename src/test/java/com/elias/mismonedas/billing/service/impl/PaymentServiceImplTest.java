@@ -35,6 +35,7 @@ import org.springframework.amqp.AmqpException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -530,6 +531,45 @@ class PaymentServiceImplTest {
 
             assertThat(event.getState()).isEqualTo(WebhookEventState.FAILED);
             assertThat(event.getErrorMessage()).isEqualTo("processing failed");
+        }
+    }
+
+    @Nested
+    class ExpireStalePaymentsTest {
+
+        @Test
+        void shouldFailStalePendingAndProcessingPayments() {
+            Payment pending = Payment.builder().id(1L).state(PaymentState.PENDING).build();
+            Payment processing = Payment.builder().id(2L).state(PaymentState.PROCESSING).build();
+            when(paymentRepository.findAllByStateAndUpdatedAtBefore(eq(PaymentState.PENDING), any()))
+                    .thenReturn(List.of(pending));
+            when(paymentRepository.findAllByStateAndUpdatedAtBefore(eq(PaymentState.PROCESSING), any()))
+                    .thenReturn(List.of(processing));
+
+            int expired = service.expireStalePayments(OffsetDateTime.now(), OffsetDateTime.now());
+
+            assertThat(expired).isEqualTo(2);
+            assertThat(pending.getState()).isEqualTo(PaymentState.FAILED);
+            assertThat(processing.getState()).isEqualTo(PaymentState.FAILED);
+            assertThat(pending.getFailureReason()).contains("PENDING");
+            assertThat(processing.getFailureReason()).contains("PROCESSING");
+            verify(paymentRepository).save(pending);
+            verify(paymentRepository).save(processing);
+        }
+
+        @Test
+        void shouldSkipPaymentThatChangedStateConcurrently() {
+            Payment completed = Payment.builder().id(1L).state(PaymentState.COMPLETED).build();
+            when(paymentRepository.findAllByStateAndUpdatedAtBefore(eq(PaymentState.PENDING), any()))
+                    .thenReturn(List.of(completed));
+            when(paymentRepository.findAllByStateAndUpdatedAtBefore(eq(PaymentState.PROCESSING), any()))
+                    .thenReturn(List.of());
+
+            int expired = service.expireStalePayments(OffsetDateTime.now(), OffsetDateTime.now());
+
+            assertThat(expired).isZero();
+            assertThat(completed.getState()).isEqualTo(PaymentState.COMPLETED);
+            verify(paymentRepository, never()).save(any());
         }
     }
 

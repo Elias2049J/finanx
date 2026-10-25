@@ -18,7 +18,7 @@ import {
 //   4. una feature premium (segunda billetera) se desbloquea
 //   5. cancelar la suscripcion
 //   6. crear y refundar un pago
-//   7. webhook: firma invalida -> 401
+//   7. webhook: endpoint apagado por flag -> 404
 //
 // KNOWN BUG (BUG-2): al registrar un usuario se le asigna automaticamente una
 // suscripcion PREMIUM ACTIVE (BillingListener), asi que no existe el estado
@@ -177,17 +177,19 @@ export default function (data) {
     assert('refund de PENDING -> 409', refund.status === 409, `${refund.status} ${refund.body}`);
   });
 
-  group('webhook con firma invalida -> 401', () => {
+  // El gateway es manual: no hay proveedor que firme webhooks, asi que el endpoint
+  // solo existe con APP_BILLING_WEBHOOKS_ENABLED=true. Por defecto debe dar 404.
+  group('webhook apagado por flag -> 404', () => {
     const res = http.post(
       `${BASE_URL}/webhooks/stripe`,
       JSON.stringify({ id: 'evt_test', type: 'payment.completed' }),
       {
         headers: { 'Content-Type': 'application/json', 'X-Signature': 'invalid' },
         tags: { endpoint: EP.webhook },
-        responseCallback: http.expectedStatuses(200, 202, 401),
+        responseCallback: http.expectedStatuses(404),
       }
     );
-    assert('webhook firma invalida -> 401', res.status === 401, `${res.status} ${res.body}`);
+    assert('webhook apagado -> 404', res.status === 404, `${res.status} ${res.body}`);
   });
 
   group('cancelar suscripcion', () => {

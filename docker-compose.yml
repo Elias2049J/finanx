@@ -34,6 +34,7 @@ services:
       FCM_CREDENTIALS_PATH: /run/secrets/firebase-sa
       # Solo en el compose de desarrollo: asigna PREMIUM a cada registro.
       APP_BILLING_AUTO_PREMIUM: "true"
+      APP_BILLING_WEBHOOKS_ENABLED: "false"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 30s

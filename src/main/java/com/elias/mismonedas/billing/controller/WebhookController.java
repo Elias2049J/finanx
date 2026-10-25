@@ -7,13 +7,23 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Endpoint de webhooks de proveedores de pago.
+ * <p>
+ * Solo se registra cuando {@code app.billing.webhooks.enabled=true}. Con el gateway manual
+ * no existe ningun proveedor que pueda enviar webhooks y el adaptador rechaza todo, asi que
+ * por defecto el endpoint no se expone (404). Al integrar un proveedor real hay que
+ * implementar {@code PaymentPort.verifyWebhookSignature} y {@code parseWebhookPayload}.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/webhooks")
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.billing.webhooks.enabled", havingValue = "true")
 public class WebhookController {
 
     private final PaymentService paymentService;

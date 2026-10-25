@@ -81,6 +81,13 @@ app:
   billing:
     # Regala PREMIUM a cada registro. Solo para desarrollo; por defecto off.
     auto-premium: ${APP_BILLING_AUTO_PREMIUM:false}
+    # Endpoint /webhooks/{provider}. Solo tiene sentido con un PaymentPort real; por defecto off.
+    webhooks:
+      enabled: ${APP_BILLING_WEBHOOKS_ENABLED:false}
+    # Pagos estancados que pasan a FAILED. La suscripcion no se toca.
+    payment-expiration:
+      pending-minutes: ${APP_BILLING_PAYMENT_EXPIRATION_PENDING_MINUTES:1440}
+      processing-minutes: ${APP_BILLING_PAYMENT_EXPIRATION_PROCESSING_MINUTES:60}
   ai:
     max-user-prompt-length: 500
     max-output-tokens: 1024

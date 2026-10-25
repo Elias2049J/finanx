@@ -271,6 +271,32 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
+    public int expireStalePayments(OffsetDateTime pendingCutoff, OffsetDateTime processingCutoff) {
+        int expired = expire(PaymentState.PENDING, pendingCutoff)
+                + expire(PaymentState.PROCESSING, processingCutoff);
+        if (expired > 0) {
+            log.info("Expired {} stale payments", expired);
+        }
+        return expired;
+    }
+
+    private int expire(PaymentState state, OffsetDateTime cutoff) {
+        List<Payment> stale = paymentRepository.findAllByStateAndUpdatedAtBefore(state, cutoff);
+        int expired = 0;
+        for (Payment payment : stale) {
+            if (payment.getState() != state || !payment.getState().canTransitionTo(PaymentState.FAILED)) {
+                continue;
+            }
+            payment.transitionTo(PaymentState.FAILED);
+            payment.setFailureReason("Expired after " + state);
+            paymentRepository.save(payment);
+            expired++;
+        }
+        return expired;
+    }
+
+    @Override
+    @Transactional
     public void markWebhookEventFailed(Long webhookEventId, String errorMessage) {
         WebhookEvent event = webhookEventRepository.findByIdForUpdate(webhookEventId)
                 .orElseThrow(() -> new EntityNotFoundException("Webhook event not found with id " + webhookEventId));

@@ -5,6 +5,7 @@ import com.elias.mismonedas.billing.domain.enums.PaymentState;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,4 +28,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long>, JpaSpec
     List<Payment> findAllByState(PaymentState state);
 
     List<Payment> findAllByUser_IdAndState(Long userId, PaymentState state);
+
+    List<Payment> findAllByStateAndUpdatedAtBefore(PaymentState state, OffsetDateTime cutoff);
 }
