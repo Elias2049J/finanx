@@ -12,12 +12,26 @@ def _env_int(name: str, default: int) -> int:
     return int(value) if value not in (None, "") else default
 
 
+def _env_secret(name: str, default: str = "") -> str:
+    file_path = os.getenv(f"{name}_FILE")
+    if file_path:
+        try:
+            with open(file_path, encoding="utf-8") as secret_file:
+                value = secret_file.read().strip()
+        except OSError as exc:
+            raise RuntimeError(f"{name}_FILE is not readable: {file_path}") from exc
+        if not value:
+            raise RuntimeError(f"{name}_FILE is empty: {file_path}")
+        return value
+    return _env(name, default)
+
+
 class RabbitSettings:
     def __init__(self) -> None:
         self.host = _env("RABBITMQ_HOST", "localhost")
         self.port = _env_int("RABBITMQ_PORT", 5672)
         self.user = _env("RABBITMQ_USER", "guest")
-        self.password = _env("RABBITMQ_PASSWORD", "guest")
+        self.password = _env_secret("RABBITMQ_PASSWORD", "guest")
         self.virtual_host = _env("RABBITMQ_VHOST", "/")
         self.scan_exchange = _env("SCAN_EXCHANGE", "receipt.scan")
         self.scan_routing_key = _env("SCAN_ROUTING_KEY", "receipt.scan.job")
@@ -39,8 +53,8 @@ class StorageSettings:
     def __init__(self) -> None:
         self.endpoint = _env("S3_ENDPOINT", "http://localhost:8333")
         self.region = _env("S3_REGION", "us-east-1")
-        self.access_key = _env("S3_ACCESS_KEY", "")
-        self.secret_key = _env("S3_SECRET_KEY", "")
+        self.access_key = _env_secret("S3_ACCESS_KEY")
+        self.secret_key = _env_secret("S3_SECRET_KEY")
         self.bucket = _env("S3_BUCKET", "finanx-images")
 
 

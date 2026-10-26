@@ -4,7 +4,8 @@ WORKDIR /app
 
 COPY target/mis-monedas-0.0.1-SNAPSHOT.jar mis-monedas.jar
 COPY application.yml application.yml
+COPY docker/backend-entrypoint.sh backend-entrypoint.sh
 
 EXPOSE 8080
 
-ENTRYPOINT ["java","-jar","mis-monedas.jar","--spring.config.location=/app/application.yml"]
+ENTRYPOINT ["sh","/app/backend-entrypoint.sh"]

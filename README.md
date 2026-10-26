@@ -12,6 +12,7 @@ plantilla versionada es **`.env.example`**, y solo contiene valores de ejemplo.
 ```bash
 cp .env.example .env
 # rellena los valores marcados como REEMPLAZAR
+# crea secrets/seaweedfs_access_key y secrets/seaweedfs_secret_key
 docker compose up -d --build
 ```
 
@@ -39,7 +40,7 @@ transportando únicamente el `outboxId`.
 | `GEMINI_API_KEY` | clave de la API de Gemini |
 | `CURRENCYBEACON_API_KEY` | clave de Currency Beacon |
 | `EMAIL_APP_PASSWORD` | *app-password* de Google (no la contrasena de la cuenta) |
-| `SEAWEEDFS_SECRET_KEY` | secreto del bucket de imagenes |
+| `SEAWEEDFS_ACCESS_KEY_FILE` / `SEAWEEDFS_SECRET_KEY_FILE` | rutas locales de los archivos Docker secrets S3 |
 | `RABBITMQ_PASSWORD` | contrasena de RabbitMQ |
 
 El resto de variables ya vienen con un valor valido en `.env.example`: son
@@ -54,6 +55,17 @@ El archivo **no** se versiona: va en `secrets/firebase-service-account.json`
 su ruta de `FCM_CREDENTIALS_PATH`, y docker compose usa `FCM_CREDENTIALS_FILE`
 para montarlo como secreto en `/run/secrets/firebase-sa` (ver
 `docker-compose.yml`).
+
+Las credenciales S3 de SeaweedFS tampoco van en `.env`: crea los archivos
+`secrets/seaweedfs_access_key` y `secrets/seaweedfs_secret_key`. Compose los
+monta como Docker secrets en el backend, el worker OCR y SeaweedFS. Las antiguas
+variables `SEAWEEDFS_ACCESS_KEY` y `SEAWEEDFS_SECRET_KEY` deben quitarse de un
+`.env` existente al migrar; el entrypoint del backend y el worker prefieren el
+secreto montado y fallan si el archivo está vacío o no se puede leer.
+Con `docker compose` y fuentes `file:`, Compose monta los archivos del host; no
+los cifra en reposo como los secrets administrados por Swarm. Restringe el ACL
+de `secrets/` y cifra el disco del host. Este MVP convierte a archivos solo las
+claves S3; las demás credenciales de infraestructura siguen viniendo de `.env`.
 
 ### Como se carga la configuracion
 
@@ -175,6 +187,23 @@ backend y `storage.tudominio.com` para SeaweedFS (Cloudflare Tunnel puede ir
 directo a cada servicio, o delante de nginx con el bloque `storage` de
 `nginx.conf`). Solo cambias `SEAWEEDFS_PUBLIC_ENDPOINT` y `API_BASE_URL`; ni el
 backend ni la app se tocan.
+
+**Límite operativo actual:** esta configuración conserva `weed mini` como
+instancia única con un volumen Docker persistente. Tiene healthcheck, pero no es
+HA ni replica los datos; no la trates como almacenamiento de producción de alta
+disponibilidad. El backup manual detiene temporalmente API/worker/storage para
+archivar el volumen de forma consistente:
+
+```powershell
+.\scripts\backup-seaweedfs.ps1
+```
+
+Guarda los archivos resultantes cifrados y fuera del host, programa el script
+según el RPO acordado y prueba restauraciones antes de depender del backup. El
+script no crea por sí solo una programación ni una copia remota.
+Para HA o secretos cifrados/gestionados por Docker, el siguiente paso es migrar
+a almacenamiento S3 gestionado o SeaweedFS multi-nodo y a Swarm/secret manager;
+no basta con escalar `weed mini`.
 
 Ver `.env.example` para el detalle de cada variable.
 
