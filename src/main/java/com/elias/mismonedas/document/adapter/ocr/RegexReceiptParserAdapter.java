@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,48 +36,54 @@ public class RegexReceiptParserAdapter implements ReceiptParserPort {
         OCR_CLEANUP.put(Pattern.compile("(?i)\\bELTO\\b"), "VUELTO");
     }
 
+    private static final String AMOUNT_TOKEN =
+            "(?:\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{2})?|\\d+[.,]\\d{2})";
+
     private static final Pattern TOTAL_PATTERN =
-            Pattern.compile("^TOTAL\\s+([0-9]+[.,][0-9]{2})$", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
+            Pattern.compile("^TOTAL\\s+(" + AMOUNT_TOKEN + ")$", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
     private static final Pattern AMOUNT_SLASH_PATTERN =
-            Pattern.compile("^TOTAL\\s+S/\\s*\\.?\\s*([0-9]+[.,][0-9]{2})$", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
+            Pattern.compile("^TOTAL\\s+S/\\s*\\.?\\s*(" + AMOUNT_TOKEN + ")$", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
     private static final Pattern SON_PATTERN =
-            Pattern.compile("SON:\\s*.*?([0-9]+[.,][0-9]{2})", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("SON:\\s*.*?(" + AMOUNT_TOKEN + ")", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern CASH_PATTERN =
-            Pattern.compile("(?:EFECTIVO|cd|VUELTO)\\s*S?/?\\.?\\s*([0-9]+[.,][0-9]{2})", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("(?:EFECTIVO|cd|VUELTO)\\s*(?:S/\\s*\\.?\\s*)?(" + AMOUNT_TOKEN + ")", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern FUZZY_TOTAL_PATTERN =
-            Pattern.compile("^(?:O[TTA]{2,3}L|TOT[AI]L|TOTA|OTAL)\\s+([0-9]+[.,][0-9]{2})$", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
+            Pattern.compile("^(?:O[TTA]{2,3}L|TOT[AI]L|TOTA|OTAL)\\s+(" + AMOUNT_TOKEN + ")$", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
     private static final Pattern BEFORE_SON_PATTERN =
-            Pattern.compile("([0-9]+[.,][0-9]{2})\\s*\\nSON:", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("(" + AMOUNT_TOKEN + ")\\s*\\nSON:", Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern ANY_AMOUNT_FALLBACK =
-            Pattern.compile("([0-9]+[.,][0-9]{2})");
+    private static final Pattern AMOUNT_TOKEN_PATTERN =
+            Pattern.compile("^" + AMOUNT_TOKEN + "$");
 
     private static final Map<String, Pattern> CURRENCY_PATTERNS = new LinkedHashMap<>();
     static {
-        CURRENCY_PATTERNS.put("PEN", Pattern.compile("S/?\\.?\\s*|SOL(ES)?\\b", Pattern.CASE_INSENSITIVE));
-        CURRENCY_PATTERNS.put("USD", Pattern.compile("US\\$|USD\\b|D[OÓ]LAR(ES)?\\b", Pattern.CASE_INSENSITIVE));
-        CURRENCY_PATTERNS.put("EUR", Pattern.compile("[€]|EUR\\b", Pattern.CASE_INSENSITIVE));
-        CURRENCY_PATTERNS.put("BRL", Pattern.compile("R\\$|REAL(ES)?\\b", Pattern.CASE_INSENSITIVE));
-        CURRENCY_PATTERNS.put("MXN", Pattern.compile("MX\\$|MXN\\b", Pattern.CASE_INSENSITIVE));
-        CURRENCY_PATTERNS.put("CLP", Pattern.compile("CLP\\b", Pattern.CASE_INSENSITIVE));
-        CURRENCY_PATTERNS.put("COP", Pattern.compile("COP\\b", Pattern.CASE_INSENSITIVE));
+        CURRENCY_PATTERNS.put("USD", Pattern.compile("(?:US\\s?\\$|\\bUSD\\b|\\bD[ÓO]LAR(?:ES)?\\b)", Pattern.CASE_INSENSITIVE));
+        CURRENCY_PATTERNS.put("EUR", Pattern.compile("(?:€|\\bEUR\\b|\\bEUROS?\\b)", Pattern.CASE_INSENSITIVE));
+        CURRENCY_PATTERNS.put("BRL", Pattern.compile("(?:R\\$|\\bREAL(?:ES)?\\b)", Pattern.CASE_INSENSITIVE));
+        CURRENCY_PATTERNS.put("MXN", Pattern.compile("(?:MX\\$|\\bMXN\\b)", Pattern.CASE_INSENSITIVE));
+        CURRENCY_PATTERNS.put("CLP", Pattern.compile("\\bCLP\\b", Pattern.CASE_INSENSITIVE));
+        CURRENCY_PATTERNS.put("COP", Pattern.compile("\\bCOP\\b", Pattern.CASE_INSENSITIVE));
+        CURRENCY_PATTERNS.put("PEN", Pattern.compile("(?:\\bS/\\s*\\.?\\s*(?=\\d)|\\bSOL(?:ES)?\\b|\\bPEN\\b)", Pattern.CASE_INSENSITIVE));
     }
-
-    private static final Pattern STANDALONE_AMOUNT_PATTERN =
-            Pattern.compile("^([0-9]+[.,][0-9]{2})$", Pattern.MULTILINE);
 
     private static final Pattern TAX_LINE_PATTERN =
             Pattern.compile(".*(?:IGV|%|OP\\.|SUB\\s+TOTAL|GRAVADA|EXONERADA).*", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern DATE_PATTERN =
-            Pattern.compile("FECHA\\s*DE\\s*EMISION:\\s*(\\d{2})[-/](\\d{2})[-/](\\d{4})", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("FECHA\\s*DE\\s*EMISION:\\s*(\\d{1,2})([-/.])(\\d{1,2})\\2(\\d{4})", Pattern.CASE_INSENSITIVE);
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    private static final Map<Character, DateTimeFormatter> DATE_FORMATTERS = Map.of(
+            '-', DateTimeFormatter.ofPattern("d-M-uuuu").withResolverStyle(ResolverStyle.STRICT),
+            '/', DateTimeFormatter.ofPattern("d/M/uuuu").withResolverStyle(ResolverStyle.STRICT),
+            '.', DateTimeFormatter.ofPattern("d.M.uuuu").withResolverStyle(ResolverStyle.STRICT)
+    );
+
+    private static final LocalDate MIN_PLAUSIBLE_DATE = LocalDate.of(2000, 1, 1);
 
     private static final Map<PaymentMethod, Pattern> PAYMENT_METHOD_PATTERNS = new LinkedHashMap<>();
     static {
@@ -103,6 +111,10 @@ public class RegexReceiptParserAdapter implements ReceiptParserPort {
 
     @Override
     public ReceiptData parse(String rawOcrText) {
+        if (rawOcrText == null || rawOcrText.isBlank()) {
+            return new ReceiptData(null, null, null, "PEN", null, null, 0.0, null);
+        }
+
         String cleaned = normalize(rawOcrText);
         BigDecimal amount = extractAmount(cleaned);
         boolean flexible = false;
@@ -158,10 +170,11 @@ public class RegexReceiptParserAdapter implements ReceiptParserPort {
             String trimmed = line.trim();
             String[] parts = trimmed.split("\\s+");
             for (String part : parts) {
-                if (part.matches("^[0-9]+[.,][0-9]{2}$")) {
-                    try {
-                        candidates.add(new BigDecimal(part.replace(",", ".")));
-                    } catch (NumberFormatException ignored) {}
+                if (AMOUNT_TOKEN_PATTERN.matcher(part).matches()) {
+                    BigDecimal candidate = parseMoney(part);
+                    if (candidate != null) {
+                        candidates.add(candidate);
+                    }
                 }
             }
         }
@@ -169,7 +182,51 @@ public class RegexReceiptParserAdapter implements ReceiptParserPort {
     }
 
     private static BigDecimal parseAmount(String raw) {
-        return new BigDecimal(raw.replace(",", "."));
+        return parseMoney(raw);
+    }
+
+    private static BigDecimal parseMoney(String raw) {
+        if (raw == null) return null;
+
+        String value = raw.trim();
+        if (value.isEmpty()) return null;
+
+        int lastDot = value.lastIndexOf('.');
+        int lastComma = value.lastIndexOf(',');
+        String normalized;
+        if (lastDot >= 0 && lastComma >= 0) {
+            if (lastComma > lastDot) {
+                normalized = value.replace(".", "").replace(',', '.');
+            } else {
+                normalized = value.replace(",", "");
+            }
+        } else if (lastComma >= 0) {
+            normalized = normalizeSingleSeparator(value, ',');
+        } else if (lastDot >= 0) {
+            normalized = normalizeSingleSeparator(value, '.');
+        } else {
+            normalized = value;
+        }
+
+        try {
+            return new BigDecimal(normalized);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private static String normalizeSingleSeparator(String value, char separator) {
+        int lastSeparator = value.lastIndexOf(separator);
+        int digitsAfter = value.length() - lastSeparator - 1;
+
+        if (digitsAfter == 3) {
+            return value.replace(String.valueOf(separator), "");
+        }
+        if (digitsAfter == 1 || digitsAfter == 2) {
+            String integerPart = value.substring(0, lastSeparator).replace(String.valueOf(separator), "");
+            return integerPart + "." + value.substring(lastSeparator + 1);
+        }
+        return value;
     }
 
     private BigDecimal extractStandaloneAmount(String text) {
@@ -177,8 +234,8 @@ public class RegexReceiptParserAdapter implements ReceiptParserPort {
         boolean afterTaxLine = false;
         for (String line : lines) {
             String trimmed = line.trim();
-            if (afterTaxLine && trimmed.matches("^[0-9]+[.,][0-9]{2}$")) {
-                return new BigDecimal(trimmed.replace(",", "."));
+            if (afterTaxLine && AMOUNT_TOKEN_PATTERN.matcher(trimmed).matches()) {
+                return parseMoney(trimmed);
             }
             afterTaxLine = TAX_LINE_PATTERN.matcher(trimmed).matches();
         }
@@ -186,12 +243,25 @@ public class RegexReceiptParserAdapter implements ReceiptParserPort {
     }
 
     private LocalDate extractDate(String text) {
-        Matcher m = DATE_PATTERN.matcher(text);
-        if (m.find()) {
-            String day = m.group(1);
-            String month = m.group(2);
-            String year = m.group(3);
-            return LocalDate.parse(day + "-" + month + "-" + year, DATE_FORMATTER);
+        if (text == null) return null;
+
+        Matcher matcher = DATE_PATTERN.matcher(text);
+        LocalDate maxPlausibleDate = LocalDate.now().plusDays(1);
+        while (matcher.find()) {
+            String day = matcher.group(1);
+            String separator = matcher.group(2);
+            String month = matcher.group(3);
+            String year = matcher.group(4);
+            DateTimeFormatter formatter = DATE_FORMATTERS.get(separator.charAt(0));
+            if (formatter == null) continue;
+
+            try {
+                LocalDate date = LocalDate.parse(day + separator + month + separator + year, formatter);
+                if (!date.isBefore(MIN_PLAUSIBLE_DATE) && !date.isAfter(maxPlausibleDate)) {
+                    return date;
+                }
+            } catch (DateTimeParseException ignored) {
+            }
         }
         return null;
     }
