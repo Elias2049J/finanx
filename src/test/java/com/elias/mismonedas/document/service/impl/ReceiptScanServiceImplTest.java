@@ -1,5 +1,7 @@
 package com.elias.mismonedas.document.service.impl;
 
+import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
+import com.elias.mismonedas.billing.plan.RequiresPlan;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.document.domain.entity.Image;
 import com.elias.mismonedas.document.domain.entity.Receipt;
@@ -309,6 +311,15 @@ class ReceiptScanServiceImplTest {
 
     @Nested
     class ImproveWithAiTest {
+
+        @Test
+        void shouldRequirePremiumPlanForAiImprovement() throws NoSuchMethodException {
+            var method = ReceiptScanServiceImpl.class.getMethod("improveWithAi", Long.class);
+            RequiresPlan requiresPlan = method.getAnnotation(RequiresPlan.class);
+
+            assertThat(requiresPlan).isNotNull();
+            assertThat(requiresPlan.value()).containsExactly(SubscriptionPlan.PREMIUM);
+        }
 
         @Test
         void shouldImproveWhenGeminiConfidenceIsHigher() {

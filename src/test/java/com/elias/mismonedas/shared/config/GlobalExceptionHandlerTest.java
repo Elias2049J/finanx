@@ -2,6 +2,7 @@ package com.elias.mismonedas.shared.config;
 
 import com.elias.mismonedas.chat.exception.ChatUnavailableException;
 import com.elias.mismonedas.billing.exception.InvalidWebhookSignatureException;
+import com.elias.mismonedas.shared.adapter.ai.gemini.exception.GeminiException;
 import com.elias.mismonedas.shared.i18n.CurrentLocaleProvider;
 import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.io.IOException;
@@ -139,5 +141,28 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getCode()).isEqualTo("CHAT_UNAVAILABLE");
         assertThat(response.getBody().getMessage())
                 .isEqualTo("El servicio está ocupado. Inténtalo nuevamente en unos segundos.");
+    }
+
+    @Test
+    void shouldReturnServiceUnavailableWhenGeminiFails() {
+        HttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/receipts/1/improve-ai");
+
+        var response = handler.handleGeminiUnavailable(
+                new GeminiException.UnavailableException("provider unavailable"), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody().getCode()).isEqualTo("AI_UNAVAILABLE");
+        assertThat(response.getBody().getMessage())
+                .isEqualTo("El servicio está ocupado. Inténtalo nuevamente en unos segundos.");
+    }
+
+    @Test
+    void shouldReturnServiceUnavailableForNetworkFailure() {
+        HttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/receipts/1/improve-ai");
+
+        var response = handler.handleResourceAccess(new ResourceAccessException("connection refused"), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody().getCode()).isEqualTo("SERVICE_UNAVAILABLE");
     }
 }

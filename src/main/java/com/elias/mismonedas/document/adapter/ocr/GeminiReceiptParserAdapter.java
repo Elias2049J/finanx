@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 @Component
@@ -75,9 +76,12 @@ public class GeminiReceiptParserAdapter implements ReceiptParserPort {
                 .build();
 
         InteractionResponse response = geminiClient.create(request);
-        String jsonResponse = response.extractOutputText();
+        if (response == null) {
+            throw new OcrProcessingException("Gemini no devolvió una respuesta");
+        }
 
-        log.info("gemini_raw_json_response={}", jsonResponse);
+        String jsonResponse = response.extractOutputText();
+        log.debug("gemini_response_received length={}", jsonResponse != null ? jsonResponse.length() : 0);
 
         return parseJsonToReceiptData(stripMarkdownFences(jsonResponse));
     }
@@ -116,12 +120,12 @@ public class GeminiReceiptParserAdapter implements ReceiptParserPort {
         }
         try {
             Map<String, Object> map = objectMapper.readValue(json, Map.class);
-            BigDecimal amount = map.get("amount") != null
-                    ? new BigDecimal(map.get("amount").toString())
-                    : null;
-            LocalDate date = map.get("date") != null && !map.get("date").toString().isBlank()
-                    ? LocalDate.parse(map.get("date").toString())
-                    : null;
+            if (map == null) {
+                throw new OcrProcessingException("Gemini no devolvió un objeto JSON válido");
+            }
+
+            BigDecimal amount = parseAmount(map.get("amount"));
+            LocalDate date = parseDate(map.get("date"));
             String description = map.get("description") != null
                     ? map.get("description").toString()
                     : null;
@@ -138,14 +142,34 @@ public class GeminiReceiptParserAdapter implements ReceiptParserPort {
                     : null;
 
             if (amount == null && description == null) {
-                log.warn("gemini_parsed_null_fields amount=null description=null", description);
+                log.warn("gemini_parsed_null_fields");
                 throw new OcrProcessingException("Gemini no pudo extraer datos del recibo");
             }
             log.info("gemini_parsed_fields paymentMethod={} transactionType={} category={}", paymentMethod, transactionType, category);
             return new ReceiptData(amount, date, description, currency, paymentMethod, transactionType, 0.85, category);
         } catch (JsonProcessingException e) {
-            log.warn("gemini_json_parse_error json={}", json, e);
+            log.warn("gemini_json_parse_error length={}", json.length(), e);
             throw new OcrProcessingException("Error al interpretar la respuesta de Gemini: " + e.getMessage());
+        }
+    }
+
+    private BigDecimal parseAmount(Object value) {
+        if (value == null) return null;
+        try {
+            return new BigDecimal(value.toString().trim());
+        } catch (NumberFormatException e) {
+            log.warn("gemini_invalid_amount");
+            return null;
+        }
+    }
+
+    private LocalDate parseDate(Object value) {
+        if (value == null || value.toString().isBlank()) return null;
+        try {
+            return LocalDate.parse(value.toString().trim());
+        } catch (DateTimeParseException e) {
+            log.warn("gemini_invalid_date");
+            return null;
         }
     }
 

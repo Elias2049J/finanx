@@ -210,6 +210,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
     }
 
     @Override
+    @RequiresPlan(SubscriptionPlan.PREMIUM)
     @Transactional
     public ReceiptResponse improveWithAi(Long receiptId) {
         Long userId = securityService.getCurrentUser().getId();

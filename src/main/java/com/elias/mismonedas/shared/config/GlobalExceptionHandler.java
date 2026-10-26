@@ -1,6 +1,7 @@
 package com.elias.mismonedas.shared.config;
 
 import com.elias.mismonedas.chat.exception.ChatUnavailableException;
+import com.elias.mismonedas.shared.adapter.ai.gemini.exception.GeminiException;
 import com.elias.mismonedas.shared.dto.ErrorResponse;
 import com.elias.mismonedas.shared.exception.*;
 import com.elias.mismonedas.shared.i18n.CurrentLocaleProvider;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -76,6 +78,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(OcrProcessingException.class)
     public ResponseEntity<ErrorResponse> handleOcrProcessing(OcrProcessingException ex, HttpServletRequest request) {
         return respond(HttpStatus.UNPROCESSABLE_ENTITY, "OCR_PROCESSING_FAILED", "error.ocr_processing", request, ex);
+    }
+
+    @ExceptionHandler(GeminiException.class)
+    public ResponseEntity<ErrorResponse> handleGeminiUnavailable(GeminiException ex, HttpServletRequest request) {
+        return respond(HttpStatus.SERVICE_UNAVAILABLE, "AI_UNAVAILABLE", "error.service_busy", request, ex);
+    }
+
+    @ExceptionHandler(ResourceAccessException.class)
+    public ResponseEntity<ErrorResponse> handleResourceAccess(ResourceAccessException ex, HttpServletRequest request) {
+        return respond(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE", "error.service_busy", request, ex);
     }
 
     @ExceptionHandler(OcrBusyException.class)
