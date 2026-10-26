@@ -15,13 +15,27 @@ public record SeaweedFsProperties(
         Duration presignedUrlTtl
 ) {
     public SeaweedFsProperties {
-        if (internalEndpoint == null) internalEndpoint = URI.create("http://localhost:8333");
-        if (publicEndpoint == null) publicEndpoint = internalEndpoint;
-        if (bucket == null || bucket.isBlank()) bucket = "finanx-images";
-        if (accessKey == null || accessKey.isBlank()) accessKey = "finanx-storage";
-        if (secretKey == null || secretKey.isBlank()) secretKey = "finanx-storage-dev";
+        internalEndpoint = requiredUri("internal-endpoint", internalEndpoint);
+        publicEndpoint = requiredUri("public-endpoint", publicEndpoint);
+        bucket = requiredText("bucket", bucket);
+        accessKey = requiredText("access-key", accessKey);
+        secretKey = requiredText("secret-key", secretKey);
         if (presignedUrlTtl == null || presignedUrlTtl.isNegative() || presignedUrlTtl.isZero()) {
-            presignedUrlTtl = Duration.ofMinutes(5);
+            throw new IllegalArgumentException("app.storage.seaweedfs.presigned-url-ttl must be positive");
         }
+    }
+
+    private static URI requiredUri(String name, URI value) {
+        if (value == null) {
+            throw new IllegalArgumentException("app.storage.seaweedfs." + name + " is required");
+        }
+        return value;
+    }
+
+    private static String requiredText(String name, String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("app.storage.seaweedfs." + name + " is required");
+        }
+        return value;
     }
 }

@@ -140,9 +140,10 @@ las obtiene con `GET /api/v1/images/{imageId}`, que responde **302** hacia una
 **URL prefirmada** de SeaweedFS.
 
 El host de esa URL se toma de `app.storage.seaweedfs.public-endpoint`
-(env `SEAWEEDFS_PUBLIC_ENDPOINT`, por defecto `http://localhost:8333`). **Ese
+(env `SEAWEEDFS_PUBLIC_ENDPOINT`, por defecto `http://localhost:8081`). **Ese
 endpoint debe ser alcanzable desde el cliente (el móvil)**, no solo desde el
-backend, porque el redirect lo sigue el dispositivo.
+backend, porque el redirect lo sigue el dispositivo. En desarrollo, nginx
+publica SeaweedFS en el puerto `8081`.
 
 La firma SigV4 incluye el **host y el puerto**, así que el túnel/proxy que pongas delante
 debe reenviar el `Host` original y no reescribir la ruta (ngrok y cloudflared lo
@@ -156,7 +157,7 @@ no manda el JWT al storage, porque OkHttp lo elimina en redirects entre hosts):
 ```bash
 docker compose up -d --build
 ngrok http 8080      # -> https://<api>.ngrok-free.app      (API)
-ngrok http 8333      # -> https://<storage>.ngrok-free.app  (storage)
+ngrok http 8081      # -> https://<storage>.ngrok-free.app  (storage)
 ```
 
 Luego rellena:
@@ -164,8 +165,8 @@ Luego rellena:
 - `SEAWEEDFS_PUBLIC_ENDPOINT=https://<storage>.ngrok-free.app` en `.env` (backend).
 - `API_BASE_URL=https://<api>.ngrok-free.app/` en `local.properties` (app, con barra final).
 
-Alternativas sin túnel: en emulador `adb reverse tcp:8333 tcp:8333` y dejar
-`http://localhost:8333`; en móvil físico en la misma LAN, `http://<IP-DEL-PC>:8333`.
+Alternativas sin túnel: en emulador `adb reverse tcp:8081 tcp:8081` y dejar
+`http://localhost:8081`; en móvil físico en la misma LAN, `http://<IP-DEL-PC>:8081`.
 
 ### Producción (Cloudflare)
 
