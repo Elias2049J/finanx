@@ -23,11 +23,13 @@ Exigir que las cuentas locales demuestren control de su correo antes de poder in
 
 ## Reglas y seguridad
 
-- Código criptográficamente aleatorio, exactamente seis dígitos (se permiten ceros iniciales), válido durante 15 minutos, máximo cinco intentos fallidos y espera mínima de 60 segundos para reenvío.
-- Persistir solo el desafío temporal: correo normalizado, propósito, hash del código, vencimiento, intentos y marca de último envío. Nunca persistir el código en claro ni el borrador de registro.
+- Código criptográficamente aleatorio, exactamente seis dígitos (se permiten ceros iniciales), válido durante 15 minutos, máximo cinco intentos fallidos y espera mínima de 60 segundos para reenvío. Agotar intentos conserva el desafío bloqueado hasta que expire; el reenvío debe seguir respetando el cooldown.
+- Persistir solo el desafío temporal: correo normalizado, propósito, HMAC del código con clave secreta, vencimiento, intentos y marca de último envío. Nunca persistir el código en claro ni el borrador de registro. El HMAC se contextualiza con email y propósito; no se usa un hash simple ni un hash adaptativo costoso para OTP.
 - Un código vencido no crea ni habilita cuenta. La fila vencida deja de ser utilizable de inmediato y se elimina mediante limpieza programada.
+- Serializar la primera emisión por email/propósito con lock transaccional PostgreSQL; las filas existentes se leen con lock y timeout acotado. Persistir el desafío y confirmar la transacción antes de invocar SMTP; si el envío falla, invalidar el desafío solo si sigue siendo el mismo.
+- Validar email normalizado, longitud máxima 320, una sola dirección estricta y código de seis dígitos antes de consultar/alterar el desafío. Aplicar además el límite per-IP ya existente en Nginx y un límite global configurable de envíos para proteger el SMTP compartido.
 - Android conserva los campos del formulario solo en memoria hasta confirmar/reintentar. Si se pierde el estado de pantalla, la persona vuelve a completar el formulario.
-- El email de verificación es transaccional y no depende de la preferencia de notificaciones. Los errores de SMTP no deben dejar un desafío que bloquee el reenvío.
+- El email de verificación es transaccional y no depende de la preferencia de notificaciones. SMTP debe usar timeouts finitos y validar identidad TLS; los errores de envío no deben dejar un desafío que bloquee el reenvío.
 - Las respuestas de inicio/reenvío no deben revelar la existencia de una dirección. El correo debe normalizarse como en el registro actual.
 - No se requiere compatibilidad con cuentas o clientes de producción; se conserva Flyway como mecanismo normal de esquema.
 
@@ -59,7 +61,7 @@ La verificación debe ocurrir antes de invocar la creación del usuario o emitir
 ## Criterios de éxito
 
 1. Antes de confirmar el código no existe fila de usuario, billetera, preferencias ni tokens de sesión.
-2. Un código válido crea una cuenta local verificada; expirado, incorrecto, agotado o reutilizado no la crea.
+2. Un código válido crea una cuenta local verificada; expirado, incorrecto, agotado o reutilizado no la crea. Agotar intentos no elimina la marca temporal del cooldown.
 3. Una cuenta local no verificada no obtiene sesión; puede reenviar y confirmar, y después ingresar mediante login normal.
 4. Android implementa el flujo completo y conserva el borrador solo en memoria.
 5. Google sigue funcionando y los tests de backend, Android y cliente generado pasan.
@@ -70,3 +72,4 @@ La verificación debe ocurrir antes de invocar la creación del usuario o emitir
 - Crear la cuenta solo después de confirmar; luego autenticar con el formulario normal de login.
 - No considerar compatibilidad con datos reales/prod.
 - Reutilizar SMTP existente; no enviar correos reales en pruebas.
+- HMAC OTP con clave secreta; enviar solo tras commit; persistir límites de intentos y reenvío sin mantener una transacción abierta durante SMTP.

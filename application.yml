@@ -111,10 +111,14 @@ app:
       from: ${APP_NOTIFICATIONS_EMAIL_FROM}
       username: ${APP_NOTIFICATIONS_EMAIL_USERNAME}
       app-password: ${EMAIL_APP_PASSWORD}
-
     fcm:
       credentials-path: ${FCM_CREDENTIALS_PATH}
       project-id: ${FCM_PROJECT_ID}
+
+  email-verification:
+    hmac-secret: ${EMAIL_VERIFICATION_HMAC_SECRET:${JWT_SECRET}}
+    global-send-limit-per-minute: ${APP_EMAIL_VERIFICATION_GLOBAL_SEND_LIMIT_PER_MINUTE:10}
+
   exchange:
     currency-beacon:
       api-key: ${CURRENCYBEACON_API_KEY}
