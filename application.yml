@@ -166,6 +166,10 @@ resilience4j:
         minimum-number-of-calls: 5
         failure-rate-threshold: 60
         wait-duration-in-open-state: 60s
+        record-exceptions:
+          - com.elias.mismonedas.notifications.adapter.email.EmailTransportException
+        ignore-exceptions:
+          - com.elias.mismonedas.identity.util.InvalidEmailAddressException
       fcm:
         sliding-window-size: 10
         minimum-number-of-calls: 5
