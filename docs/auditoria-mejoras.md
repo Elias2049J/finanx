@@ -421,9 +421,10 @@ Comparación con la corrida anterior (818 VUs): ~520 req/s con p95 50 ms. El sal
 - Hikari tuning + `server.shutdown: graceful`.
 - Idempotencia de pago: hash de request, comparar monto/moneda, key no vacía (P2-15).
 - `WebhookEvent` unique por `(proveedor, externalEventId)` (P2-16).
-- Orden de `PlanExceptionHandler`, `checkExpirations` por ítem, dispatcher de outbox atómico y purga correcta (P2-17/18/19/20).
-- `improveWithAi` con `@RequiresPlan`, parser regex sin match vacío y parseo tolerante (P2-23).
-- Worker OCR con confirms/queue de resultado y clasificación de errores retryables (P2-24).
+- ✅ Orden de `PlanExceptionHandler`, `checkExpirations` por ítem, dispatcher de outbox atómico y purga correcta (P2-17/18/19/20).
+- ⚠️ `improveWithAi` con `@RequiresPlan`, parser regex sin match vacío y parseo tolerante (P2-23); el contrato de mejora con IA queda pendiente.
+- ✅ Worker OCR con confirms/queue de resultado y clasificación de errores retryables (P2-24).
+- ✅ Credenciales S3 fail-fast, `weed mini` con auth explícita y endpoint público alineado con nginx (P2-25).
 
 ### Fase 3 — Operación (1-2 meses)
 
@@ -550,7 +551,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-26. Verificación: `.\mvnw.cmd -o package` → **400 tests, 0 fallos, BUILD SUCCESS**; `:app:testDebugUnitTest` (28) y `:kotlin-client:test` (581) en verde.
+Aplicado sobre `master` el 2026-10-26. Verificación del lote: `.\mvnw.cmd -q test` → **443 tests, 0 fallos**; `python -m unittest discover -s services/doc-processing/tests` → 4 tests; `docker compose config` parsea correctamente. No se modificaron Android ni el cliente Kotlin en este lote.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -586,13 +587,18 @@ Aplicado sobre `master` el 2026-10-26. Verificación: `.\mvnw.cmd -o package` �
 | P1-16 parcial | Validación de monto positivo, máximo 2 decimales y moneda ISO-4217; el webhook compara monto y moneda antes de transicionar y marca `IGNORED` si no coinciden. El precio de plan server-side sigue pendiente por decisión de producto | `604ad0d`; spec `fb8a980` | `PaymentServiceImplTest` (+4) |
 | P2-15 | El pago se persiste antes de pedir el intento a la pasarela; el replay compara monto/moneda y una key en blanco se regenera | `d46965d` | `PaymentServiceImplTest` (+4) |
 | P2-16 | `WebhookEvent` es único por `(proveedor, id_evento_externo)`; la deduplicación consulta ambos campos y V10 migra el constraint | `35267fb` | `PaymentServiceImplTest` (+1), V10 aplicada en PostgreSQL |
-| Deuda | Flyway versiona V1–V10; V4 añade idempotencia de presupuesto; V5 reconcilia columnas de `movimientos`; V6 normaliza email y crea unique case-insensitive; V7/V8 añaden claim/reintento y unicidad FCM; V9 versiona familias de refresh; V10 cambia el unique de webhooks a proveedor + evento | `dc078ef`, `de41784`, `27b710d`, `255b21d`, `85d8936`, `f38e03a`, `6d2b6c1`, `35267fb` | V10 aplicada sobre el esquema local; V1–V9 ya se probaron desde vacío; validación de checksum |
+| P2-19 | Claim atómico del outbox con `claimed_until` (sin nuevo estado), lease de 2 min, publish fuera de TX, liberación del claim ante fallo y limpieza al transicionar; V12 crea la columna y el índice parcial | `5ca5774` | `NotificationOutboxDispatcherTest` (6), `NotificationOutboxClaimRepositoryTest` (3, PostgreSQL), `NotificationSchedulerTest` (4) |
+| P2-20 | Retención separada: 90 días para terminales, 365 para `FAILED`/`PUBLISHED` obsoletos; se excluyen `FAILED` con `next_retry_at` futuro; borrado por lotes de 500; V11 limpia huérfanos y crea FK `ON DELETE CASCADE` de delivery a outbox | `d5783fe` | `NotificationOutboxRetentionRepositoryTest` (2, PostgreSQL), `NotificationSchedulerTest` (4) |
+| P2-23 parcial | Parser total y sin excepciones (`AMOUNT_TOKEN`, `parseMoney`, fechas `uuuu`), `improveWithAi` con `@RequiresPlan(PREMIUM)`, Gemini tolerante a campos inválidos y 503 para errores del proveedor. Queda pendiente por decisión el contrato `improved`/`ai_improved_at` y el estado “requiere revisión” | `20f537a`, `bed39b5` | `RegexReceiptParserAdapterTest` (43), `GeminiReceiptParserAdapterTest` (4), `GlobalExceptionHandlerTest` (10), `ReceiptScanServiceImplTest` (18) |
+| P2-24 | El worker declara exchange/cola/DLX/DLQ y bindings de resultado, activa `confirm_delivery`, publica con `mandatory=True`, hace ACK solo tras publish exitoso y NACK con requeue si falla; los jobs malformados se descartan | `019260e` | `services/doc-processing/tests/test_messaging.py` (4) |
+| P2-25 | Sin defaults de credenciales S3: `SeaweedFsProperties` valida y falla al arrancar; compose exige las credenciales con `:?`; `weed mini` autentica vía `AWS_*`; el endpoint público de dev queda en nginx `8081` y `.env.example`/README se alinean | `3a9d3af` | `SeaweedFsPropertiesTest` (4), `docker compose config` |
+| Deuda | Flyway versiona V1–V12; V4 añade idempotencia de presupuesto; V5 reconcilia columnas de `movimientos`; V6 normaliza email y crea unique case-insensitive; V7/V8 añaden claim/reintento y unicidad FCM; V9 versiona familias de refresh; V10 cambia el unique de webhooks; V11 añade la cascada de deliveries; V12 añade el claim del dispatcher | `dc078ef`, `de41784`, `27b710d`, `255b21d`, `85d8936`, `f38e03a`, `6d2b6c1`, `35267fb`, `d5783fe`, `5ca5774` | V10–V12 aplicadas sobre el esquema local; V1–V9 ya se probaron desde vacío; validación de checksum |
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
 **Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-8, P1-9, P1-10, P1-11, P1-12, P1-13, P1-14, P1-18, P1-19 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. **P1-7 parcial:** ya no bloquea frases comunes, pero la evaluación muestra falsos positivos y evasiones. **P1-16 parcial:** monto/moneda y comparación del webhook aplicados; el precio de plan server-side sigue pendiente. P1-15 y P1-17 siguen abiertos por decisión de producto.
 
-**Aplicado en P2:** P2-6, P2-15, P2-16, P2-17, P2-18, P2-21, P2-22 y P2-29. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
+**Aplicado en P2:** P2-6, P2-15 a P2-22, P2-24, P2-25 y P2-29. **P2-23 parcial:** parser y protección de la mejora con IA aplicados; el contrato `improved`/`ai_improved_at` y el estado de revisión quedan pendientes por decisión. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
 
 **Riesgo residual de P0-8 (decisión explícita: no ampliar alcance):**
 
@@ -635,10 +641,15 @@ Aplicado sobre `master` el 2026-10-26. Verificación: `.\mvnw.cmd -o package` �
 - P1-8: `/analytics/dashboard/balance` ya no carga entidades; usa una consulta JPQL por dimensiones (con `LEFT JOIN` para no perder filas sin categoría/motivo) y una consulta nativa diaria con `AT TIME ZONE` y `GROUP BY` por ordinal. La conversión FX se aplica a totales de grupo, por lo que puede haber diferencias de céntimos frente al cálculo fila por fila (aceptado). `TimeSeriesPoint.context` desaparece y el cliente Kotlin se regeneró; Android solo usaba `date`/`amount`. El tope de rango sigue fuera de alcance.
 - P2-15/P2-16: el pago se guarda con `saveAndFlush` antes de crear el intento externo, así que la pasarela recibe un id real; si un replay de idempotencia trae otro monto o moneda, se rechaza con 409. La deduplicación de webhooks y el unique de V10 incluyen el proveedor, por lo que dos proveedores pueden reutilizar el mismo id de evento.
 - P1-16: la validación de `PaymentRequest` cubre monto positivo, hasta dos decimales y código ISO-4217; el servicio repite la validación para llamadas internas. Un webhook con monto/moneda distintos no cambia el pago: el evento queda `IGNORED` con `mensaje_error`. El precio de plan server-side no se implementa porque no existe una tabla de precios y requiere decisión de producto.
+- P2-19: el dispatcher reclama la fila con un UPDATE condicional (`state = PENDING` y `claimed_until` libre/vencido) antes de publicar; el publish ocurre fuera de la transacción. El lease de 2 min supera el timeout de confirmación de 5 s. Si el publish falla se libera el claim; si la instancia muere, el poller puede reclamar al vencer el lease. Un duplicado solo es posible si el lease vence durante un publish excepcionalmente lento, y el consumo sigue siendo idempotente por canal.
+- P2-20: la retención ya no borra `FAILED` a los 90 días. Los terminales (`SENT`/`SKIPPED`) se purgan a 90 días; `FAILED` y `PUBLISHED` obsoletos a 365, excluyendo `FAILED` con `next_retry_at` futuro. El borrado va por lotes de 500 y V11 elimina huérfanos antes de crear la FK de delivery a outbox con `ON DELETE CASCADE`.
+- P2-23: el parser regex es total (importes, fechas y campos nulos no lanzan) y `improveWithAi` exige PREMIUM; Gemini se sanea y sus fallos se mapean a 503. El contrato `improved`/`ai_improved_at` y el estado “requiere revisión” no se tocan en este lote por decisión explícita.
+- P2-24: el worker declara la topología completa de resultado (exchange, cola, DLX/DLQ y bindings), habilita confirms y publica con `mandatory=True`. Hace ACK solo después de un publish confirmado; si el publish falla, hace NACK con requeue. Un watchdog basado solo en `createdAt` se descartó porque podría fallar jobs que aún están en cola.
+- P2-25: `SeaweedFsProperties` ya no rellena credenciales ni endpoints: falla al arrancar si falta configuración. El compose de desarrollo exige `SEAWEEDFS_ACCESS_KEY`/`SECRET_KEY` con `:?` y las pasa a `weed mini` como `AWS_*`; el endpoint público de dev se alinea con nginx en `8081`. El smoke real de SeaweedFS 4.48 sigue pendiente porque el daemon de Docker no estaba disponible.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-8 a P1-14, P1-18, P1-19 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas, y P1-16 queda parcial por el precio de plan server-side. P1-15 y P1-17 siguen pendientes por decisión de producto. P2-6, P2-15 a P2-18, P2-21, P2-22 y P2-29 están aplicados; V10 está aplicada y validada por checksum, y V1–V9 ya se reprodujeron desde cero.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-8 a P1-14, P1-18, P1-19 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas, y P1-16 queda parcial por el precio de plan server-side. P1-15 y P1-17 siguen pendientes por decisión de producto. P2-6, P2-15 a P2-22, P2-24, P2-25 y P2-29 están aplicados; P2-23 queda parcial por el contrato de mejora con IA. V10–V12 están aplicadas y validadas por checksum, y V1–V9 ya se reprodujeron desde cero.
 
 ---
 
@@ -666,3 +677,4 @@ Aplicado sobre `master` el 2026-10-26. Verificación: `.\mvnw.cmd -o package` �
 | v2.16 | 2026-10-25 | Aplicado P1-14: access tokens de 900 s con `sid` de familia, guard de sesión en PostgreSQL primario, logout por familia, password change revoca todas, JWT heredado → 401 `invalid_token`, fallo de BD → 503, secreto fail-fast y renovación Android single-flight solo ante `invalid_token`; V9 versiona `refresh_tokens`; 376 tests backend, 28 Android y 583 del cliente Kotlin pasan |
 | v2.17 | 2026-10-25 | Aplicado P1-8: dashboard de analytics sobre agregados SQL por dimensiones y día local, sin `context` en timelines, `LEFT JOIN` para categoría/motivo nulos, contrato y cliente regenerados; 382 tests backend, 28 Android y 581 del cliente Kotlin pasan; tope de rango pendiente por decisión de producto |
 | v2.18 | 2026-10-26 | Aplicados P2-17/18/21/22/29, el `@EntityGraph` paginado, la moneda primaria por página en schedules, la validación y comparación de webhooks de P1-16 (parcial), P2-15 y P2-16 con V10; 400 tests backend pasan; precio de plan server-side y P1-15/P1-17 siguen pendientes por decisión |
+| v2.19 | 2026-10-26 | Aplicados P2-19 (claim atómico del outbox con `claimed_until` y V12), P2-20 (retención 90/365, purga por lotes y cascada de deliveries con V11), P2-24 (topología completa de resultado, confirms, `mandatory` y ACK tras publish) y P2-25 (credenciales S3 sin defaults, fail-fast, `AWS_*` y endpoint público 8081); P2-23 queda parcial (parser y guard de IA, contrato de mejora pendiente); 443 tests backend y 4 tests del worker pasan |
