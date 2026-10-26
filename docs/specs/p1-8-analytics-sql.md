@@ -69,74 +69,90 @@ Proyecciones nuevas en `ledger/repository/projection`:
   `reasonId`, `reasonDescription`, `total`, `occurrences`, `minAmount`, `maxAmount`.
 - `AnalyticsDailyAggregate`: `day`, `type`, `currencyCode`, `total`, `occurrences`.
 
-Consulta por dimensiones (JPQL):
+Consulta por dimensiones (JPQL). Los `LEFT JOIN` son obligatorios: los joins implícitos de JPQL descartan las
+transacciones con categoría o motivo nulos, que hoy se agrupan como `CategorySummary(null, null, tipo)` y
+`ReasonSummary(null, null)`:
 
 ```java
 @Query("""
         SELECT t.wallet.currencyCode AS currencyCode,
                t.type AS type,
                t.paymentMethod AS paymentMethod,
-               t.category.id AS categoryId,
-               t.category.name AS categoryName,
-               t.reason.id AS reasonId,
-               t.reason.description AS reasonDescription,
+               c.id AS categoryId,
+               c.name AS categoryName,
+               r.id AS reasonId,
+               r.description AS reasonDescription,
                SUM(t.amount) AS total,
                COUNT(t) AS occurrences,
                MIN(t.amount) AS minAmount,
                MAX(t.amount) AS maxAmount
           FROM Transaction t
+          LEFT JOIN t.category c
+          LEFT JOIN t.reason r
          WHERE t.user.id = :userId
            AND t.active = true
            AND t.createdAt >= :from
            AND t.createdAt < :to
            AND (:walletId IS NULL OR t.wallet.id = :walletId)
          GROUP BY t.wallet.currencyCode, t.type, t.paymentMethod,
-                  t.category.id, t.category.name, t.reason.id, t.reason.description
+                  c.id, c.name, r.id, r.description
         """)
 ```
 
-Consulta diaria (JPQL con funciones de PostgreSQL):
+Consulta diaria (SQL nativo). PostgreSQL no reconoce como iguales las dos apariciones del parámetro de zona en
+`SELECT` y `GROUP BY` (Hibernate las bindea como placeholders distintos), así que se agrupa por ordinal:
 
 ```java
-@Query("""
-        SELECT FUNCTION('date', FUNCTION('timezone', :zone, t.createdAt)) AS day,
-               t.type AS type,
-               t.wallet.currencyCode AS currencyCode,
-               SUM(t.amount) AS total,
-               COUNT(t) AS occurrences
-          FROM Transaction t
-         WHERE t.user.id = :userId
-           AND t.active = true
-           AND t.createdAt >= :from
-           AND t.createdAt < :to
-           AND (:walletId IS NULL OR t.wallet.id = :walletId)
-         GROUP BY FUNCTION('date', FUNCTION('timezone', :zone, t.createdAt)),
-                  t.type, t.wallet.currencyCode
-         ORDER BY day
-        """)
+@Query(value = """
+        SELECT CAST(t.fecha_creacion AT TIME ZONE :zone AS date) AS day,
+               t.tipo AS type,
+               w.moneda AS currencyCode,
+               SUM(t.monto) AS total,
+               COUNT(*) AS occurrences
+          FROM movimientos t
+          JOIN billeteras w ON w.id = t.id_billetera
+         WHERE t.id_usuario = :userId
+           AND t.activo = true
+           AND t.fecha_creacion >= :from
+           AND t.fecha_creacion < :to
+           AND (:walletId IS NULL OR t.id_billetera = :walletId)
+         GROUP BY 1, 2, 3
+         ORDER BY 1
+        """, nativeQuery = true)
 ```
 
-Si Hibernate o PostgreSQL rechazan la composición de funciones, se sustituye por una consulta nativa equivalente
-con `CAST(t.fecha_creacion AT TIME ZONE :zone AS date)`. El test de integración contra PostgreSQL decide; no se
-acepta una agrupación por fecha UTC.
+No se acepta una agrupación por fecha UTC. El test de integración contra PostgreSQL valida la zona horaria, los
+grupos y la inclusión de filas sin categoría o motivo.
 
 ## Criterios de aceptación
 
-- [ ] `GET /analytics/dashboard/balance` ejecuta las dos consultas agregadas y nunca `findAll` (test unitario
+- [x] `GET /analytics/dashboard/balance` ejecuta las dos consultas agregadas y nunca `findAll` (test unitario
       verifica que `findAll` no se invoca).
-- [ ] La respuesta ya no contiene `context`; OpenAPI y `kotlin-client` se regeneran con el script y Android
+- [x] La respuesta ya no contiene `context`; OpenAPI y `kotlin-client` se regeneran con el script y Android
       compila y pasa sus tests.
-- [ ] Con un fixture PEN/USD con ambos tipos, categorías, motivos y métodos de pago, los totales, conteos,
+- [x] Con un fixture PEN/USD con ambos tipos, categorías, motivos y métodos de pago, los totales, conteos,
       promedios, mínimos, máximos, shares, rankings y balance conservan la semántica actual (salvo redondeo de
       conversión por grupo).
-- [ ] La timeline diaria agrupa por zona horaria del usuario: una transacción de las 03:00 UTC en
+- [x] La timeline diaria agrupa por zona horaria del usuario: una transacción de las 03:00 UTC en
       `America/Lima` cae en el día anterior.
-- [ ] Una tasa faltante excluye el grupo de esa moneda, marca `partial` y lista el par una sola vez.
-- [ ] Sin wallet principal no se llama al conversor y se suman montos crudos.
-- [ ] Wallet de otro usuario → 404 y ninguna consulta de agregación.
-- [ ] Test de integración PostgreSQL valida `GROUP BY`, la función de zona horaria y que el número de filas
-      devueltas depende de los grupos, no del número de transacciones.
-- [ ] Suite completa del backend, tests unitarios de Android y tests del cliente Kotlin en verde.
+- [x] Una tasa faltante excluye el grupo de esa moneda, marca `partial` y lista el par una sola vez.
+- [x] Sin wallet principal no se llama al conversor y se suman montos crudos.
+- [x] Wallet de otro usuario → 404 y ninguna consulta de agregación.
+- [x] Test de integración PostgreSQL valida `GROUP BY`, la función de zona horaria y que el número de filas
+      devueltas depende de los grupos, no del número de transacciones. También cubre transacciones sin categoría
+      ni motivo.
+- [x] Suite completa del backend, tests unitarios de Android y tests del cliente Kotlin en verde.
+
+## Verificación
+
+- `TransactionAnalyticsServiceImplTest` (8): consolidación multi-moneda, wallet, wallet ajeno, moneda base nula,
+  tasa faltante, shares por tipo, timeline por días activos y dashboard vacío; verifica que `findAll` no se usa.
+- `TransactionAnalyticsAggregationTest` (3, PostgreSQL): agrupación diaria con `America/Lima`, agrupación por
+  dimensiones y filas con categoría/motivo nulos.
+- `TimeSeriesPointContractTest` (1): el JSON del timeline no contiene `context`.
+- `./mvnw.cmd -o package` → 382 tests, 0 fallos.
+- `:app:testDebugUnitTest` (28) y `:kotlin-client:test` (581) en verde tras regenerar el cliente. El cliente baja
+  de 583 a 581 porque los dos modelos de timeline pierden el test generado de la propiedad `context`.
 
 ## Fuera de alcance
 
@@ -149,8 +165,9 @@ acepta una agrupación por fecha UTC.
 
 - **Redondeo:** convertir el total de un grupo puede diferir en céntimos de convertir cada fila. Se documenta y
   se prueba el comportamiento elegido.
-- **Funciones JPQL:** `FUNCTION('timezone', ...)` depende de PostgreSQL/Hibernate. El test de integración es
-  obligatorio y la consulta nativa es el plan de respaldo.
+- **Zona horaria:** la consulta diaria usa SQL nativo con `AT TIME ZONE`; el JPQL equivalente falla en PostgreSQL
+  porque el parámetro de zona se bindea como placeholders distintos en `SELECT` y `GROUP BY`. El test de
+  integración es obligatorio.
 - **Cardinalidad:** el número de grupos está acotado por combinaciones distintas de dimensiones, no por el número
   de filas. Un usuario con un motivo distinto por transacción puede seguir generando muchos grupos, aunque
   muchos menos que entidades y DTOs completos.

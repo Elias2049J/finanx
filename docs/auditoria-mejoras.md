@@ -257,6 +257,8 @@ Con `GenerationType.IDENTITY` el INSERT ocurre en `save()`; en PostgreSQL la tra
 
 **Parche:** agregaciones SQL (`SUM`, `GROUP BY`) con proyecciones, límite máximo de rango (p. ej. 24 meses) y conversión de totales, no de filas. `TransactionRepository` ya tiene ejemplos (`sumAmountsByCurrencyForCategory`, `:52-64`).
 
+**Aplicado:** dos consultas agregadas (dimensiones y día local), `LEFT JOIN` para categoría/motivo nulos, timelines sin `context` y conversión de totales de grupo. El tope máximo de rango queda pendiente por decisión de producto. Ver sección 12.
+
 ### P1-9 · Gasto de presupuesto sin `user.id`
 
 `findActiveTransactions` filtra por categoría y fechas, sin usuario (`BudgetAnalyticsServiceImpl.java:131-138`). Hoy las categorías son por usuario, pero `Category.user` es nullable (`Category.java:49-51`). `Category.onCreate` desreferencia `user`, así que una categoría global no se puede crear por el flujo normal; el riesgo es latente para filas preexistentes o inserciones manuales. Añadir `user.id` al query y un índice compuesto.
@@ -307,7 +309,7 @@ Comparación con la corrida anterior (818 VUs): ~520 req/s con p95 50 ms. El sal
 3. **Quitar el `COUNT(*)`:** `PageResponse` expone `totalElements`; si el frontend no lo usa, pasar a `Slice`/keyset.
 4. **EAGER accidentales:** `Transaction.savingGoal` (`@ManyToOne`) y `Transaction.receipt` (`@OneToOne`) son EAGER por defecto (`Transaction.java:71-79`). Poner `fetch = LAZY`.
 5. **Llamada HTTP dentro de la transacción:** la conversión de receipt (`TransactionServiceImpl.java:92-96`) puede llamar a CurrencyBeacon con la conexión retenida. Resolverla antes de abrir la transacción.
-6. **Analytics a SQL** (P1-8) y **N+1 de schedules** (`ScheduleServiceImpl.java:152-173`: una query de wallet primaria por fila).
+6. **N+1 de schedules** (`ScheduleServiceImpl.java:152-173`: una query de wallet primaria por fila). Analytics ya agrega en SQL (P1-8); quedan el tope de rango y la réplica de lectura.
 7. **PgBouncer** en modo `transaction` si se escala a varias instancias; `prepareThreshold=0` en la URL.
 8. **Réplica de lectura** para analytics/listados y **cache** de catálogos (`categories`, `reasons`, `wallets`) con TTL.
 9. **Backpressure:** bulkhead/time limiter y `connection-timeout` corto para devolver 503 rápido en vez de 5 s de espera.
@@ -548,7 +550,7 @@ No se repiten los hallazgos de las secciones 3-6. Esta sección añade **2 P0, 1
 
 ## 12. Estado de aplicación
 
-Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o package` → **376 tests, 0 fallos, BUILD SUCCESS**; `:app:testDebugUnitTest` (28) y `:kotlin-client:test` (583) en verde.
+Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o package` → **382 tests, 0 fallos, BUILD SUCCESS**; `:app:testDebugUnitTest` (28) y `:kotlin-client:test` (581) en verde.
 
 | ID | Cambio | Commit | Tests |
 |---|---|---|---|
@@ -566,6 +568,7 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o package` �
 | P1-5 | La recuperación de idempotencia corre fuera de la transacción abortada: el camino HTTP usa `TransactionTemplate` y recupera en una transacción limpia; el scheduler sigue `@Transactional` | `e04c29a` | `TransactionServiceImplTest` (adaptado), `TransactionIdempotencyConcurrencyTest` (2) |
 | P1-6 | Parcial por decisión: Gemini ya no devuelve/persiste un mensaje sintético; error tipado 503, bulkhead espera 1 s; no se usa modelo fallback | `8ab025b` | `ChatGeminiAdapterTest`, `GlobalExceptionHandlerTest` |
 | P1-7 | AiUtils permite términos naturales como «consulta», «base de datos» y «actúa como asesor»; su recall y falsos positivos se midieron offline | `8ab025b`, `6985747` | `AiUtilsTest` (3), evaluación balanceada (40 prompts) |
+| P1-8 | `/dashboard/balance` agrega en SQL por dimensiones y por día local; timelines sin `context`; conversión de totales de grupo; `LEFT JOIN` para categoría/motivo nulos; tope de rango pendiente | `e02f2aa`, `786aa47`, `8bc9e0e`, `10479b5`; cliente `d01c8aa` | `TransactionAnalyticsServiceImplTest` (8), `TransactionAnalyticsAggregationTest` (3, PostgreSQL), `TimeSeriesPointContractTest` (1) |
 | P1-18 | Rechazo de imágenes mayores de 5 MiB o 20 MP; dimensiones inspeccionadas con `ImageReader` antes de decodificar | `d502ef6` | `ImageServiceImplTest` (+2) |
 | P1-19 | Nginx reenvía `$http_host` en el proxy de storage para preservar el puerto de la URL SigV4 | `6521d01` | `NginxStorageProxyConfigurationTest`, `SeaweedFsConfigurationTest`; descarga real pendiente por Docker no disponible |
 | P1-9 | El gasto de presupuesto suma solo movimientos cuyo `id_usuario` coincide con el dueño del presupuesto | `27b710d` | `TransactionSpecificationsTest` (+1, PostgreSQL), `BudgetAnalyticsServiceImplTest` |
@@ -577,7 +580,7 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o package` �
 
 **Pendiente en P0:** P0-1 (pospuesto por decisión: exigir un pago `COMPLETED` sin pasarela real dejaría el premium inalcanzable). C-05 (`activate`/`renew` a `SYSTEM`) sigue pospuesto por la misma razón: P0-7 dejó el camino de activación listo, pero la pasarela manual no puede completar un pago.
 
-**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-9, P1-10, P1-11, P1-12, P1-13, P1-14, P1-18, P1-19 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. **P1-7 parcial:** ya no bloquea frases comunes, pero la evaluación muestra falsos positivos y evasiones. P1-8, P1-15, P1-16 y P1-17 siguen abiertos.
+**Aplicado en P1:** P1-1, P1-2, P1-3, P1-4, P1-5, P1-8, P1-9, P1-10, P1-11, P1-12, P1-13, P1-14, P1-18, P1-19 y P1-20. **P1-6 parcial:** se elimina el falso éxito y se responde 503; el modelo fallback queda pendiente por decisión explícita. **P1-7 parcial:** ya no bloquea frases comunes, pero la evaluación muestra falsos positivos y evasiones. P1-15, P1-16 y P1-17 siguen abiertos.
 
 **Aplicado en P2:** P2-6. Los fallos transitorios de acceso a datos se reintentan en el siguiente ciclo fijo de 60 s; no hay backoff exponencial ni canal de alertas dedicado. Los logs estructurados incluyen `event`, `schedule_id` y tipo. Los errores no transitorios siguen pasando a `ERROR`.
 
@@ -619,10 +622,11 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o package` �
 - P1-14: el access token dura 900 s y lleva `sid`; cada request protegida exige una fila refresh activa, no revocada y no vencida de esa familia, leída del datasource primario junto con el usuario. Logout revoca solo la familia recibida; el cambio efectivo de contraseña revoca todas. Los JWT emitidos antes del despliegue dejan de aceptarse y el refresh de 30 días sigue siendo la vía de renovación.
 - V9 crea/valida `refresh_tokens` y un unique parcial de una fila activa por familia; aborta ante duplicados activos sin repararlos.
 - Android: el `Authenticator` solo actúa ante `WWW-Authenticate: Bearer error="invalid_token"`, serializa la rotación y reutiliza el par nuevo si otra petición ya renovó. Un refresh terminal (4xx salvo 408/429) limpia la sesión y notifica a Compose; red/5xx conserva la sesión. Un refresh cuyo resultado se pierde no se reintenta automáticamente: el reuso del token anterior activa la detección de replay y puede cerrar la familia, así que el usuario tendría que volver a iniciar sesión. No hay idempotencia de refresh en este alcance.
+- P1-8: `/analytics/dashboard/balance` ya no carga entidades; usa una consulta JPQL por dimensiones (con `LEFT JOIN` para no perder filas sin categoría/motivo) y una consulta nativa diaria con `AT TIME ZONE` y `GROUP BY` por ordinal. La conversión FX se aplica a totales de grupo, por lo que puede haber diferencias de céntimos frente al cálculo fila por fila (aceptado). `TimeSeriesPoint.context` desaparece y el cliente Kotlin se regeneró; Android solo usaba `date`/`amount`. El tope de rango sigue fuera de alcance.
 
 ---
 
-**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-9 a P1-14, P1-18, P1-19 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas. P1-8 y P1-15 a P1-17 siguen pendientes. P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V9 desde cero.
+**Conclusión:** la arquitectura aguanta; lo que falla son los bordes. Queda un P0 abierto: el gate de pago (P0-1), pospuesto hasta que exista una pasarela real. P1-1 a P1-5, P1-8 a P1-14, P1-18, P1-19 y P1-20 están aplicados; P1-6 y P1-7 quedan parciales según las decisiones y mediciones documentadas. P1-15 a P1-17 siguen pendientes. P2-6 reintenta fallos transitorios, y Flyway reproduce el esquema V1–V9 desde cero.
 
 ---
 
@@ -648,3 +652,4 @@ Aplicado sobre `master` el 2026-10-25. Verificación: `.\mvnw.cmd -o package` �
 | v2.14 | 2026-10-25 | Aplicado P1-18 (5 MiB/20 MP pre-decodificación) y P1-19 (`$http_host` con puerto); la descarga end-to-end queda pendiente por Docker inactivo; 310 tests pasan |
 | v2.15 | 2026-10-25 | Aplicados P1-11/12/13: delivery por canal fuera de TX, unicidad/transferencia FCM y logout por dispositivo, listeners `AFTER_COMMIT`, purga por umbral, DLQ con hasta 5 reintentos exponenciales y replay `SYSTEM`; V1–V8 verificadas y suites backend/Android/cliente Kotlin pasan |
 | v2.16 | 2026-10-25 | Aplicado P1-14: access tokens de 900 s con `sid` de familia, guard de sesión en PostgreSQL primario, logout por familia, password change revoca todas, JWT heredado → 401 `invalid_token`, fallo de BD → 503, secreto fail-fast y renovación Android single-flight solo ante `invalid_token`; V9 versiona `refresh_tokens`; 376 tests backend, 28 Android y 583 del cliente Kotlin pasan |
+| v2.17 | 2026-10-25 | Aplicado P1-8: dashboard de analytics sobre agregados SQL por dimensiones y día local, sin `context` en timelines, `LEFT JOIN` para categoría/motivo nulos, contrato y cliente regenerados; 382 tests backend, 28 Android y 581 del cliente Kotlin pasan; tope de rango pendiente por decisión de producto |
