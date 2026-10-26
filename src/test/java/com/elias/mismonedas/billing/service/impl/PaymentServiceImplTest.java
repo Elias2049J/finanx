@@ -70,11 +70,19 @@ class PaymentServiceImplTest {
     }
 
     private PaymentWebhookNotification notification(String externalEventId, String externalReference, String status) {
+        return notification(externalEventId, externalReference, status, null, null);
+    }
+
+    private PaymentWebhookNotification notification(
+            String externalEventId, String externalReference, String status,
+            java.math.BigDecimal amount, String currency) {
         return PaymentWebhookNotification.builder()
                 .provider(PaymentProvider.MANUAL_TRANSFER)
                 .externalEventId(externalEventId)
                 .externalReference(externalReference)
                 .eventType("payment.updated")
+                .amount(amount)
+                .currency(currency)
                 .status(status)
                 .build();
     }
@@ -85,6 +93,38 @@ class PaymentServiceImplTest {
 
     @Nested
     class CreateTest {
+
+        @Test
+        void shouldRejectNonPositiveAmountBeforeCallingTheProvider() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .amount(java.math.BigDecimal.ZERO)
+                    .currency("PEN")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .build();
+
+            assertThatThrownBy(() -> service.create(request))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("greater than zero");
+
+            verifyNoInteractions(paymentPort, paymentRepository);
+        }
+
+        @Test
+        void shouldRejectCurrencyThatIsNotIso4217() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currency("ZZZ")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .build();
+
+            assertThatThrownBy(() -> service.create(request))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("ISO-4217");
+
+            verifyNoInteractions(paymentPort, paymentRepository);
+        }
 
         @Test
         void shouldReturnExistingPaymentOnIdempotencyKeyReplay() {
@@ -456,6 +496,59 @@ class PaymentServiceImplTest {
 
             assertThat(event.getState()).isEqualTo(WebhookEventState.IGNORED);
             assertThat(event.getProcessedAt()).isNotNull();
+            verify(paymentRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldIgnoreWebhookWhenAmountDoesNotMatch() {
+            WebhookEvent event = WebhookEvent.builder()
+                    .id(9L)
+                    .externalEventId("EVT-9")
+                    .rawPayload("{}")
+                    .state(WebhookEventState.RECEIVED)
+                    .build();
+            Payment payment = Payment.builder()
+                    .id(10L)
+                    .state(PaymentState.PENDING)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currencyCode("PEN")
+                    .build();
+            when(paymentPort.parseWebhookPayload(any())).thenReturn(notification(
+                    "EVT-9", "REF-9", "approved", new java.math.BigDecimal("1.00"), "PEN"));
+            when(webhookEventRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(event));
+            when(paymentRepository.findByExternalReference("REF-9")).thenReturn(Optional.of(payment));
+
+            service.processWebhookEvent(9L);
+
+            assertThat(payment.getState()).isEqualTo(PaymentState.PENDING);
+            assertThat(event.getState()).isEqualTo(WebhookEventState.IGNORED);
+            assertThat(event.getErrorMessage()).contains("does not match");
+            verify(paymentRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldIgnoreWebhookWhenCurrencyDoesNotMatch() {
+            WebhookEvent event = WebhookEvent.builder()
+                    .id(11L)
+                    .externalEventId("EVT-11")
+                    .rawPayload("{}")
+                    .state(WebhookEventState.RECEIVED)
+                    .build();
+            Payment payment = Payment.builder()
+                    .id(10L)
+                    .state(PaymentState.PENDING)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currencyCode("PEN")
+                    .build();
+            when(paymentPort.parseWebhookPayload(any())).thenReturn(notification(
+                    "EVT-11", "REF-11", "approved", new java.math.BigDecimal("29.90"), "USD"));
+            when(webhookEventRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(event));
+            when(paymentRepository.findByExternalReference("REF-11")).thenReturn(Optional.of(payment));
+
+            service.processWebhookEvent(11L);
+
+            assertThat(payment.getState()).isEqualTo(PaymentState.PENDING);
+            assertThat(event.getState()).isEqualTo(WebhookEventState.IGNORED);
             verify(paymentRepository, never()).save(any());
         }
 

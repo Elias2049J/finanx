@@ -41,8 +41,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Currency;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Slf4j
@@ -66,6 +69,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentResponse create(PaymentRequest request) {
+        validateAmountAndCurrency(request);
         User user = securityService.getCurrentUser();
 
         if (request.getIdempotencyKey() != null) {
@@ -317,33 +321,61 @@ public class PaymentServiceImpl implements PaymentService {
         paymentRepository.findByExternalReference(notification.getExternalReference())
                 .ifPresentOrElse(
                         payment -> {
-                            applyNotification(payment, notification);
-                            event.setState(WebhookEventState.PROCESSED);
+                            if (applyNotification(payment, notification)) {
+                                event.setState(WebhookEventState.PROCESSED);
+                                event.setErrorMessage(null);
+                            } else {
+                                event.setState(WebhookEventState.IGNORED);
+                                event.setErrorMessage("Webhook amount or currency does not match the payment");
+                            }
                         },
                         () -> {
                             log.warn("No payment found for externalReference={}", notification.getExternalReference());
                             event.setState(WebhookEventState.IGNORED);
+                            event.setErrorMessage(null);
                         });
         event.setProcessedAt(OffsetDateTime.now());
-        event.setErrorMessage(null);
     }
 
-    private void applyNotification(Payment payment, PaymentWebhookNotification notification) {
+    /**
+     * @return {@code false} only when the provider reports an amount/currency that does not
+     * match the stored payment; a status no-op is still considered processed.
+     */
+    private boolean applyNotification(Payment payment, PaymentWebhookNotification notification) {
+        if (!amountAndCurrencyMatch(payment, notification)) {
+            log.error("Webhook amount/currency mismatch for payment id={}: expected {} {}, received {} {}",
+                    payment.getId(), payment.getAmount(), payment.getCurrencyCode(),
+                    notification.getAmount(), notification.getCurrency());
+            return false;
+        }
         PaymentState target = mapStatus(notification.getStatus());
         if (target == null) {
             log.warn("Unmapped webhook status={} for payment id={}", notification.getStatus(), payment.getId());
-            return;
+            return true;
         }
         if (payment.getState() == target || !payment.getState().canTransitionTo(target)) {
             log.info("Webhook status={} is a no-op for payment id={} in state {}",
                     notification.getStatus(), payment.getId(), payment.getState());
-            return;
+            return true;
         }
         payment.transitionTo(target);
         paymentRepository.save(payment);
         if (target == PaymentState.COMPLETED) {
             applyToSubscription(payment);
         }
+        return true;
+    }
+
+    private static boolean amountAndCurrencyMatch(Payment payment, PaymentWebhookNotification notification) {
+        if (notification.getAmount() != null && payment.getAmount() != null
+                && notification.getAmount().compareTo(payment.getAmount()) != 0) {
+            return false;
+        }
+        if (notification.getCurrency() != null && payment.getCurrencyCode() != null
+                && !notification.getCurrency().equalsIgnoreCase(payment.getCurrencyCode())) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -363,6 +395,32 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (AmqpException ex) {
             log.warn("Webhook event persisted but broker publish failed id={}", event.getId(), ex);
         }
+    }
+
+    private static void validateAmountAndCurrency(PaymentRequest request) {
+        BigDecimal amount = request.getAmount();
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Payment amount must be greater than zero");
+        }
+        if (amount.stripTrailingZeros().scale() > 2) {
+            throw new IllegalArgumentException("Payment amount must have at most 2 decimals");
+        }
+
+        String currency = request.getCurrency();
+        if (currency == null || currency.isBlank()) {
+            throw new IllegalArgumentException("Payment currency is required");
+        }
+        String normalized = currency.trim().toUpperCase(Locale.ROOT);
+        Currency parsed;
+        try {
+            parsed = Currency.getInstance(normalized);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unsupported ISO-4217 currency: " + currency);
+        }
+        if (parsed.getDefaultFractionDigits() < 0) {
+            throw new IllegalArgumentException("Unsupported ISO-4217 currency: " + currency);
+        }
+        request.setCurrency(normalized);
     }
 
     private static String abbreviate(String value, int maxLength) {

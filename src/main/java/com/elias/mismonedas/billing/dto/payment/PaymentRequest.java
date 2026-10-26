@@ -3,7 +3,10 @@ package com.elias.mismonedas.billing.dto.payment;
 import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,10 +30,13 @@ public class PaymentRequest {
     private Long subscriptionId;
 
     @NotNull
+    @DecimalMin(value = "0.01", message = "amount must be greater than zero")
+    @Digits(integer = 12, fraction = 2, message = "amount must have at most 12 integer digits and 2 decimals")
     @Schema(description = "Amount to charge", example = "29.90")
     private BigDecimal amount;
 
     @NotNull
+    @Pattern(regexp = "[A-Za-z]{3}", message = "currency must be a three-letter ISO-4217 code")
     @Schema(description = "ISO currency code", example = "PEN")
     private String currency;
 
