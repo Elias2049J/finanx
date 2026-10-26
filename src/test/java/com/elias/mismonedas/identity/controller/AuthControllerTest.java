@@ -4,8 +4,11 @@ import com.elias.mismonedas.identity.adapter.auth.GoogleAuthService;
 import com.elias.mismonedas.identity.dto.auth.LogoutRequest;
 import com.elias.mismonedas.identity.domain.event.UserLoggedOutEvent;
 import com.elias.mismonedas.identity.service.AuthService;
-import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.UserService;
+import com.elias.mismonedas.identity.service.AuthTokenService;
+import com.elias.mismonedas.identity.service.EmailVerificationService;
+import com.elias.mismonedas.identity.service.EmailVerificationChallengeManager;
+import com.elias.mismonedas.identity.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +30,9 @@ class AuthControllerTest {
     @Mock private GoogleAuthService googleAuthService;
     @Mock private UserService userService;
     @Mock private AuthTokenService authTokenService;
+    @Mock private EmailVerificationService emailVerificationService;
+    @Mock private EmailVerificationChallengeManager emailVerificationChallengeManager;
+    @Mock private UserRepository userRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     private AuthController controller;
@@ -34,7 +40,8 @@ class AuthControllerTest {
     @BeforeEach
     void setUp() {
         controller = new AuthController(
-                authService, googleAuthService, userService, authTokenService, eventPublisher);
+                authService, googleAuthService, userService, authTokenService,
+                userRepository, emailVerificationService, emailVerificationChallengeManager, eventPublisher);
     }
 
     @Test

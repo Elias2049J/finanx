@@ -5,6 +5,7 @@ import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.auth.LoginRequest;
 import com.elias.mismonedas.identity.service.AuthService;
 import com.elias.mismonedas.identity.service.AuthTokenService;
+import com.elias.mismonedas.identity.service.EmailNotVerifiedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,6 +27,10 @@ public class LocalAuthServiceImpl implements AuthService {
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        return authTokenService.issue((User) authentication.getPrincipal());
+        User user = (User) authentication.getPrincipal();
+        if (!user.isEmailVerified()) {
+            throw new EmailNotVerifiedException();
+        }
+        return authTokenService.issue(user);
     }
 }

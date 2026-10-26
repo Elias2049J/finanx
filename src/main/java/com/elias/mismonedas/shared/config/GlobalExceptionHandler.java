@@ -1,6 +1,7 @@
 package com.elias.mismonedas.shared.config;
 
 import com.elias.mismonedas.chat.exception.ChatUnavailableException;
+import com.elias.mismonedas.identity.service.EmailNotVerifiedException;
 import com.elias.mismonedas.shared.adapter.ai.gemini.exception.GeminiException;
 import com.elias.mismonedas.shared.dto.ErrorResponse;
 import com.elias.mismonedas.shared.exception.*;
@@ -50,7 +51,10 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "error.authentication_required", request, ex);
     }
 
-    @ExceptionHandler(InvalidRefreshTokenException.class)
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<ErrorResponse> handleEmailNotVerified(EmailNotVerifiedException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNAUTHORIZED, "EMAIL_NOT_VERIFIED", "error.email_not_verified", request, ex);
+    }
     public ResponseEntity<ErrorResponse> handleInvalidRefreshToken(InvalidRefreshTokenException ex, HttpServletRequest request) {
         return respond(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "error.refresh_token_invalid", request, ex);
     }
