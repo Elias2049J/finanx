@@ -33,6 +33,17 @@ class EmailVerificationChallengeTest {
         assertThat(challenge.getExpiresAt()).isEqualTo(resentAt.plusMinutes(15));
     }
 
+    @Test
+    void shouldNeverAllowFailedAttemptsToExceedTheLimit() {
+        EmailVerificationChallenge challenge = challenge(OffsetDateTime.now().plusMinutes(15));
+
+        for (int i = 0; i < 20; i++) {
+            challenge.recordFailedAttempt();
+        }
+
+        assertThat(challenge.getFailedAttempts()).isEqualTo(5);
+    }
+
     private EmailVerificationChallenge challenge(OffsetDateTime expiresAt) {
         return EmailVerificationChallenge.builder()
                 .email("alice@example.test")

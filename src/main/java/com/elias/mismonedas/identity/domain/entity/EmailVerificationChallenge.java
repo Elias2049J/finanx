@@ -34,6 +34,8 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class EmailVerificationChallenge {
 
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -66,7 +68,13 @@ public class EmailVerificationChallenge {
     }
 
     public void recordFailedAttempt() {
-        failedAttempts++;
+        if (failedAttempts < MAX_FAILED_ATTEMPTS) {
+            failedAttempts++;
+        }
+    }
+
+    public boolean hasReachedAttemptLimit() {
+        return failedAttempts >= MAX_FAILED_ATTEMPTS;
     }
 
     public void replaceCode(String newCodeHash, OffsetDateTime sentAt, OffsetDateTime newExpiresAt) {
