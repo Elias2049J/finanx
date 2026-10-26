@@ -39,5 +39,8 @@ public class NotificationOutbox {
 
     @Column(name = "next_retry_at")
     private OffsetDateTime nextRetryAt;
+
+    @Column(name = "claimed_until")
+    private OffsetDateTime claimedUntil;
 }
 

@@ -57,6 +57,7 @@ public class NotificationDeliveryService {
         if (notification != null && notification.getState() == NotificationState.DISCARD) {
             markPendingDeliveriesSkipped(deliveries);
             outbox.setState(OutboxState.SKIPPED);
+            outbox.setClaimedUntil(null);
             log.info("Skipping discarded notification outbox id={}", outboxId);
             return Optional.empty();
         }
@@ -64,6 +65,7 @@ public class NotificationDeliveryService {
         if (notification != null && notification.getState() == NotificationState.SENT) {
             markPendingDeliveriesSkipped(deliveries);
             outbox.setState(OutboxState.SENT);
+            outbox.setClaimedUntil(null);
             outbox.setSentAt(notification.getSentAt() != null ? notification.getSentAt() : OffsetDateTime.now());
             return Optional.empty();
         }
@@ -72,6 +74,7 @@ public class NotificationDeliveryService {
 
         if (deliveries.isEmpty()) {
             outbox.setState(OutboxState.SENT);
+            outbox.setClaimedUntil(null);
             OffsetDateTime sentAt = OffsetDateTime.now();
             outbox.setSentAt(sentAt);
             markNotificationSent(notification, sentAt);
@@ -127,12 +130,14 @@ public class NotificationDeliveryService {
         Notification notification = findNotification(outbox);
         if (notification != null && notification.getState() == NotificationState.DISCARD) {
             outbox.setState(OutboxState.SKIPPED);
+            outbox.setClaimedUntil(null);
             return;
         }
 
         boolean allSkipped = !deliveries.isEmpty() && deliveries.stream()
                 .allMatch(delivery -> delivery.getState() == NotificationDeliveryState.SKIPPED);
         outbox.setState(allSkipped ? OutboxState.SKIPPED : OutboxState.SENT);
+        outbox.setClaimedUntil(null);
         if (!allSkipped) {
             OffsetDateTime sentAt = OffsetDateTime.now();
             outbox.setSentAt(sentAt);
@@ -185,6 +190,7 @@ public class NotificationDeliveryService {
 
         resetFailedDeliveries(outboxId);
         outbox.setState(OutboxState.PENDING);
+        outbox.setClaimedUntil(null);
         outbox.setNextRetryAt(null);
         return true;
     }
@@ -199,12 +205,14 @@ public class NotificationDeliveryService {
         resetFailedDeliveries(outboxId);
         outbox.setRetryCount(0);
         outbox.setNextRetryAt(null);
+        outbox.setClaimedUntil(null);
         outbox.setState(OutboxState.PENDING);
         return true;
     }
 
     private void markOutboxFailed(NotificationOutbox outbox, Long outboxId, String errorMessage) {
         outbox.setState(OutboxState.FAILED);
+        outbox.setClaimedUntil(null);
         outbox.setNextRetryAt(null);
         for (NotificationDelivery delivery : deliveryRepository.findAllByOutboxIdOrderByChannelAsc(outboxId)) {
             if (delivery.getState() == NotificationDeliveryState.PENDING

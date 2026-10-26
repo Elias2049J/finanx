@@ -1,6 +1,5 @@
 package com.elias.mismonedas.notifications.service.impl;
 
-import com.elias.mismonedas.notifications.outbox.NotificationOutbox;
 import com.elias.mismonedas.notifications.outbox.OutboxState;
 import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxRepository;
 import com.elias.mismonedas.notifications.port.NotificationOutboxPublisher;
@@ -9,13 +8,16 @@ import org.springframework.amqp.AmqpException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
 @Service
 @Slf4j
 public class NotificationOutboxDispatcher {
+
+    private static final Duration DISPATCH_LEASE = Duration.ofMinutes(2);
 
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationOutboxPublisher outboxPublisher;
@@ -40,26 +42,29 @@ public class NotificationOutboxDispatcher {
     }
 
     public boolean dispatch(Long outboxId) {
-        if (!isPending(outboxId)) {
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime leaseUntil = now.plus(DISPATCH_LEASE);
+        if (outboxRepository.claimIfPending(outboxId, OutboxState.PENDING, now, leaseUntil) == 0) {
             return false;
         }
 
         try {
             outboxPublisher.publish(outboxId);
-        } catch (AmqpException ex) {
-            log.warn("Outbox id={} sigue PENDING: el broker no confirmó la publicación", outboxId, ex);
+        } catch (RuntimeException ex) {
+            outboxRepository.releaseClaim(outboxId, OutboxState.PENDING, leaseUntil);
+            if (ex instanceof AmqpException) {
+                log.warn("Outbox id={} sigue PENDING: el broker no confirmó la publicación", outboxId, ex);
+            } else {
+                log.error("Outbox id={} falló durante el publish; se libera el claim", outboxId, ex);
+            }
             return false;
         }
 
-        if (outboxRepository.markPublishedIfPending(outboxId, OutboxState.PENDING, OutboxState.PUBLISHED) == 0) {
-            log.debug("Outbox id={} cambió de estado durante el publish; se conserva el estado actual", outboxId);
+        if (outboxRepository.markPublishedIfClaimed(
+                outboxId, OutboxState.PENDING, OutboxState.PUBLISHED, leaseUntil) == 0) {
+            log.debug("Outbox id={} cambió de estado o perdió el claim durante el publish", outboxId);
             return false;
         }
         return true;
-    }
-
-    private boolean isPending(Long outboxId) {
-        Optional<NotificationOutbox> entry = outboxRepository.findById(outboxId);
-        return entry.isPresent() && entry.get().getState() == OutboxState.PENDING;
     }
 }

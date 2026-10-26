@@ -51,7 +51,7 @@ class NotificationSchedulerTest {
     void processOutboxShouldDelegateEveryPendingEntryToDispatcher() {
         NotificationOutbox first = NotificationOutbox.builder().id(10L).state(OutboxState.PENDING).build();
         NotificationOutbox second = NotificationOutbox.builder().id(11L).state(OutboxState.PENDING).build();
-        when(outboxRepository.findTop50ByStateOrderByIdAsc(OutboxState.PENDING))
+        when(outboxRepository.findClaimable(eq(OutboxState.PENDING), any(), any()))
                 .thenReturn(List.of(first, second));
 
         scheduler.processOutbox();
@@ -63,7 +63,7 @@ class NotificationSchedulerTest {
     @Test
     void processOutboxShouldReactivateDueFailedEntriesForTheNextPendingPoll() {
         NotificationOutbox failed = NotificationOutbox.builder().id(12L).state(OutboxState.FAILED).build();
-        when(outboxRepository.findTop50ByStateOrderByIdAsc(OutboxState.PENDING)).thenReturn(List.of());
+        when(outboxRepository.findClaimable(eq(OutboxState.PENDING), any(), any())).thenReturn(List.of());
         when(outboxRepository.findTop50ByStateAndNextRetryAtLessThanEqualOrderByIdAsc(
                 eq(OutboxState.FAILED), any())).thenReturn(List.of(failed));
         when(deliveryService.activateScheduledRetry(eq(12L), any())).thenReturn(true);

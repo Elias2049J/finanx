@@ -10,6 +10,7 @@ import com.elias.mismonedas.notifications.service.impl.NotificationOutboxDispatc
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +34,8 @@ public class NotificationScheduler {
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "notificationScheduler.processOutbox", lockAtMostFor = "PT5M", lockAtLeastFor = "PT30S")
     public void processOutbox() {
-        List<NotificationOutbox> pending = outboxRepository.findTop50ByStateOrderByIdAsc(OutboxState.PENDING);
+        List<NotificationOutbox> pending = outboxRepository.findClaimable(
+                OutboxState.PENDING, OffsetDateTime.now(), PageRequest.of(0, 50));
         int rescued = 0;
         for (NotificationOutbox entry : pending) {
             if (outboxDispatcher.dispatch(entry.getId())) {

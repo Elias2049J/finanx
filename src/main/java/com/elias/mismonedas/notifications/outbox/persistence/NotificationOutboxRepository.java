@@ -3,6 +3,7 @@ package com.elias.mismonedas.notifications.outbox.persistence;
 import com.elias.mismonedas.notifications.outbox.NotificationOutbox;
 import com.elias.mismonedas.notifications.outbox.OutboxState;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -17,7 +18,17 @@ import java.util.Optional;
 
 
 public interface NotificationOutboxRepository extends JpaRepository<NotificationOutbox, Long> {
-    List<NotificationOutbox> findTop50ByStateOrderByIdAsc(OutboxState state);
+    @Query("""
+            select o from NotificationOutbox o
+            where o.state = :state
+              and (o.claimedUntil is null or o.claimedUntil < :now)
+            order by o.id asc
+            """)
+    List<NotificationOutbox> findClaimable(
+            @Param("state") OutboxState state,
+            @Param("now") OffsetDateTime now,
+            Pageable pageable
+    );
 
     List<NotificationOutbox> findTop50ByStateAndNextRetryAtLessThanEqualOrderByIdAsc(
             OutboxState state,
@@ -30,11 +41,49 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
-    @Query("update NotificationOutbox o set o.state = :published where o.id = :id and o.state = :pending")
-    int markPublishedIfPending(
+    @Query("""
+            update NotificationOutbox o
+               set o.claimedUntil = :leaseUntil
+             where o.id = :id
+               and o.state = :pending
+               and (o.claimedUntil is null or o.claimedUntil < :now)
+            """)
+    int claimIfPending(
             @Param("id") Long id,
             @Param("pending") OutboxState pending,
-            @Param("published") OutboxState published
+            @Param("now") OffsetDateTime now,
+            @Param("leaseUntil") OffsetDateTime leaseUntil
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+            update NotificationOutbox o
+               set o.state = :published, o.claimedUntil = null
+             where o.id = :id
+               and o.state = :pending
+               and o.claimedUntil = :leaseUntil
+            """)
+    int markPublishedIfClaimed(
+            @Param("id") Long id,
+            @Param("pending") OutboxState pending,
+            @Param("published") OutboxState published,
+            @Param("leaseUntil") OffsetDateTime leaseUntil
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+            update NotificationOutbox o
+               set o.claimedUntil = null
+             where o.id = :id
+               and o.state = :pending
+               and o.claimedUntil = :leaseUntil
+            """)
+    int releaseClaim(
+            @Param("id") Long id,
+            @Param("pending") OutboxState pending,
+            @Param("leaseUntil") OffsetDateTime leaseUntil
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
