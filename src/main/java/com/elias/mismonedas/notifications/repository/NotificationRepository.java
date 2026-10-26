@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Collection;
@@ -28,7 +29,24 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     boolean existsByBudget_IdAndStateInAndType(
             Long budgetId, List<NotificationState> states, NotificationType type);
 
-    long deleteByStateInAndCreatedAtBefore(Collection<NotificationState> states, OffsetDateTime cutoff);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query(value = """
+            DELETE FROM notificaciones
+            WHERE id IN (
+                SELECT id
+                FROM notificaciones
+                WHERE estado IN (:states)
+                  AND fecha_creacion < :cutoff
+                ORDER BY id
+                LIMIT :batchSize
+            )
+            """, nativeQuery = true)
+    int deleteBatchByStateInAndCreatedAtBefore(
+            @Param("states") Collection<String> states,
+            @Param("cutoff") OffsetDateTime cutoff,
+            @Param("batchSize") int batchSize
+    );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

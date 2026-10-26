@@ -12,10 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.function.IntSupplier;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +23,8 @@ import java.util.List;
 public class NotificationScheduler {
 
     private static final int RETENTION_DAYS = 90;
+    private static final int STALE_RETENTION_DAYS = 365;
+    private static final int PURGE_BATCH_SIZE = 500;
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationRepository notificationRepository;
     private final NotificationOutboxDispatcher outboxDispatcher;
@@ -59,18 +61,37 @@ public class NotificationScheduler {
 
     @Scheduled(cron = "0 0 3 * * ?")
     @SchedulerLock(name = "notificationScheduler.purgeOldEntries", lockAtMostFor = "PT30M", lockAtLeastFor = "PT5M")
-    @Transactional
     public void purgeOldEntries() {
-        OffsetDateTime cutoff = OffsetDateTime.now().minusDays(RETENTION_DAYS);
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime cutoff = now.minusDays(RETENTION_DAYS);
+        OffsetDateTime staleCutoff = now.minusDays(STALE_RETENTION_DAYS);
 
-        long outboxDeleted = outboxRepository.deleteByStateInAndCreatedAtBefore(
-                List.of(OutboxState.SENT, OutboxState.FAILED, OutboxState.SKIPPED), cutoff);
-        long notificationsDeleted = notificationRepository.deleteByStateInAndCreatedAtBefore(
-                List.of(NotificationState.READ, NotificationState.SENT, NotificationState.DISCARD), cutoff);
+        long outboxDeleted = deleteInBatches(() -> outboxRepository.deleteBatchByStateInAndCreatedAtBefore(
+                List.of(OutboxState.SENT.name(), OutboxState.SKIPPED.name()),
+                cutoff,
+                PURGE_BATCH_SIZE));
+        long staleOutboxDeleted = deleteInBatches(() -> outboxRepository.deleteStaleBatchBefore(
+                staleCutoff,
+                now,
+                PURGE_BATCH_SIZE));
+        long notificationsDeleted = deleteInBatches(() -> notificationRepository.deleteBatchByStateInAndCreatedAtBefore(
+                List.of(NotificationState.READ.name(), NotificationState.SENT.name(), NotificationState.DISCARD.name()),
+                cutoff,
+                PURGE_BATCH_SIZE));
 
-        if (outboxDeleted > 0 || notificationsDeleted > 0) {
-            log.info("Retención: eliminados {} outbox y {} notificaciones anteriores a {}",
-                    outboxDeleted, notificationsDeleted, cutoff);
+        if (outboxDeleted > 0 || staleOutboxDeleted > 0 || notificationsDeleted > 0) {
+            log.info("Retención: eliminados {} outbox terminales, {} outbox obsoletos y {} notificaciones",
+                    outboxDeleted, staleOutboxDeleted, notificationsDeleted);
         }
+    }
+
+    private long deleteInBatches(IntSupplier deleteBatch) {
+        long total = 0;
+        int deleted;
+        do {
+            deleted = deleteBatch.getAsInt();
+            total += deleted;
+        } while (deleted == PURGE_BATCH_SIZE);
+        return total;
     }
 }

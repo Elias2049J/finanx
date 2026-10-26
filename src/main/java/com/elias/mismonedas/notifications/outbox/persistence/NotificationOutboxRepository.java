@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+
 public interface NotificationOutboxRepository extends JpaRepository<NotificationOutbox, Long> {
     List<NotificationOutbox> findTop50ByStateOrderByIdAsc(OutboxState state);
 
@@ -36,7 +37,44 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
             @Param("published") OutboxState published
     );
 
-    long deleteByStateInAndCreatedAtBefore(Collection<OutboxState> states, OffsetDateTime cutoff);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query(value = """
+            DELETE FROM notification_outbox
+            WHERE id IN (
+                SELECT id
+                FROM notification_outbox
+                WHERE state IN (:states)
+                  AND created_at < :cutoff
+                ORDER BY id
+                LIMIT :batchSize
+            )
+            """, nativeQuery = true)
+    int deleteBatchByStateInAndCreatedAtBefore(
+            @Param("states") Collection<String> states,
+            @Param("cutoff") OffsetDateTime cutoff,
+            @Param("batchSize") int batchSize
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query(value = """
+            DELETE FROM notification_outbox
+            WHERE id IN (
+                SELECT id
+                FROM notification_outbox
+                WHERE state IN ('FAILED', 'PUBLISHED')
+                  AND created_at < :cutoff
+                  AND (next_retry_at IS NULL OR next_retry_at <= :now)
+                ORDER BY id
+                LIMIT :batchSize
+            )
+            """, nativeQuery = true)
+    int deleteStaleBatchBefore(
+            @Param("cutoff") OffsetDateTime cutoff,
+            @Param("now") OffsetDateTime now,
+            @Param("batchSize") int batchSize
+    );
 
     @Query("""
     SELECT COUNT(o) > 0

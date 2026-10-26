@@ -1,6 +1,5 @@
 package com.elias.mismonedas.notifications.scheduler;
 
-import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.outbox.NotificationOutbox;
 import com.elias.mismonedas.notifications.outbox.OutboxState;
 import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxRepository;
@@ -20,8 +19,11 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +36,8 @@ class NotificationSchedulerTest {
     @Mock private NotificationOutboxDispatcher outboxDispatcher;
 
     @Captor private ArgumentCaptor<OffsetDateTime> cutoffCaptor;
+    @Captor private ArgumentCaptor<OffsetDateTime> staleCutoffCaptor;
+    @Captor private ArgumentCaptor<OffsetDateTime> nowCaptor;
 
     private NotificationScheduler scheduler;
 
@@ -71,16 +75,40 @@ class NotificationSchedulerTest {
     }
 
     @Test
-    void purgeOldEntriesShouldDeleteSentAndFailedOlderThanRetention() {
+    void purgeOldEntriesShouldDeleteTerminalEntriesInBatchesAndKeepStaleForLonger() {
+        when(outboxRepository.deleteBatchByStateInAndCreatedAtBefore(anyList(), any(), anyInt())).thenReturn(0);
+        when(outboxRepository.deleteStaleBatchBefore(any(), any(), anyInt())).thenReturn(0);
+        when(notificationRepository.deleteBatchByStateInAndCreatedAtBefore(anyList(), any(), anyInt())).thenReturn(0);
+
         scheduler.purgeOldEntries();
 
-        verify(outboxRepository).deleteByStateInAndCreatedAtBefore(
-                eq(List.of(OutboxState.SENT, OutboxState.FAILED, OutboxState.SKIPPED)), cutoffCaptor.capture());
-        verify(notificationRepository).deleteByStateInAndCreatedAtBefore(
-                eq(List.of(NotificationState.READ, NotificationState.SENT, NotificationState.DISCARD)), any());
+        verify(outboxRepository).deleteBatchByStateInAndCreatedAtBefore(
+                eq(List.of("SENT", "SKIPPED")), cutoffCaptor.capture(), eq(500));
+        verify(outboxRepository).deleteStaleBatchBefore(
+                staleCutoffCaptor.capture(), nowCaptor.capture(), eq(500));
+        verify(notificationRepository).deleteBatchByStateInAndCreatedAtBefore(
+                eq(List.of("READ", "SENT", "DISCARD")), any(), eq(500));
 
         OffsetDateTime cutoff = cutoffCaptor.getValue();
         assertThat(cutoff).isAfter(OffsetDateTime.now().minusDays(91));
         assertThat(cutoff).isBefore(OffsetDateTime.now().minusDays(89));
+
+        OffsetDateTime staleCutoff = staleCutoffCaptor.getValue();
+        assertThat(staleCutoff).isAfter(OffsetDateTime.now().minusDays(366));
+        assertThat(staleCutoff).isBefore(OffsetDateTime.now().minusDays(364));
+        assertThat(nowCaptor.getValue()).isAfter(OffsetDateTime.now().minusMinutes(1));
+    }
+
+    @Test
+    void purgeOldEntriesShouldRepeatWhileABatchIsFull() {
+        when(outboxRepository.deleteBatchByStateInAndCreatedAtBefore(anyList(), any(), anyInt()))
+                .thenReturn(500, 0);
+        when(outboxRepository.deleteStaleBatchBefore(any(), any(), anyInt())).thenReturn(0);
+        when(notificationRepository.deleteBatchByStateInAndCreatedAtBefore(anyList(), any(), anyInt())).thenReturn(0);
+
+        scheduler.purgeOldEntries();
+
+        verify(outboxRepository, times(2))
+                .deleteBatchByStateInAndCreatedAtBefore(anyList(), any(), eq(500));
     }
 }
