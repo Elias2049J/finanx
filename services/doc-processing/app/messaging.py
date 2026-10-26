@@ -41,6 +41,7 @@ class ReceiptScanWorker:
         try:
             channel = connection.channel()
             self._declare_topology(channel)
+            channel.confirm_delivery()
             channel.basic_qos(prefetch_count=rabbit.prefetch)
             channel.basic_consume(
                 queue=rabbit.scan_queue,
@@ -55,20 +56,48 @@ class ReceiptScanWorker:
 
     def _declare_topology(self, channel) -> None:
         rabbit = self._settings.rabbit
-        channel.exchange_declare(exchange=rabbit.scan_exchange, exchange_type="direct", durable=True)
-        channel.exchange_declare(exchange=rabbit.result_exchange, exchange_type="direct", durable=True)
+        for exchange in (rabbit.scan_exchange, rabbit.scan_dlx,
+                         rabbit.result_exchange, rabbit.result_dlx):
+            channel.exchange_declare(exchange=exchange, exchange_type="direct", durable=True)
+
         channel.queue_declare(
             queue=rabbit.scan_queue,
             durable=True,
             arguments={
-                "x-dead-letter-exchange": "receipt.scan.dlx",
-                "x-dead-letter-routing-key": "receipt.scan.dead",
+                "x-dead-letter-exchange": rabbit.scan_dlx,
+                "x-dead-letter-routing-key": rabbit.scan_dlq_routing_key,
             },
         )
+        channel.queue_declare(queue=rabbit.scan_dlq, durable=True)
+        channel.queue_declare(
+            queue=rabbit.result_queue,
+            durable=True,
+            arguments={
+                "x-dead-letter-exchange": rabbit.result_dlx,
+                "x-dead-letter-routing-key": rabbit.result_dlq_routing_key,
+            },
+        )
+        channel.queue_declare(queue=rabbit.result_dlq, durable=True)
+
         channel.queue_bind(
             queue=rabbit.scan_queue,
             exchange=rabbit.scan_exchange,
             routing_key=rabbit.scan_routing_key,
+        )
+        channel.queue_bind(
+            queue=rabbit.scan_dlq,
+            exchange=rabbit.scan_dlx,
+            routing_key=rabbit.scan_dlq_routing_key,
+        )
+        channel.queue_bind(
+            queue=rabbit.result_queue,
+            exchange=rabbit.result_exchange,
+            routing_key=rabbit.result_routing_key,
+        )
+        channel.queue_bind(
+            queue=rabbit.result_dlq,
+            exchange=rabbit.result_dlx,
+            routing_key=rabbit.result_dlq_routing_key,
         )
 
     def _on_message(self, channel, method, properties, body) -> None:
@@ -83,7 +112,17 @@ class ReceiptScanWorker:
             return
 
         result = self._process(receipt_id, bucket, object_key)
-        self._publish_result(channel, result)
+        try:
+            self._publish_result(channel, result)
+        except Exception as exc:  # noqa: BLE001 - never ACK a result that was not published
+            logger.error(
+                "scan_result_publish_failed receipt_id=%s; requeueing job",
+                receipt_id,
+                exc_info=exc,
+            )
+            channel.basic_nack(method.delivery_tag, requeue=True)
+            return
+
         channel.basic_ack(method.delivery_tag)
         logger.info("scan_job_processed receipt_id=%s status=%s", receipt_id, result["status"])
 
@@ -123,4 +162,5 @@ class ReceiptScanWorker:
                 content_type="application/json",
                 message_id=str(result["receiptId"]),
             ),
+            mandatory=True,
         )
