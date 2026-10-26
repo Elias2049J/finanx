@@ -6,6 +6,8 @@ import com.elias.mismonedas.ledger.repository.projection.AmountByCurrency;
 import com.elias.mismonedas.ledger.repository.projection.AnalyticsDailyAggregate;
 import com.elias.mismonedas.ledger.repository.projection.AnalyticsDimensionAggregate;
 import com.elias.mismonedas.ledger.repository.projection.SavingGoalAggregate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,6 +29,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
     @Override
     @EntityGraph(attributePaths = {"wallet", "wallet.user", "category", "reason"})
     List<Transaction> findAll(Specification<Transaction> spec);
+
+    @Override
+    @EntityGraph(attributePaths = {
+            "wallet", "wallet.user", "category", "reason", "savingGoal", "receipt", "receipt.image"
+    })
+    Page<Transaction> findAll(Specification<Transaction> spec, Pageable pageable);
 
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
 
