@@ -89,11 +89,19 @@ public class UserController {
         return ResponseEntity.ok(userService.listTimeZones());
     }
 
-    @Operation(summary = "Eliminar usuario", operationId = "deleteUser", tags = {"Users"})
-    @PreAuthorize("hasRole('SYSTEM')")
-    @DeleteMapping("/{id}/delete")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        userService.deleteUserAccount(id);
+    @Operation(summary = "Solicitar eliminacion de cuenta", operationId = "requestAccountDeletion", tags = {"Users"})
+    @PreAuthorize("hasRole('USER') or hasRole('SYSTEM')")
+    @PostMapping("/{id}/request-deletion")
+    public ResponseEntity<Void> requestDeletion(@PathVariable Long id) {
+        userService.requestAccountDeletion(id);
+        return ResponseEntity.accepted().build();
+    }
+
+    @Operation(summary = "Cancelar eliminacion de cuenta", operationId = "cancelAccountDeletion", tags = {"Users"})
+    @PreAuthorize("hasRole('USER') or hasRole('SYSTEM')")
+    @PostMapping("/{id}/cancel-deletion")
+    public ResponseEntity<Void> cancelDeletion(@PathVariable Long id) {
+        userService.cancelAccountDeletion(id);
         return ResponseEntity.noContent().build();
     }
 

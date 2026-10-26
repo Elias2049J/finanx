@@ -3,6 +3,7 @@ package com.elias.mismonedas.identity.service.impl;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.domain.enums.UserState;
+import com.elias.mismonedas.identity.domain.event.AccountDeletionRequestedEvent;
 import com.elias.mismonedas.identity.domain.event.UserDeletedEvent;
 import com.elias.mismonedas.identity.domain.event.UserRegisteredEvent;
 import com.elias.mismonedas.identity.dto.auth.AuthResponse;
@@ -185,10 +186,40 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional
-    public void deleteUserAccount(Long userId) {
-        this.deleteUserData(userId);
-        userRepository.deleteById(userId);
-        log.info("Deleted user with ID: {}", userId);
+    public void requestAccountDeletion(Long userId) {
+        User user = getEntityById(userId);
+        if (user.isPendingDeletion()) {
+            return;
+        }
+        OffsetDateTime now = OffsetDateTime.now(user.getTimeZone().toZoneId());
+        user.requestDeletion(now, now.plusDays(7));
+        userRepository.save(user);
+        authTokenService.revokeAllForUser(userId);
+        eventPublisher.publishEvent(new AccountDeletionRequestedEvent(userId, user.getDeletionScheduledAt()));
+        log.info("Account deletion requested for user {} scheduled at {}", userId, user.getDeletionScheduledAt());
+    }
+
+    @Override
+    @Transactional
+    public void cancelAccountDeletion(Long userId) {
+        User user = getEntityById(userId);
+        if (!user.isPendingDeletion()) {
+            return;
+        }
+        user.cancelDeletion();
+        userRepository.save(user);
+        log.info("Account deletion cancelled for user {}", userId);
+    }
+
+    @Override
+    @Transactional
+    public void processScheduledAccountDeletions() {
+        OffsetDateTime now = OffsetDateTime.now();
+        for (User user : userRepository.findUsersWithExpiredDeletionSchedule(now)) {
+            this.deleteUserData(user.getId());
+            userRepository.deleteById(user.getId());
+            log.info("Permanently deleted user {} after scheduled deletion", user.getId());
+        }
     }
 
     private void deleteUserData(Long userId) {

@@ -30,5 +30,9 @@ public interface UserService {
 
     TimeZone[] listTimeZones();
 
-    void deleteUserAccount(Long userId);
+    void requestAccountDeletion(Long userId);
+
+    void cancelAccountDeletion(Long userId);
+
+    void processScheduledAccountDeletions();
 }

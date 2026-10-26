@@ -75,7 +75,8 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/v1/webhooks/**").permitAll()
 
                         .requestMatchers("/api/v1/users/{id}/delete").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/api/v1/users/{id}/disable").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/users/{id}/request-deletion").hasAnyRole("USER", "SYSTEM")
+                        .requestMatchers("/api/v1/users/{id}/cancel-deletion").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/api/v1/users/search").hasAnyRole("SYSTEM")
                         .requestMatchers("/api/v1/users").hasAnyRole("SYSTEM")
                         .requestMatchers("/api/v1/transactions/**").hasAnyRole("USER", "SYSTEM")

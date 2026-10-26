@@ -72,12 +72,34 @@ public class User implements UserDetails {
     @Column(name = "fecha_desactivacion")
     private OffsetDateTime disabledAt;
 
+    @Column(name = "solicitud_eliminacion_en")
+    private OffsetDateTime deletionRequestedAt;
+
+    @Column(name = "eliminacion_programada_en")
+    private OffsetDateTime deletionScheduledAt;
+
     public void disable() {
         this.state = UserState.DISABLED;
     }
 
     public void block() {
         this.state = UserState.BLOCKED;
+    }
+
+    public void requestDeletion(OffsetDateTime requestedAt, OffsetDateTime scheduledAt) {
+        this.deletionRequestedAt = requestedAt;
+        this.deletionScheduledAt = scheduledAt;
+        this.state = UserState.DISABLED;
+    }
+
+    public void cancelDeletion() {
+        this.deletionRequestedAt = null;
+        this.deletionScheduledAt = null;
+        this.state = UserState.ENABLED;
+    }
+
+    public boolean isPendingDeletion() {
+        return deletionRequestedAt != null && deletionScheduledAt != null;
     }
 
     public Collection<? extends GrantedAuthority> getAuthorities() {
