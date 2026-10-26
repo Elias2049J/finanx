@@ -1,6 +1,7 @@
 package com.elias.mismonedas.identity.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.domain.event.UserRegisteredEvent;
 import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
 import com.elias.mismonedas.identity.dto.user.UserResponse;
@@ -61,6 +62,26 @@ class UserServiceImplTest {
 
         verify(userRepository).existsByEmail("alice@example.test");
         assertThat(user.getEmail()).isEqualTo("alice@example.test");
+    }
+
+    @Test
+    void shouldCreateVerifiedUserWithoutIssuingTokensAfterOtpConfirmation() {
+        UserRequest request = request("  Alice@Example.test ");
+        User user = new User();
+        UserResponse userResponse = mock(UserResponse.class);
+        when(userMapper.toEntity(request)).thenReturn(user);
+        when(userRepository.existsByEmail("alice@example.test")).thenReturn(false);
+        when(passwordEncoder.encode(request.getPassword())).thenReturn("encoded-password");
+        when(userRepository.save(user)).thenReturn(user);
+        user.setId(42L);
+        when(userMapper.toResponse(user)).thenReturn(userResponse);
+
+        assertThat(service.registerVerified(request)).isSameAs(userResponse);
+
+        assertThat(user.getEmail()).isEqualTo("alice@example.test");
+        assertThat(user.isEmailVerified()).isTrue();
+        verify(eventPublisher).publishEvent(any(UserRegisteredEvent.class));
+        verify(authTokenService, never()).issue(any(User.class));
     }
 
     @Test

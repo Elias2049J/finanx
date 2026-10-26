@@ -152,6 +152,25 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + normalized));
     }
 
+    @Override
+    @Transactional
+    public UserResponse registerVerified(UserRequest request) {
+        User user = userMapper.toEntity(request);
+        String normalizedEmail = EmailNormalizer.normalize(request.getEmail());
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new IllegalArgumentException("Email already taken");
+        }
+        user.setEmail(normalizedEmail);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEmailVerified(true);
+
+        User saved = userRepository.save(user);
+
+        eventPublisher.publishEvent(new UserRegisteredEvent(saved.getId()));
+
+        return userMapper.toResponse(saved);
+    }
+
     private User getEntityById(Long id) {
         if (id == null) {
             throw new IllegalArgumentException("User id is null");
