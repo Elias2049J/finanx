@@ -8,12 +8,14 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
 public interface EmailVerificationChallengeRepository extends JpaRepository<EmailVerificationChallenge, Long> {
 
+    @Transactional
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select challenge from EmailVerificationChallenge challenge
@@ -23,7 +25,16 @@ public interface EmailVerificationChallengeRepository extends JpaRepository<Emai
             @Param("email") String email,
             @Param("purpose") EmailVerificationPurpose purpose);
 
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select challenge from EmailVerificationChallenge challenge where challenge.id = :id")
+    Optional<EmailVerificationChallenge> findByIdForUpdate(@Param("id") Long id);
+
+    @Transactional
     @Modifying
     @Query("delete from EmailVerificationChallenge challenge where challenge.expiresAt <= :now")
     int deleteExpiredAtOrBefore(@Param("now") OffsetDateTime now);
+
+    @Transactional
+    long deleteByEmailAndPurpose(String email, EmailVerificationPurpose purpose);
 }

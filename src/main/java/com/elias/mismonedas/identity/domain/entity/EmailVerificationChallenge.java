@@ -1,6 +1,7 @@
 package com.elias.mismonedas.identity.domain.entity;
 
 import com.elias.mismonedas.identity.domain.enums.EmailVerificationPurpose;
+import com.elias.mismonedas.identity.domain.EmailVerificationPolicy;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,11 +12,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
@@ -28,13 +29,10 @@ import java.time.OffsetDateTime;
         indexes = @Index(name = "idx_email_verification_expires", columnList = "expires_at")
 )
 @Getter
-@Setter
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PACKAGE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class EmailVerificationChallenge {
-
-    private static final int MAX_FAILED_ATTEMPTS = 5;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -68,13 +66,13 @@ public class EmailVerificationChallenge {
     }
 
     public void recordFailedAttempt() {
-        if (failedAttempts < MAX_FAILED_ATTEMPTS) {
+        if (failedAttempts < EmailVerificationPolicy.MAX_FAILED_ATTEMPTS) {
             failedAttempts++;
         }
     }
 
     public boolean hasReachedAttemptLimit() {
-        return failedAttempts >= MAX_FAILED_ATTEMPTS;
+        return failedAttempts >= EmailVerificationPolicy.MAX_FAILED_ATTEMPTS;
     }
 
     public void replaceCode(String newCodeHash, OffsetDateTime sentAt, OffsetDateTime newExpiresAt) {
