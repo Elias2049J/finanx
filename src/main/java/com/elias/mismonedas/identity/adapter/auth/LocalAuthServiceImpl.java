@@ -6,6 +6,7 @@ import com.elias.mismonedas.identity.dto.auth.LoginRequest;
 import com.elias.mismonedas.identity.service.AuthService;
 import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.EmailNotVerifiedException;
+import com.elias.mismonedas.identity.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LocalAuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
+    private final UserService userService;
     private final AuthTokenService authTokenService;
 
     @Override
@@ -30,6 +32,9 @@ public class LocalAuthServiceImpl implements AuthService {
         User user = (User) authentication.getPrincipal();
         if (!user.isEmailVerified()) {
             throw new EmailNotVerifiedException();
+        }
+        if (user.isPendingDeletion()) {
+            userService.cancelAccountDeletion(user.getId());
         }
         return authTokenService.issue(user);
     }
