@@ -3,7 +3,6 @@ package com.elias.mismonedas.identity.service.impl;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.domain.enums.UserState;
-import com.elias.mismonedas.identity.domain.event.UserDataResetEvent;
 import com.elias.mismonedas.identity.domain.event.UserDeletedEvent;
 import com.elias.mismonedas.identity.domain.event.UserRegisteredEvent;
 import com.elias.mismonedas.identity.dto.auth.AuthResponse;
@@ -182,13 +181,6 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Transactional(readOnly = true)
     public TimeZone[] listTimeZones() {
         return TimeZone.values();
-    }
-
-    @Override
-    @Transactional
-    public void resetAccountData(Long userId) {
-        this.deleteUserData(userId);
-        eventPublisher.publishEvent(new UserDataResetEvent(userId));
     }
 
     @Override

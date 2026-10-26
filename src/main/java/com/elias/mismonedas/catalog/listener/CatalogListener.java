@@ -3,7 +3,6 @@ package com.elias.mismonedas.catalog.listener;
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.repository.ReasonRepository;
-import com.elias.mismonedas.identity.domain.event.UserDataResetEvent;
 import com.elias.mismonedas.identity.domain.event.UserDeletedEvent;
 import com.elias.mismonedas.identity.domain.event.UserRegisteredEvent;
 import com.elias.mismonedas.identity.repository.UserRepository;
@@ -25,11 +24,6 @@ public class CatalogListener {
 
     @EventListener
     public void onUserRegistered(UserRegisteredEvent event) {
-        seedDefaultCategories(event.userId());
-    }
-
-    @EventListener
-    public void onUserDataReset(UserDataResetEvent event) {
         seedDefaultCategories(event.userId());
     }
 

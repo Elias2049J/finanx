@@ -76,7 +76,6 @@ public class WebSecurityConfig {
 
                         .requestMatchers("/api/v1/users/{id}/delete").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/api/v1/users/{id}/disable").hasAnyRole("USER", "SYSTEM")
-                        .requestMatchers("/api/v1/users/{id}/reset-data").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/api/v1/users/search").hasAnyRole("SYSTEM")
                         .requestMatchers("/api/v1/users").hasAnyRole("SYSTEM")
                         .requestMatchers("/api/v1/transactions/**").hasAnyRole("USER", "SYSTEM")

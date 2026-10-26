@@ -97,11 +97,4 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Resetear datos de usuario", operationId = "resetUserData", tags = {"Users"})
-    @PreAuthorize("hasRole('SYSTEM')")
-    @PostMapping("/{id}/reset-data")
-    public ResponseEntity<Void> resetData(@PathVariable Long id) {
-        userService.resetAccountData(id);
-        return ResponseEntity.noContent().build();
-    }
 }
