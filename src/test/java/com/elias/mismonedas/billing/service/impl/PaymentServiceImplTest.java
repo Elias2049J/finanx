@@ -135,7 +135,13 @@ class PaymentServiceImplTest {
                     .provider(PaymentProvider.MERCADO_PAGO)
                     .idempotencyKey("key-123")
                     .build();
-            Payment existing = Payment.builder().id(55L).idempotencyKey("key-123").user(user()).build();
+            Payment existing = Payment.builder()
+                    .id(55L)
+                    .idempotencyKey("key-123")
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currencyCode("PEN")
+                    .user(user())
+                    .build();
             PaymentResponse existingResponse = new PaymentResponse();
             existingResponse.setId(55L);
 
@@ -146,6 +152,62 @@ class PaymentServiceImplTest {
             PaymentResponse result = service.create(request);
 
             assertThat(result.getId()).isEqualTo(55L);
+            verify(paymentPort, never()).createPaymentIntent(any());
+            verify(paymentRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldRejectReplayWithDifferentAmount() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .amount(new java.math.BigDecimal("19.90"))
+                    .currency("PEN")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .idempotencyKey("key-123")
+                    .build();
+            Payment existing = Payment.builder()
+                    .id(55L)
+                    .idempotencyKey("key-123")
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currencyCode("PEN")
+                    .user(user())
+                    .build();
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentRepository.findByIdempotencyKey("key-123")).thenReturn(Optional.of(existing));
+
+            assertThatThrownBy(() -> service.create(request))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessageContaining("different amount");
+
+            verify(paymentPort, never()).createPaymentIntent(any());
+            verify(paymentRepository, never()).save(any());
+        }
+
+        @Test
+        void shouldRejectReplayWithDifferentCurrency() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currency("USD")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .idempotencyKey("key-123")
+                    .build();
+            Payment existing = Payment.builder()
+                    .id(55L)
+                    .idempotencyKey("key-123")
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currencyCode("PEN")
+                    .user(user())
+                    .build();
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentRepository.findByIdempotencyKey("key-123")).thenReturn(Optional.of(existing));
+
+            assertThatThrownBy(() -> service.create(request))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessageContaining("different currency");
+
             verify(paymentPort, never()).createPaymentIntent(any());
             verify(paymentRepository, never()).save(any());
         }
@@ -190,6 +252,7 @@ class PaymentServiceImplTest {
             when(securityService.getCurrentUser()).thenReturn(user());
             when(paymentRepository.findByIdempotencyKey("key-new")).thenReturn(Optional.empty());
             when(paymentMapper.toEntity(request)).thenReturn(mapped);
+            when(paymentRepository.saveAndFlush(any())).thenReturn(saved);
             when(paymentPort.createPaymentIntent(any())).thenReturn("EXT-1");
             when(paymentRepository.save(any())).thenReturn(saved);
             when(paymentMapper.toResponse(saved)).thenReturn(response);
@@ -198,6 +261,63 @@ class PaymentServiceImplTest {
 
             assertThat(result.getId()).isEqualTo(66L);
             assertThat(mapped.getIdempotencyKey()).isEqualTo("key-new");
+        }
+
+        @Test
+        void shouldGenerateIdempotencyKeyWhenClientSendsBlankValue() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currency("PEN")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .idempotencyKey("   ")
+                    .build();
+            Payment mapped = new Payment();
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentMapper.toEntity(request)).thenReturn(mapped);
+            when(paymentRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            when(paymentPort.createPaymentIntent(any())).thenReturn("EXT-BLANK");
+            when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            when(paymentMapper.toResponse(any())).thenReturn(new PaymentResponse());
+
+            service.create(request);
+
+            assertThat(mapped.getIdempotencyKey()).isNotBlank();
+            verify(paymentRepository, never()).findByIdempotencyKey(any());
+        }
+
+        @Test
+        void shouldPersistPaymentBeforeRequestingTheProviderIntent() {
+            PaymentRequest request = PaymentRequest.builder()
+                    .userId(1L)
+                    .amount(new java.math.BigDecimal("29.90"))
+                    .currency("PEN")
+                    .provider(PaymentProvider.MERCADO_PAGO)
+                    .build();
+            Payment mapped = new Payment();
+
+            when(securityService.getCurrentUser()).thenReturn(user());
+            when(paymentMapper.toEntity(request)).thenReturn(mapped);
+            when(paymentRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+                Payment payment = invocation.getArgument(0);
+                payment.setId(77L);
+                return payment;
+            });
+            when(paymentPort.createPaymentIntent(any())).thenReturn("EXT-77");
+            when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            when(paymentMapper.toResponse(any())).thenReturn(new PaymentResponse());
+
+            service.create(request);
+
+            ArgumentCaptor<Payment> providerPayment = ArgumentCaptor.forClass(Payment.class);
+            verify(paymentPort).createPaymentIntent(providerPayment.capture());
+            assertThat(providerPayment.getValue().getId()).isEqualTo(77L);
+
+            var order = inOrder(paymentRepository, paymentPort);
+            order.verify(paymentRepository).saveAndFlush(any());
+            order.verify(paymentPort).createPaymentIntent(any());
+            order.verify(paymentRepository).save(any());
         }
 
         @Test
@@ -216,6 +336,7 @@ class PaymentServiceImplTest {
             when(securityService.getCurrentUser()).thenReturn(user);
             when(subscriptionRepository.findByIdAndUser_Id(500L, 1L)).thenReturn(Optional.of(subscription));
             when(paymentMapper.toEntity(request)).thenReturn(mapped);
+            when(paymentRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
             when(paymentPort.createPaymentIntent(any())).thenReturn("EXT-500");
             when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
             when(paymentMapper.toResponse(any())).thenReturn(new PaymentResponse());
@@ -243,6 +364,7 @@ class PaymentServiceImplTest {
                     .isInstanceOf(SubscriptionNotFoundException.class);
 
             verify(paymentPort, never()).createPaymentIntent(any());
+            verify(paymentRepository, never()).saveAndFlush(any());
             verify(paymentRepository, never()).save(any());
         }
 

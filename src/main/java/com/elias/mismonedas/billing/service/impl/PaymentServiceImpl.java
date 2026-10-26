@@ -72,15 +72,17 @@ public class PaymentServiceImpl implements PaymentService {
         validateAmountAndCurrency(request);
         User user = securityService.getCurrentUser();
 
-        if (request.getIdempotencyKey() != null) {
-            var existing = paymentRepository.findByIdempotencyKey(request.getIdempotencyKey());
+        String idempotencyKey = normalizeIdempotencyKey(request.getIdempotencyKey());
+        if (idempotencyKey != null) {
+            var existing = paymentRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
                 Payment replayed = existing.get();
                 if (replayed.getUser() == null || !replayed.getUser().getId().equals(user.getId())) {
                     throw new ConflictException("Idempotency-Key already used by another user");
                 }
+                assertSamePaymentIntent(replayed, request, idempotencyKey);
                 log.info("Payment replay ignored: idempotencyKey={} maps to payment id={}",
-                        request.getIdempotencyKey(), replayed.getId());
+                        idempotencyKey, replayed.getId());
                 return paymentMapper.toResponse(replayed);
             }
         }
@@ -93,25 +95,28 @@ public class PaymentServiceImpl implements PaymentService {
                     .orElseThrow(() -> new SubscriptionNotFoundException(request.getSubscriptionId()));
             payment.setSubscription(subscription);
         }
-        payment.setIdempotencyKey(
-                request.getIdempotencyKey() != null ? request.getIdempotencyKey() : UUID.randomUUID().toString());
-
-        String externalReference = paymentPort.createPaymentIntent(payment);
-        payment.setExternalReference(externalReference);
+        payment.setIdempotencyKey(idempotencyKey != null ? idempotencyKey : UUID.randomUUID().toString());
 
         Payment saved;
         try {
-            saved = paymentRepository.save(payment);
+            // The provider needs the persisted id; persisting first also avoids references like MANUAL-null-<millis>.
+            saved = paymentRepository.saveAndFlush(payment);
         } catch (DataIntegrityViolationException race) {
             Payment existing = paymentRepository.findByIdempotencyKey(payment.getIdempotencyKey())
                     .orElseThrow(() -> race);
             if (existing.getUser() == null || !existing.getUser().getId().equals(user.getId())) {
                 throw new ConflictException("Idempotency-Key already used by another user");
             }
+            assertSamePaymentIntent(existing, request, payment.getIdempotencyKey());
             log.info("Payment replay on race: idempotencyKey={} maps to payment id={}",
                     payment.getIdempotencyKey(), existing.getId());
             return paymentMapper.toResponse(existing);
         }
+
+        String externalReference = paymentPort.createPaymentIntent(saved);
+        saved.setExternalReference(externalReference);
+        saved = paymentRepository.save(saved);
+
         log.info("Payment created id={} provider={} state={}", saved.getId(), saved.getProvider(), saved.getState());
         return paymentMapper.toResponse(saved);
     }
@@ -394,6 +399,26 @@ public class PaymentServiceImpl implements PaymentService {
             webhookPublisher.publish(event.getId());
         } catch (AmqpException ex) {
             log.warn("Webhook event persisted but broker publish failed id={}", event.getId(), ex);
+        }
+    }
+
+    private static String normalizeIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            return null;
+        }
+        return idempotencyKey.trim();
+    }
+
+    private static void assertSamePaymentIntent(Payment existing, PaymentRequest request, String idempotencyKey) {
+        if (existing.getAmount() != null && request.getAmount() != null
+                && existing.getAmount().compareTo(request.getAmount()) != 0) {
+            throw new ConflictException("Idempotency-Key " + idempotencyKey
+                    + " was already used with a different amount");
+        }
+        if (existing.getCurrencyCode() != null && request.getCurrency() != null
+                && !existing.getCurrencyCode().equalsIgnoreCase(request.getCurrency())) {
+            throw new ConflictException("Idempotency-Key " + idempotencyKey
+                    + " was already used with a different currency");
         }
     }
 
