@@ -14,20 +14,6 @@ public final class AiUtils {
     private AiUtils() {}
 
 
-    private static final List<Pattern> SUSPICIOUS_PATTERNS = List.of(
-            Pattern.compile("(?i)(ignore|forget|disregard|olvida|ignora|no consideres|descarta).{0,30}(previous|above|instruction|system|prompt|instrucci[oo]n|contexto|mensaje)"),
-            Pattern.compile("(?i)\\b(jailbreak|prompt injection)\\b"),
-            Pattern.compile("(?i)<\\s*(script|iframe|img|svg|object|embed|link|etiqueta|javascript)[^>]*>"),
-            Pattern.compile("(?i)(api[_\\-]?key|secret|token|password|bearer|authorization|contrase[ñn]a|clave|llave|credencial|secreto)\\s*[:=]\\s*\\S+"),
-            Pattern.compile("(?i)\\$\\{.*?\\}"),
-            Pattern.compile("(?i)\\{\\{.*?\\}\\}"),
-            Pattern.compile("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]")
-    );
-
-
-
-
-
     private static final List<Pattern> ADVISOR_PATTERNS = List.of(
             Pattern.compile("(?i)\\b(gast[oo]s?|ingres[oo]s?|balance|presupuest[oa]?|ahorro|deuda[s]?|categoria[s]?|pago[s]?|transacci[oo]n(es)?|flujo de caja|capital|inversi[oo]n|patrimoni[oo])"),
 
@@ -63,13 +49,6 @@ public final class AiUtils {
         if (trimmed.length() > maxLength) {
             log.warn("[AiUtils] Prompt truncado: {} → {} chars", trimmed.length(), maxLength);
             trimmed = trimmed.substring(0, maxLength);
-        }
-
-        for (Pattern pattern : SUSPICIOUS_PATTERNS) {
-            if (pattern.matcher(trimmed).find()) {
-                log.warn("[AiUtils] Prompt sospechoso rechazado. Patron: {}", pattern.pattern());
-                return "[consulta no disponible]";
-            }
         }
 
         return escapeForPrompt(trimmed);
