@@ -9,6 +9,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Data
 @AllArgsConstructor
@@ -56,4 +57,13 @@ public class ReceiptResponse {
 
     @Schema(description = "Motor usado para el parseo (REGEX o GEMINI)", example = "REGEX")
     private String parserEngineUsed;
+
+    @Schema(description = "Indica si los datos finales fueron mejorados por IA", example = "false")
+    private boolean improved;
+
+    @Schema(description = "Fecha en que la IA mejoró el recibo (nullable si nunca se aplicó)", example = "2026-10-26T10:15:30-05:00")
+    private OffsetDateTime aiImprovedAt;
+
+    @Schema(description = "Indica si el usuario debería revisar el recibo antes de confirmarlo", example = "true")
+    private boolean requiresReview;
 }

@@ -20,8 +20,10 @@ import com.elias.mismonedas.document.repository.ReceiptRepository;
 import com.elias.mismonedas.document.service.ImageService;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.shared.domain.enums.PaymentMethod;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import com.elias.mismonedas.shared.exception.OcrProcessingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -76,7 +78,10 @@ class ReceiptScanServiceImplTest {
                     receipt.getRawOcrText(),
                     receipt.getCurrencyGuess(),
                     receipt.getConfidenceScore(),
-                    receipt.getParserEngineUsed());
+                    receipt.getParserEngineUsed(),
+                    receipt.isImproved(),
+                    receipt.getAiImprovedAt(),
+                    receipt.requiresReview());
         });
     }
 
@@ -149,6 +154,8 @@ class ReceiptScanServiceImplTest {
             assertThat(receipt.getRawOcrText()).isEqualTo("TOTAL S/. 45.00");
             assertThat(receipt.getOcrDurationMs()).isEqualTo(1500L);
             assertThat(receipt.getErrorMessage()).isNull();
+            assertThat(receipt.isImproved()).isFalse();
+            assertThat(receipt.getAiImprovedAt()).isNull();
             verify(aiParser, never()).parse(any());
             verify(receiptRepository).save(receipt);
         }
@@ -169,6 +176,8 @@ class ReceiptScanServiceImplTest {
             assertThat(receipt.getStatus()).isEqualTo(ReceiptScanStatus.DONE);
             assertThat(receipt.getDescription()).isEqualTo("Restaurante");
             assertThat(receipt.getParserEngineUsed()).isEqualTo("GEMINI");
+            assertThat(receipt.isImproved()).isTrue();
+            assertThat(receipt.getAiImprovedAt()).isNotNull();
         }
 
         @Test
@@ -328,7 +337,7 @@ class ReceiptScanServiceImplTest {
             receipt.setStatus(ReceiptScanStatus.DONE);
             receipt.setRawOcrText("TOTAL S/. 45.00");
             receipt.setConfidenceScore(0.5);
-            when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
+            when(receiptRepository.findByIdAndUser_IdForUpdate(1L, 1L)).thenReturn(Optional.of(receipt));
             when(aiParser.parse("TOTAL S/. 45.00")).thenReturn(new ReceiptData(
                     new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado ABC",
                     "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
@@ -339,13 +348,68 @@ class ReceiptScanServiceImplTest {
             assertThat(result.getDescription()).isEqualTo("Supermercado ABC");
             assertThat(result.getParserEngineUsed()).isEqualTo("GEMINI");
             assertThat(result.getConfidenceScore()).isEqualTo(0.9);
+            assertThat(result.isImproved()).isTrue();
+            assertThat(result.getAiImprovedAt()).isNotNull();
+            assertThat(receipt.getAiImprovedAt()).isNotNull();
+        }
+
+        @Test
+        void shouldKeepReceiptUnchangedWhenGeminiDoesNotImproveConfidence() {
+            when(securityService.getCurrentUser()).thenReturn(createTestUser());
+            Receipt receipt = pendingReceipt(1L);
+            receipt.setStatus(ReceiptScanStatus.DONE);
+            receipt.setRawOcrText("TOTAL S/. 45.00");
+            receipt.setConfidenceScore(0.9);
+            when(receiptRepository.findByIdAndUser_IdForUpdate(1L, 1L)).thenReturn(Optional.of(receipt));
+            when(aiParser.parse("TOTAL S/. 45.00")).thenReturn(new ReceiptData(
+                    new BigDecimal("45.00"), LocalDate.of(2026, 7, 1), "Supermercado ABC",
+                    "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
+
+            ReceiptResponse result = service.improveWithAi(1L);
+
+            assertThat(result.isImproved()).isFalse();
+            assertThat(result.getAiImprovedAt()).isNull();
+            verify(receiptRepository, never()).save(any(Receipt.class));
+        }
+
+        @Test
+        void shouldRejectImprovementWhileReceiptIsNotDone() {
+            when(securityService.getCurrentUser()).thenReturn(createTestUser());
+            Receipt receipt = pendingReceipt(1L);
+            receipt.setRawOcrText("TOTAL S/. 45.00");
+            when(receiptRepository.findByIdAndUser_IdForUpdate(1L, 1L)).thenReturn(Optional.of(receipt));
+
+            assertThatThrownBy(() -> service.improveWithAi(1L))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessageContaining("DONE");
+
+            verifyNoInteractions(aiParser);
+            verify(receiptRepository, never()).save(any(Receipt.class));
+        }
+
+        @Test
+        void shouldRejectImprovementWhenReceiptIsAlreadyLinked() {
+            when(securityService.getCurrentUser()).thenReturn(createTestUser());
+            Receipt receipt = pendingReceipt(1L);
+            receipt.setStatus(ReceiptScanStatus.DONE);
+            receipt.setRawOcrText("TOTAL S/. 45.00");
+            receipt.setTransaction(new Transaction());
+            when(receiptRepository.findByIdAndUser_IdForUpdate(1L, 1L)).thenReturn(Optional.of(receipt));
+
+            assertThatThrownBy(() -> service.improveWithAi(1L))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessageContaining("vinculado");
+
+            verifyNoInteractions(aiParser);
+            verify(receiptRepository, never()).save(any(Receipt.class));
         }
 
         @Test
         void shouldThrowWhenReceiptHasNoOcrText() {
             when(securityService.getCurrentUser()).thenReturn(createTestUser());
             Receipt receipt = pendingReceipt(1L);
-            when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
+            receipt.setStatus(ReceiptScanStatus.DONE);
+            when(receiptRepository.findByIdAndUser_IdForUpdate(1L, 1L)).thenReturn(Optional.of(receipt));
 
             assertThatThrownBy(() -> service.improveWithAi(1L))
                     .isInstanceOf(OcrProcessingException.class);
@@ -359,7 +423,7 @@ class ReceiptScanServiceImplTest {
             receipt.setRawOcrText("TOTAL S/. 45.00");
             receipt.setDetectedAmount(new BigDecimal("45.00"));
             receipt.setConfidenceScore(0.5);
-            when(receiptRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(receipt));
+            when(receiptRepository.findByIdAndUser_IdForUpdate(1L, 1L)).thenReturn(Optional.of(receipt));
             when(aiParser.parse("TOTAL S/. 45.00")).thenReturn(new ReceiptData(
                     new BigDecimal("-10.00"), LocalDate.of(2026, 7, 1), "Supermercado ABC",
                     "PEN", PaymentMethod.CASH, TransactionType.SPENT, 0.9, null));
@@ -369,6 +433,7 @@ class ReceiptScanServiceImplTest {
                     .hasMessageContaining("monto");
 
             assertThat(receipt.getDetectedAmount()).isEqualByComparingTo("45.00");
+            assertThat(receipt.getAiImprovedAt()).isNull();
             verify(receiptRepository, never()).save(any(Receipt.class));
         }
     }

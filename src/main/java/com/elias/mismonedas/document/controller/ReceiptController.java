@@ -67,9 +67,16 @@ public class ReceiptController {
 
     @Operation(
             summary = "Mejorar parseo con IA",
-            description = "Re-ejecuta GeminiParser sobre el texto OCR guardado. Actualiza el recibo solo si la confianza mejora.",
+            description = "Re-ejecuta GeminiParser sobre el texto OCR guardado. Solo acepta recibos DONE que aún no estén " +
+                    "vinculados a una transacción. Actualiza el recibo solo si la confianza mejora; si no, lo devuelve sin cambios.",
             operationId = "improveScan",
-            tags = {"Receipts"}
+            tags = {"Receipts"},
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Recibo devuelto; puede haber mejorado o no"),
+                    @ApiResponse(responseCode = "409", description = "El recibo no está DONE o ya está vinculado"),
+                    @ApiResponse(responseCode = "422", description = "Sin texto OCR o monto detectado inválido"),
+                    @ApiResponse(responseCode = "503", description = "Gemini no disponible")
+            }
     )
     @PostMapping("/{receiptId}/improve")
     public ResponseEntity<ReceiptResponse> improve(

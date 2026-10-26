@@ -21,6 +21,8 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class Receipt {
 
+    public static final double REVIEW_CONFIDENCE_THRESHOLD = 0.7;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -70,6 +72,9 @@ public class Receipt {
     @Column(name = "motor_usado", length = 20)
     private String parserEngineUsed;
 
+    @Column(name = "ai_improved_at")
+    private OffsetDateTime aiImprovedAt;
+
     @Column(name = "duracion_ocr_ms")
     private Long ocrDurationMs;
 
@@ -99,5 +104,15 @@ public class Receipt {
             throw new IllegalArgumentException("Receipt is already linked to another transaction");
         }
         this.transaction = transaction;
+    }
+
+    public boolean isImproved() {
+        return "GEMINI".equalsIgnoreCase(parserEngineUsed);
+    }
+
+    public boolean requiresReview() {
+        return status == ReceiptScanStatus.DONE
+                && transaction == null
+                && (confidenceScore == null || confidenceScore < REVIEW_CONFIDENCE_THRESHOLD);
     }
 }

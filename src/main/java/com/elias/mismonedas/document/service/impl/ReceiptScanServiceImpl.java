@@ -21,6 +21,7 @@ import com.elias.mismonedas.document.service.ImageService;
 import com.elias.mismonedas.document.service.ReceiptScanService;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import com.elias.mismonedas.shared.exception.OcrProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -176,6 +177,9 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
         receipt.setCurrencyGuess(data.currencyGuess());
         receipt.setConfidenceScore(data.parseConfidence());
         receipt.setParserEngineUsed(engineUsed);
+        if ("GEMINI".equals(engineUsed)) {
+            receipt.setAiImprovedAt(OffsetDateTime.now(receipt.getUser().getTimeZone().toZoneId()));
+        }
         receipt.setDetectedCategoryId(matchCategory(receipt.getUser().getId(), data, rawText));
         receipt.setStatus(ReceiptScanStatus.DONE);
         receipt.setErrorMessage(null);
@@ -214,8 +218,15 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
     @Transactional
     public ReceiptResponse improveWithAi(Long receiptId) {
         Long userId = securityService.getCurrentUser().getId();
-        Receipt receipt = receiptRepository.findByIdAndUser_Id(receiptId, userId)
+        Receipt receipt = receiptRepository.findByIdAndUser_IdForUpdate(receiptId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+
+        if (receipt.getStatus() != ReceiptScanStatus.DONE) {
+            throw new ConflictException("Solo se puede mejorar un recibo en estado DONE");
+        }
+        if (receipt.getTransaction() != null) {
+            throw new ConflictException("El recibo ya fue vinculado a una transacción y no se puede mejorar");
+        }
 
         String rawText = receipt.getRawOcrText();
         if (rawText == null || rawText.isBlank()) {
@@ -238,6 +249,7 @@ public class ReceiptScanServiceImpl implements ReceiptScanService {
             receipt.setCurrencyGuess(improved.currencyGuess());
             receipt.setConfidenceScore(improved.parseConfidence());
             receipt.setParserEngineUsed("GEMINI");
+            receipt.setAiImprovedAt(OffsetDateTime.now(receipt.getUser().getTimeZone().toZoneId()));
             receipt = receiptRepository.save(receipt);
             log.info("improve_ai accepted receipt_id={} new_confidence={} old_confidence={}",
                     receiptId, improved.parseConfidence(), oldConfidence);

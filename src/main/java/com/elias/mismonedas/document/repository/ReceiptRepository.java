@@ -22,4 +22,8 @@ public interface ReceiptRepository extends JpaRepository<Receipt, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from Receipt r where r.id = :id")
     Optional<Receipt> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Receipt r where r.id = :id and r.user.id = :userId")
+    Optional<Receipt> findByIdAndUser_IdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 }

@@ -46,7 +46,8 @@ class ReceiptControllerTest {
                 "image", "recibo.jpg", "image/jpeg", "bytes".getBytes());
         ReceiptResponse response = new ReceiptResponse(
                 7L, ReceiptScanStatus.PENDING, null, 3L,
-                null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null,
+                false, null, false);
         when(receiptScanService.startScan(any(), eq("recibo.jpg"), eq("image/jpeg")))
                 .thenReturn(response);
 
