@@ -2,8 +2,11 @@ package com.elias.mismonedas.document.controller;
 
 import com.elias.mismonedas.document.dto.ReceiptResponse;
 import com.elias.mismonedas.document.service.ReceiptScanService;
+import com.elias.mismonedas.shared.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -73,9 +76,12 @@ public class ReceiptController {
             tags = {"Receipts"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Recibo devuelto; puede haber mejorado o no"),
-                    @ApiResponse(responseCode = "409", description = "El recibo no está DONE o ya está vinculado"),
-                    @ApiResponse(responseCode = "422", description = "Sin texto OCR o monto detectado inválido"),
-                    @ApiResponse(responseCode = "503", description = "Gemini no disponible")
+                    @ApiResponse(responseCode = "409", description = "El recibo no está DONE o ya está vinculado",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "422", description = "Sin texto OCR o monto detectado inválido",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "503", description = "Gemini no disponible",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
             }
     )
     @PostMapping("/{receiptId}/improve")
