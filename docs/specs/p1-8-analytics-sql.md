@@ -28,12 +28,18 @@ Evidencia:
    - una consulta diaria agrupada por fecha local del usuario, tipo y moneda.
 3. **Convertir totales de grupo, no filas.** Cada grupo se convierte una vez a la moneda base. La diferencia de
    redondeo frente a convertir fila por fila se acepta y se documenta.
-4. **No añadir tope de rango en este cambio.** El tope máximo (p. ej. 24 meses) queda como decisión de producto
-   posterior.
+4. **No imponer tope de rango.** Decisión de producto del 2026-10-26: el usuario puede consultar cualquier
+   periodo; no añadir límite máximo de duración ni a este endpoint ni a otros filtros de fechas. Android usa el
+   intervalo civil de años 1–9999 por la representación ISO de los pickers, sin limitar los meses del periodo.
+5. **Elegir periodos de analítica por mes/año.** El servicio aplica `coveringMonths()`, así que la UI no debe
+   presentar una selección diaria que aparenta precisión que el backend no conserva. La app enviará el primer día
+   del mes inicial y el último día del mes final. El listado de transacciones mantiene su selector diario porque
+   ese endpoint sí filtra por días exactos.
 
 ## Alcance
 
 - `TransactionAnalyticsServiceImpl` y el endpoint `GET /analytics/dashboard/balance`.
+- El selector de periodo de la pantalla Android de analíticas; no se cambia el selector diario de transacciones.
 - `CategoryAnalyticsServiceImpl` no se reescribe: no está expuesto y solo se adapta para seguir compilando sin
   `context`.
 - Se eliminan del servicio de transacciones las dependencias que quedan sin uso (`TransactionMapper`,
@@ -142,6 +148,8 @@ grupos y la inclusión de filas sin categoría o motivo.
       devueltas depende de los grupos, no del número de transacciones. También cubre transacciones sin categoría
       ni motivo.
 - [x] Suite completa del backend, tests unitarios de Android y tests del cliente Kotlin en verde.
+- [x] La pantalla de analíticas selecciona mes/año inicial y final; el request envía primer/último día de esos meses.
+- [x] No existe límite máximo de rango. El filtro diario de transacciones permanece sin tope y con semántica diaria.
 
 ## Verificación
 
@@ -156,7 +164,7 @@ grupos y la inclusión de filas sin categoría o motivo.
 
 ## Fuera de alcance
 
-- Tope máximo de rango (decisión de producto).
+- Límites de rango, por decisión explícita: no se agregan.
 - Reescritura de `CategoryAnalyticsServiceImpl` (no expuesto).
 - Paridad exacta de redondeo con la conversión fila por fila.
 - Idempotencia de refresh y demás hallazgos de la auditoría.
@@ -172,4 +180,15 @@ grupos y la inclusión de filas sin categoría o motivo.
   de filas. Un usuario con un motivo distinto por transacción puede seguir generando muchos grupos, aunque
   muchos menos que entidades y DTOs completos.
 - **Contrato:** quitar `context` rompe a cualquier consumidor externo que lo leyera. En este repositorio solo lo
-  consume el cliente Kotlin generado, que no lo usa.
+      consume el cliente Kotlin generado, que no lo usa.
+
+## Actualización de decisión — 2026-10-26
+
+- Se rechaza un tope máximo para cualquier filtro de fechas. El usuario puede solicitar periodos largos; se acepta
+  que el coste SQL y la respuesta aumenten con los datos y días activos.
+- La UI de analíticas permite elegir mes/año inicial y final, no días. El cliente envía `from` como el primer día del
+  mes inicial y `to` como el último día del mes final, de acuerdo con `coveringMonths()`.
+- El filtro diario de transacciones no cambia porque ese endpoint aplica los días solicitados con precisión diaria;
+  sigue sin tope.
+- Verificación Android: `:app:testDebugUnitTest :app:compileDebugKotlin` (34 tests). No había emulador ADB
+  disponible para comprobación visual en runtime.
