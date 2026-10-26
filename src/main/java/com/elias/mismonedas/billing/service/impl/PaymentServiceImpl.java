@@ -218,8 +218,10 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("Webhook payload has no external event id");
         }
 
-        if (webhookEventRepository.findByExternalEventId(notification.getExternalEventId()).isPresent()) {
-            log.info("Duplicate webhook event ignored externalEventId={}", notification.getExternalEventId());
+        if (webhookEventRepository.findByProviderAndExternalEventId(
+                provider, notification.getExternalEventId()).isPresent()) {
+            log.info("Duplicate webhook event ignored provider={} externalEventId={}",
+                    provider, notification.getExternalEventId());
             return;
         }
 
@@ -234,9 +236,10 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             event = webhookEventRepository.saveAndFlush(event);
         } catch (DataIntegrityViolationException ex) {
-            if (webhookEventRepository.findByExternalEventId(notification.getExternalEventId()).isPresent()) {
-                log.info("Duplicate webhook event ignored (concurrent) externalEventId={}",
-                        notification.getExternalEventId());
+            if (webhookEventRepository.findByProviderAndExternalEventId(
+                    provider, notification.getExternalEventId()).isPresent()) {
+                log.info("Duplicate webhook event ignored (concurrent) provider={} externalEventId={}",
+                        provider, notification.getExternalEventId());
                 return;
             }
             throw ex;

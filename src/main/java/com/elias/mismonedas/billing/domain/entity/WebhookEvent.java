@@ -8,7 +8,11 @@ import lombok.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "eventos_webhook")
+@Table(
+        name = "eventos_webhook",
+        uniqueConstraints = @UniqueConstraint(
+                name = "eventos_webhook_proveedor_id_evento_externo_key",
+                columnNames = {"proveedor", "id_evento_externo"}))
 @Getter
 @Setter
 @Builder
@@ -27,7 +31,7 @@ public class WebhookEvent {
     @Column(name = "tipo_evento")
     private String eventType;
 
-    @Column(name = "id_evento_externo", unique = true)
+    @Column(name = "id_evento_externo")
     private String externalEventId;
 
     @Lob

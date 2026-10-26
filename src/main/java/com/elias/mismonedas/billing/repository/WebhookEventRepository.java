@@ -1,6 +1,7 @@
 package com.elias.mismonedas.billing.repository;
 
 import com.elias.mismonedas.billing.domain.entity.WebhookEvent;
+import com.elias.mismonedas.billing.domain.enums.PaymentProvider;
 import com.elias.mismonedas.billing.domain.enums.WebhookEventState;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +16,7 @@ import java.util.Optional;
 
 public interface WebhookEventRepository extends JpaRepository<WebhookEvent, Long> {
 
-    Optional<WebhookEvent> findByExternalEventId(String externalEventId);
+    Optional<WebhookEvent> findByProviderAndExternalEventId(PaymentProvider provider, String externalEventId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select w from WebhookEvent w where w.id = :id")

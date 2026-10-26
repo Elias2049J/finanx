@@ -424,7 +424,8 @@ class PaymentServiceImplTest {
                     .build();
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-1", "REF-1", "approved"));
-            when(webhookEventRepository.findByExternalEventId("EVT-1")).thenReturn(Optional.of(existing));
+            when(webhookEventRepository.findByProviderAndExternalEventId(
+                    PaymentProvider.MANUAL_TRANSFER, "EVT-1")).thenReturn(Optional.of(existing));
 
             service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
 
@@ -438,7 +439,8 @@ class PaymentServiceImplTest {
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-1", "REF-1", "approved"));
             when(webhookEventRepository.saveAndFlush(any()))
                     .thenThrow(new DataIntegrityViolationException("uq id_evento_externo"));
-            when(webhookEventRepository.findByExternalEventId("EVT-1"))
+            when(webhookEventRepository.findByProviderAndExternalEventId(
+                    PaymentProvider.MANUAL_TRANSFER, "EVT-1"))
                     .thenReturn(Optional.empty(), Optional.of(WebhookEvent.builder().id(1L).build()));
 
             service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
@@ -451,7 +453,8 @@ class PaymentServiceImplTest {
         void shouldPersistReceivedAndPublishOnlyTheEventId() {
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-2", "REF-2", "approved"));
-            when(webhookEventRepository.findByExternalEventId("EVT-2")).thenReturn(Optional.empty());
+            when(webhookEventRepository.findByProviderAndExternalEventId(
+                    PaymentProvider.MANUAL_TRANSFER, "EVT-2")).thenReturn(Optional.empty());
             when(webhookEventRepository.saveAndFlush(any())).thenAnswer(invocation -> {
                 WebhookEvent event = invocation.getArgument(0);
                 event.setId(2L);
@@ -470,7 +473,8 @@ class PaymentServiceImplTest {
         void shouldKeepDurableReceiptAndReturnNormallyWhenBrokerIsUnavailable() {
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-2B", "REF-2B", "approved"));
-            when(webhookEventRepository.findByExternalEventId("EVT-2B")).thenReturn(Optional.empty());
+            when(webhookEventRepository.findByProviderAndExternalEventId(
+                    PaymentProvider.MANUAL_TRANSFER, "EVT-2B")).thenReturn(Optional.empty());
             when(webhookEventRepository.saveAndFlush(any())).thenAnswer(invocation -> {
                 WebhookEvent event = invocation.getArgument(0);
                 event.setId(22L);
@@ -483,6 +487,25 @@ class PaymentServiceImplTest {
             verify(webhookEventRepository).saveAndFlush(eventCaptor.capture());
             assertThat(eventCaptor.getValue().getState()).isEqualTo(WebhookEventState.RECEIVED);
             verify(webhookPublisher).publish(22L);
+        }
+
+        @Test
+        void shouldScopeWebhookDeduplicationByProvider() {
+            when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
+            when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-SHARED", "REF-S", "approved"));
+            when(webhookEventRepository.findByProviderAndExternalEventId(
+                    PaymentProvider.MANUAL_TRANSFER, "EVT-SHARED")).thenReturn(Optional.empty());
+            when(webhookEventRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+                WebhookEvent event = invocation.getArgument(0);
+                event.setId(33L);
+                return event;
+            });
+
+            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+
+            verify(webhookEventRepository).findByProviderAndExternalEventId(
+                    PaymentProvider.MANUAL_TRANSFER, "EVT-SHARED");
+            verify(webhookEventRepository).saveAndFlush(any());
         }
 
         @Test
