@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -105,10 +107,18 @@ public class FCMNotificationAdapter implements NotificationPort {
         log.info("FCM enviada a userId={}, exito={}, fallo={}",
                 notification.getUserId(), response.getSuccessCount(), response.getFailureCount());
 
+        applyBatchResponse(userId, tokens, response);
+    }
+
+    void applyBatchResponse(Long userId, List<String> tokens, BatchResponse response) {
+        List<String> delivered = new ArrayList<>();
         List<SendResponse> responses = response.getResponses();
         for (int i = 0; i < responses.size(); i++) {
             SendResponse sendResponse = responses.get(i);
-            if (sendResponse.isSuccessful()) continue;
+            if (sendResponse.isSuccessful()) {
+                delivered.add(tokens.get(i));
+                continue;
+            }
 
             FirebaseMessagingException ex = sendResponse.getException();
             if (ex == null) continue;
@@ -121,6 +131,9 @@ public class FCMNotificationAdapter implements NotificationPort {
             } else {
                 log.warn("Error en token FCM ({}), userId={}", errorCode, userId);
             }
+        }
+        if (!delivered.isEmpty()) {
+            fcmTokenRepository.touchByTokens(delivered, userId, LocalDateTime.now());
         }
     }
 

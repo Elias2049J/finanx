@@ -8,8 +8,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +27,19 @@ public interface FcmTokenRepository extends JpaRepository<FcmToken, Long> {
     Optional<FcmToken> findByToken(String token);
 
     int deleteByUpdatedAtBefore(LocalDateTime cutoff);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+            update FcmToken f
+               set f.updatedAt = :now
+             where f.user.id = :userId
+               and f.token in :tokens
+            """)
+    int touchByTokens(
+            @Param("tokens") Collection<String> tokens,
+            @Param("userId") Long userId,
+            @Param("now") LocalDateTime now);
 
 
 
