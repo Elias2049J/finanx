@@ -224,17 +224,23 @@ public class BillingServiceImpl implements BillingService {
     }
 
     @Override
-    @Transactional
     public void checkExpirations() {
         OffsetDateTime now = OffsetDateTime.now();
         List<Subscription> expiring = subscriptionRepository
                 .findAllByStateAndCurrentPeriodEndBefore(SubscriptionState.ACTIVE, now);
 
         for (Subscription subscription : expiring) {
-            SubscriptionState target = subscription.getAutoRenew() ? SubscriptionState.PAST_DUE : SubscriptionState.EXPIRED;
-            subscription.transitionTo(target);
-            subscriptionRepository.save(subscription);
-            log.info("Subscription id={} moved to {}", subscription.getId(), target);
+            try {
+                SubscriptionState target = Boolean.TRUE.equals(subscription.getAutoRenew())
+                        ? SubscriptionState.PAST_DUE
+                        : SubscriptionState.EXPIRED;
+                subscription.transitionTo(target);
+                subscriptionRepository.save(subscription);
+                log.info("Subscription id={} moved to {}", subscription.getId(), target);
+            } catch (RuntimeException ex) {
+                log.error("Could not expire subscription id={}; the next ones will still be processed",
+                        subscription.getId(), ex);
+            }
         }
     }
 

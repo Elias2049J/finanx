@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -184,6 +185,45 @@ class BillingServiceImplTest {
                     .isInstanceOf(SubscriptionNotFoundException.class);
         }
 
+    }
+
+    @Nested
+    class CheckExpirationsTest {
+
+        @Test
+        void shouldTreatNullAutoRenewAsNoRenewal() {
+            Subscription subscription = subscriptionInState(SubscriptionState.ACTIVE);
+            subscription.setAutoRenew(null);
+            subscription.setCurrentPeriodEnd(OffsetDateTime.now().minusDays(1));
+
+            when(subscriptionRepository.findAllByStateAndCurrentPeriodEndBefore(
+                    eq(SubscriptionState.ACTIVE), any())).thenReturn(List.of(subscription));
+            when(subscriptionRepository.save(subscription)).thenReturn(subscription);
+
+            service.checkExpirations();
+
+            assertThat(subscription.getState()).isEqualTo(SubscriptionState.EXPIRED);
+        }
+
+        @Test
+        void shouldContinueWithRemainingSubscriptionsWhenOneFails() {
+            Subscription failing = subscriptionInState(SubscriptionState.ACTIVE);
+            failing.setId(7L);
+            failing.setCurrentPeriodEnd(OffsetDateTime.now().minusDays(1));
+            Subscription healthy = subscriptionInState(SubscriptionState.ACTIVE);
+            healthy.setId(8L);
+            healthy.setCurrentPeriodEnd(OffsetDateTime.now().minusDays(1));
+
+            when(subscriptionRepository.findAllByStateAndCurrentPeriodEndBefore(
+                    eq(SubscriptionState.ACTIVE), any())).thenReturn(List.of(failing, healthy));
+            when(subscriptionRepository.save(failing)).thenThrow(new IllegalStateException("database error"));
+            when(subscriptionRepository.save(healthy)).thenReturn(healthy);
+
+            service.checkExpirations();
+
+            assertThat(healthy.getState()).isEqualTo(SubscriptionState.PAST_DUE);
+            verify(subscriptionRepository).save(healthy);
+        }
     }
 
     @Nested
