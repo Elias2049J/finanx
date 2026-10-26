@@ -123,10 +123,16 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional
     public void markAsRead(Long id) {
-        Notification n = getOwned(id);
-        n.setState(NotificationState.READ);
-        notificationRepository.save(n);
+        Long userId = securityService.getCurrentUser().getId();
+        int updated = notificationRepository.markReadIfNotDiscarded(
+                id, userId, NotificationState.READ, NotificationState.DISCARD);
+        if (updated == 0) {
+            // Keep the 404 contract for unknown/foreign ids; a discarded notification is a no-op.
+            notificationRepository.findByIdAndUser_Id(id, userId)
+                    .orElseThrow(() -> new EntityNotFoundException("Notification not found: " + id));
+        }
     }
 
     @Transactional

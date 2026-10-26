@@ -5,6 +5,9 @@ import com.elias.mismonedas.notifications.domain.enums.NotificationState;
 import com.elias.mismonedas.notifications.domain.enums.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
@@ -26,6 +29,20 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             Long budgetId, List<NotificationState> states, NotificationType type);
 
     long deleteByStateInAndCreatedAtBefore(Collection<NotificationState> states, OffsetDateTime cutoff);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update Notification n
+               set n.state = :read
+             where n.id = :id
+               and n.user.id = :userId
+               and n.state <> :discard
+            """)
+    int markReadIfNotDiscarded(
+            @Param("id") Long id,
+            @Param("userId") Long userId,
+            @Param("read") NotificationState read,
+            @Param("discard") NotificationState discard);
 
     void deleteAllByUser_Id(Long userId);
 }

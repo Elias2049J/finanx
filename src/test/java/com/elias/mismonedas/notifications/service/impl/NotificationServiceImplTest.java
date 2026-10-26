@@ -15,6 +15,7 @@ import com.elias.mismonedas.notifications.outbox.persistence.NotificationOutboxR
 import com.elias.mismonedas.notifications.repository.NotificationRepository;
 import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,10 +28,13 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -124,5 +128,51 @@ class NotificationServiceImplTest {
                 eq(7L), eq(NotificationState.SENT), cutoff.capture());
         assertThat(cutoff.getValue()).isEqualTo(
                 threshold.atZone(ZoneId.of("America/Lima")).toOffsetDateTime());
+    }
+
+    @Test
+    void shouldMarkOnlyOwnedNotificationAsRead() {
+        User user = new User();
+        user.setId(7L);
+        when(securityService.getCurrentUser()).thenReturn(user);
+        when(notificationRepository.markReadIfNotDiscarded(
+                91L, 7L, NotificationState.READ, NotificationState.DISCARD)).thenReturn(1);
+
+        service.markAsRead(91L);
+
+        verify(notificationRepository).markReadIfNotDiscarded(
+                91L, 7L, NotificationState.READ, NotificationState.DISCARD);
+        verify(notificationRepository, never()).findByIdAndUser_Id(any(), any());
+    }
+
+    @Test
+    void shouldNotResurrectDiscardedNotificationWhenMarkedAsRead() {
+        User user = new User();
+        user.setId(7L);
+        Notification discarded = Notification.builder()
+                .id(91L)
+                .state(NotificationState.DISCARD)
+                .build();
+        when(securityService.getCurrentUser()).thenReturn(user);
+        when(notificationRepository.markReadIfNotDiscarded(
+                91L, 7L, NotificationState.READ, NotificationState.DISCARD)).thenReturn(0);
+        when(notificationRepository.findByIdAndUser_Id(91L, 7L)).thenReturn(Optional.of(discarded));
+
+        service.markAsRead(91L);
+
+        assertThat(discarded.getState()).isEqualTo(NotificationState.DISCARD);
+    }
+
+    @Test
+    void shouldRejectMarkAsReadForUnknownNotification() {
+        User user = new User();
+        user.setId(7L);
+        when(securityService.getCurrentUser()).thenReturn(user);
+        when(notificationRepository.markReadIfNotDiscarded(
+                99L, 7L, NotificationState.READ, NotificationState.DISCARD)).thenReturn(0);
+        when(notificationRepository.findByIdAndUser_Id(99L, 7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.markAsRead(99L))
+                .isInstanceOf(EntityNotFoundException.class);
     }
 }
