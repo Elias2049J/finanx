@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -46,6 +47,10 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     @Value("${spring.security.jwt.secret}")
     private String secret;
 
+    @Value("${spring.security.oauth2.resourceserver.jwt.audiences}")
+    private String audiences;
+
+    private List<String> audienceList;
     private Algorithm algorithm;
 
     @PostConstruct
@@ -61,6 +66,16 @@ public class JwtTokenServiceImpl implements JwtTokenService {
         }
         if (expirationSeconds < MIN_EXPIRATION_SECONDS || expirationSeconds > MAX_EXPIRATION_SECONDS) {
             throw new IllegalStateException("JWT access-token expiration must be between 300 and 900 seconds");
+        }
+        if (audiences == null || audiences.isBlank()) {
+            throw new IllegalStateException("JWT audience is missing");
+        }
+        this.audienceList = Arrays.stream(audiences.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList();
+        if (audienceList.isEmpty()) {
+            throw new IllegalStateException("JWT audience is missing");
         }
         this.algorithm = Algorithm.HMAC256(secret);
     }
@@ -98,6 +113,7 @@ public class JwtTokenServiceImpl implements JwtTokenService {
 
         var creator = JWT.create()
                 .withIssuer(issuer)
+                .withAudience(audienceList.toArray(String[]::new))
                 .withSubject(subject)
                 .withIssuedAt(Date.from(now))
                 .withExpiresAt(Date.from(now.plusSeconds(expirationSeconds)))
@@ -141,6 +157,7 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     private JWTVerifier verifier() {
         return JWT.require(algorithm)
                 .withIssuer(issuer)
+                .withAudience(audienceList.toArray(String[]::new))
                 .build();
     }
 }

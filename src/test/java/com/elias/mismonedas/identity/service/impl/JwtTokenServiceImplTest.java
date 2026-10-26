@@ -1,11 +1,16 @@
 package com.elias.mismonedas.identity.service.impl;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.time.Instant;
+import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
@@ -21,6 +26,7 @@ class JwtTokenServiceImplTest {
         ReflectionTestUtils.setField(jwtTokenService, "issuer", "test-issuer");
         ReflectionTestUtils.setField(jwtTokenService, "expirationSeconds", 900L);
         ReflectionTestUtils.setField(jwtTokenService, "secret", "test-secret-that-is-at-least-32-characters");
+        ReflectionTestUtils.setField(jwtTokenService, "audiences", "finanx-api");
         jwtTokenService.init();
     }
 
@@ -34,6 +40,29 @@ class JwtTokenServiceImplTest {
 
         assertThat(JWT.decode(token).getClaim("locale").asString()).isEqualTo("en-US");
         assertThat(JWT.decode(token).getClaim("sid").asString()).isEqualTo("device-family");
+    }
+
+    @Test
+    void shouldIncludeConfiguredAudience() {
+        User user = new User();
+        user.setId(42L);
+
+        String token = jwtTokenService.generateToken(user, "device-family");
+
+        assertThat(JWT.decode(token).getAudience()).containsExactly("finanx-api");
+    }
+
+    @Test
+    void shouldRejectTokenWithoutTheConfiguredAudience() {
+        String token = JWT.create()
+                .withIssuer("test-issuer")
+                .withSubject("42")
+                .withIssuedAt(Date.from(Instant.now()))
+                .withExpiresAt(Date.from(Instant.now().plusSeconds(300)))
+                .sign(Algorithm.HMAC256("test-secret-that-is-at-least-32-characters"));
+
+        assertThatThrownBy(() -> jwtTokenService.verify(token))
+                .isInstanceOf(JWTVerificationException.class);
     }
 
     @Test
@@ -116,6 +145,7 @@ class JwtTokenServiceImplTest {
         ReflectionTestUtils.setField(service, "issuer", "test-issuer");
         ReflectionTestUtils.setField(service, "expirationSeconds", 900L);
         ReflectionTestUtils.setField(service, "secret", secret);
+        ReflectionTestUtils.setField(service, "audiences", "finanx-api");
         return service;
     }
 }

@@ -20,6 +20,7 @@ class JwtResourceServerConfigTest {
 
     private static final String TEST_SECRET = "test-secret-that-is-at-least-32-characters";
     private static final String TEST_ISSUER = "test-issuer";
+    private static final String TEST_AUDIENCE = "finanx-api";
 
     private JwtTokenServiceImpl jwtTokenService;
 
@@ -29,6 +30,7 @@ class JwtResourceServerConfigTest {
         ReflectionTestUtils.setField(jwtTokenService, "issuer", TEST_ISSUER);
         ReflectionTestUtils.setField(jwtTokenService, "expirationSeconds", 900L);
         ReflectionTestUtils.setField(jwtTokenService, "secret", TEST_SECRET);
+        ReflectionTestUtils.setField(jwtTokenService, "audiences", TEST_AUDIENCE);
         ReflectionTestUtils.invokeMethod(jwtTokenService, "init");
     }
 
@@ -49,6 +51,7 @@ class JwtResourceServerConfigTest {
     void shouldRejectLegacyJwtWithoutSessionId() {
         String token = JWT.create()
                 .withIssuer(TEST_ISSUER)
+                .withAudience(TEST_AUDIENCE)
                 .withSubject("42")
                 .withIssuedAt(Date.from(Instant.now()))
                 .withExpiresAt(Date.from(Instant.now().plusSeconds(300)))
@@ -68,6 +71,7 @@ class JwtResourceServerConfigTest {
     void shouldRejectJwtWithNonStringSessionId() {
         String token = JWT.create()
                 .withIssuer(TEST_ISSUER)
+                .withAudience(TEST_AUDIENCE)
                 .withSubject("42")
                 .withIssuedAt(Date.from(Instant.now()))
                 .withExpiresAt(Date.from(Instant.now().plusSeconds(300)))
