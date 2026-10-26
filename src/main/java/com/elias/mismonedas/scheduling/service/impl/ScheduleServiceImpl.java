@@ -127,7 +127,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         Page<Schedule> page = state == null
                 ? scheduleRepository.findAllByUser_IdAndActiveTrue(userId, stablePage)
                 : scheduleRepository.findAllByUser_IdAndActiveAndState(userId, true, state, stablePage);
-        return PageResponseFactory.from(page, this::mapSchedule);
+        String currencyCode = primaryCurrency(securityService.getCurrentUser());
+        return PageResponseFactory.from(page, schedule -> mapSchedule(schedule, currencyCode));
     }
 
     @Override
@@ -138,7 +139,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         Page<BudgetSchedule> page = state == null
                 ? bsRepository.findAllByUser_IdAndActiveTrue(userId, stablePage)
                 : bsRepository.findAllByUser_IdAndActiveAndState(userId, true, state, stablePage);
-        return PageResponseFactory.from(page, this::mapBudgetSchedule);
+        String currencyCode = primaryCurrency(securityService.getCurrentUser());
+        return PageResponseFactory.from(page, schedule -> mapBudgetSchedule(schedule, currencyCode));
     }
 
     @Override
@@ -153,16 +155,24 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     private ScheduleResponse mapSchedule(Schedule s) {
+        return mapSchedule(s, primaryCurrency(s.getUser()));
+    }
+
+    private ScheduleResponse mapSchedule(Schedule s, String currencyCode) {
         ScheduleResponse response = tsMapper.toResponseDispatch(s);
         if (response instanceof BudgetScheduleResponse bs) {
-            bs.setCurrencyCode(primaryCurrency(s.getUser()));
+            bs.setCurrencyCode(currencyCode);
         }
         return response;
     }
 
     private BudgetScheduleResponse mapBudgetSchedule(BudgetSchedule bs) {
+        return mapBudgetSchedule(bs, primaryCurrency(bs.getUser()));
+    }
+
+    private BudgetScheduleResponse mapBudgetSchedule(BudgetSchedule bs, String currencyCode) {
         BudgetScheduleResponse response = tsMapper.toResponse(bs);
-        response.setCurrencyCode(primaryCurrency(bs.getUser()));
+        response.setCurrencyCode(currencyCode);
         return response;
     }
 
