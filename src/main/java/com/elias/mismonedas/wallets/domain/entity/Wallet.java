@@ -8,8 +8,8 @@ import java.math.BigDecimal;
 import java.util.Currency;
 
 @Entity
-@Table(name = "billeteras", uniqueConstraints =
-@UniqueConstraint(columnNames = {"id_usuario", "moneda"}))
+@Table(name = "billeteras", indexes =
+        @Index(name = "idx_billeteras_id_usuario_moneda", columnList = "id_usuario, moneda"))
 @Getter @Setter @Builder
 @NoArgsConstructor @AllArgsConstructor
 public class Wallet {
@@ -24,6 +24,9 @@ public class Wallet {
 
     @Column(name = "moneda", nullable = false, length = 3)
     private String currencyCode;
+
+    @Column(name = "alias", nullable = false, length = 80)
+    private String alias;
 
     @Column(name = "balance", nullable = false, precision = 19, scale = 4)
     private BigDecimal balance;
@@ -41,5 +44,8 @@ public class Wallet {
     @PrePersist
     private void onCreate() {
         if (this.balance == null) balance = BigDecimal.ZERO;
+        if (this.alias == null || this.alias.isBlank()) {
+            this.alias = this.primary ? "Principal" : "Wallet " + this.currencyCode;
+        }
     }
 }
