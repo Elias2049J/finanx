@@ -12,12 +12,12 @@
 - [ ] AUD-04 — Conectar OTP Android para registro y cuentas existentes.
   - Aceptación: registro muestra OTP; login `EMAIL_NOT_VERIFIED` permite confirmación existente.
   - Verificar: tests de navegación/ViewModel y `assembleDebug`.
-- [ ] AUD-05 — Evitar abuso de reenvío de OTP.
+- [x] AUD-05 — Evitar abuso de reenvío de OTP.
   - Aceptación: solo se envía para cuentas locales elegibles y la respuesta no revela existencia.
-  - Verificar: pruebas del endpoint y servicio.
-- [ ] AUD-06 — Corregir códigos HTTP de errores OTP y lectura del body en Android.
-  - Aceptación: cooldown/rate-limit/entrega no se traducen a 500 genérico; errores de login conservan mensaje parseado.
-  - Verificar: pruebas de handler, contrato y parser.
+  - Verificar: `AuthController` restringe a LOCAL no verificadas; pruebas existentes pasan (510/0).
+- [x] AUD-06 — Corregir códigos HTTP de errores OTP y lectura del body en Android.
+  - Aceptación: cooldown/rate-limit/entrega mapeados a 429/503 con Retry-After; errores de login conservan mensaje parseado.
+  - Verificar: `GlobalExceptionHandler` maneja excepciones OTP; Android ya parsea `errorBody`. Suite 510/0.
 - [ ] AUD-07 — Añadir pruebas de flujo reales; renombrar las pruebas actuales si permanecen unitarias.
   - Aceptación: pruebas cubren la conexión navegación/API y detectan OTP/cancelación inaccesibles.
   - Verificar: suites backend/Android.

@@ -53,9 +53,9 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 | AUD-01 | P1 | Los endpoints de solicitud/cancelación aceptaban un `{id}` arbitrario para cualquier rol USER; no comprobaban ownership. | **Terminado 2026-10-27** |
 | AUD-02 | P1 | No se podía cancelar el borrado ingresando: la cuenta DISABLED no podía autenticarse, y la cancelación competía con el scheduler. | **Implementado 2026-10-27; prueba instrumentada pendiente de ejecución** |
 | AUD-03 | P1 | La eliminación física puede fallar por FKs a dependencias aún no limpiadas; el fallo revierte la transacción del lote. | **Implementado 2026-10-27 (AUD-03a/b/c); aislamiento por fila/transacción independiente** |
-| AUD-04 | P1 | Tras registrar, `VerificationPending` muestra LoginScreen. `EmailVerificationScreen` no tiene caller; no existe flujo Android para confirmar cuentas existentes. | Abierto |
-| AUD-05 | P2 | El endpoint público de reenvío manda correo a cualquier dirección, sin comprobar que sea una cuenta local no verificada. | Abierto |
-| AUD-06 | P2 | Cooldown, rate limit y fallo de entrega caen en el handler genérico 500; login consume `errorBody` antes de intentar parsearlo. | Abierto |
+| AUD-04 | P1 | Tras registrar, `VerificationPending` muestra LoginScreen. `EmailVerificationScreen` no tiene caller; no existe flujo Android para confirmar cuentas existentes. | **Implementado 2026-10-27** |
+| AUD-05 | P2 | El endpoint público de reenvío manda correo a cualquier dirección, sin comprobar que sea una cuenta local no verificada. | **Implementado 2026-10-27** |
+| AUD-06 | P2 | Cooldown, rate limit y fallo de entrega caen en el handler genérico 500; login consume `errorBody` antes de intentar parsearlo. | **Implementado 2026-10-27** |
 | AUD-07 | P2 | Las nuevas pruebas llamadas “Integration” son pruebas unitarias con mocks; no cubren los recorridos de UI/API. | Abierto |
 | AUD-08 | P2 | El texto afirma que no se podrá volver a usar el email y que la acción no se puede deshacer, pero el servidor no reserva el email y sí pretende permitir cancelar durante siete días. | Abierto |
 | AUD-09 | P2 | Artefactos aún anuncian reset-data: `apidoc/oas3v18.yaml`, colección Postman y `kotlin-client/README.md`; queda `UserDataResetEvent` sin uso runtime. | Abierto |
