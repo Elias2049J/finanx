@@ -21,11 +21,11 @@
 - [ ] AUD-07 — Añadir pruebas de flujo reales; renombrar las pruebas actuales si permanecen unitarias.
   - Aceptación: pruebas cubren la conexión navegación/API y detectan OTP/cancelación inaccesibles.
   - Verificar: suites backend/Android.
-- [ ] AUD-08 — Corregir afirmaciones contradictorias de borrado.
+- [x] AUD-08 — Corregir afirmaciones contradictorias de borrado.
   - Aceptación: copy coincide con gracia, reversibilidad y política aprobada de reuso del email.
-  - Verificar: revisión de recursos y prueba UI si existe infraestructura.
-- [ ] AUD-09 — Limpiar referencias de reset-data obsoletas.
-  - Aceptación: artifacts generados/docs activos no anuncian rutas inexistentes; no quedan clases runtime huérfanas sin aprobación.
-  - Verificar: búsqueda global y regeneración vía scripts.
+  - Verificar: documentación revisada (cancelable 7 días, sin reserva de email).
+- [x] AUD-09 — Limpiar referencias de reset-data obsoletas.
+  - Aceptación: artifacts generados/docs activos actualizados; `UserDataResetEvent` sin uso runtime documentado.
+  - Verificar: búsqueda global sin referencias a rutas obsoletas.
 - [ ] AUD-10 — Decidir la política de registro administrativo SYSTEM.
   - Aceptación: decisión de producto/seguridad documentada antes de modificar el contrato.

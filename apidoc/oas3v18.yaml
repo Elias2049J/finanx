@@ -819,7 +819,7 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ChatHistoryResponse"
-  /users/{id}/reset-data:
+  /users/{id}/delete:
     post:
       tags:
         - Users

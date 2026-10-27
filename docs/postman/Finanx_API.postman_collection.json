@@ -3420,7 +3420,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/users/{id}/reset-data",
+              "raw": "{{base_url}}/api/v1/users/{id}/delete",
               "host": [
                 "{{base_url}}"
               ],
@@ -3429,7 +3429,7 @@
                 "v1",
                 "users",
                 "{id}",
-                "reset-data"
+                "delete"
               ],
               "variable": [
                 {
