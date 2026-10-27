@@ -29,3 +29,21 @@
   - Verificar: sincronización OpenAPI, README/Postman limpios y `UserDataResetEvent` eliminado.
 - [x] AUD-10 — Decidir la política de registro administrativo SYSTEM.
   - Aceptación: decisión aplicada (todo pasa por registro propio con OTP). Endpoint `/users/register` eliminado.
+
+## Backlog: varias wallets por moneda con alias
+
+- [x] WALLET-01 — Añadir alias y permitir repetir moneda en el modelo persistido.
+  - Aceptación: Flyway V17/V18 agrega y backfillea `alias`, elimina constraints únicas heredadas de `(id_usuario, moneda)` y conserva un índice no único.
+  - Verificar: `WalletSameCurrencyPersistenceIntegrationTest` persiste dos wallets del mismo usuario/moneda y valida los alias.
+- [ ] WALLET-02 — Aplicar reglas de creación por plan y alias en el backend.
+  - Aceptación: FREE puede crear wallets ilimitadas en una sola moneda; PREMIUM puede usar varias monedas; alias requerido en wallets adicionales; primaria inicial `Principal`.
+  - Verificar: pruebas de servicio/controlador para FREE/PREMIUM, moneda y validación de alias.
+- [ ] WALLET-03 — Extender contrato API y regenerar el cliente Android.
+  - Aceptación: `WalletRequest`/`WalletResponse` exponen alias y errores de plan/validación quedan documentados.
+  - Verificar: OpenAPI y Kotlin client regenerados desde backend, sin editar artefactos a mano.
+- [ ] WALLET-04 — Incorporar alias en flujos y etiquetas de wallet Android.
+  - Aceptación: alta/selección/listado distinguen wallets homónimas por alias y moneda.
+  - Verificar: unit/instrumentation tests y `:app:assembleDebug`.
+- [ ] WALLET-05 — Actualizar documentación de planes y guía de uso.
+  - Aceptación: README y ayuda describen FREE same-currency y PREMIUM multi-currency.
+  - Verificar: revisar copy ES/EN y límites mostrados.
