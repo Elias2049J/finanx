@@ -2,6 +2,9 @@ package com.elias.mismonedas.shared.config;
 
 import com.elias.mismonedas.chat.exception.ChatUnavailableException;
 import com.elias.mismonedas.identity.service.EmailNotVerifiedException;
+import com.elias.mismonedas.identity.service.EmailVerificationDeliveryException;
+import com.elias.mismonedas.identity.service.VerificationCodeCooldownException;
+import com.elias.mismonedas.identity.service.VerificationCodeRateLimitException;
 import com.elias.mismonedas.shared.adapter.ai.gemini.exception.GeminiException;
 import com.elias.mismonedas.shared.dto.ErrorResponse;
 import com.elias.mismonedas.shared.exception.*;
@@ -55,8 +58,33 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleEmailNotVerified(EmailNotVerifiedException ex, HttpServletRequest request) {
         return respond(HttpStatus.UNAUTHORIZED, "EMAIL_NOT_VERIFIED", "error.email_not_verified", request, ex);
     }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
     public ResponseEntity<ErrorResponse> handleInvalidRefreshToken(InvalidRefreshTokenException ex, HttpServletRequest request) {
         return respond(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "error.refresh_token_invalid", request, ex);
+    }
+
+    @ExceptionHandler(VerificationCodeCooldownException.class)
+    public ResponseEntity<ErrorResponse> handleVerificationCooldown(VerificationCodeCooldownException ex, HttpServletRequest request) {
+        ErrorResponse error = errorResponse(
+                HttpStatus.TOO_MANY_REQUESTS, "EMAIL_VERIFICATION_COOLDOWN", "error.email_verification_cooldown", request, ex);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(error);
+    }
+
+    @ExceptionHandler(VerificationCodeRateLimitException.class)
+    public ResponseEntity<ErrorResponse> handleVerificationRateLimit(VerificationCodeRateLimitException ex, HttpServletRequest request) {
+        ErrorResponse error = errorResponse(
+                HttpStatus.TOO_MANY_REQUESTS, "EMAIL_VERIFICATION_RATE_LIMIT", "error.email_verification_rate_limit", request, ex);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(error);
+    }
+
+    @ExceptionHandler(EmailVerificationDeliveryException.class)
+    public ResponseEntity<ErrorResponse> handleEmailVerificationDelivery(EmailVerificationDeliveryException ex, HttpServletRequest request) {
+        return respond(HttpStatus.SERVICE_UNAVAILABLE, "EMAIL_VERIFICATION_DELIVERY_FAILED", "error.email_verification_delivery_failed", request, ex);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

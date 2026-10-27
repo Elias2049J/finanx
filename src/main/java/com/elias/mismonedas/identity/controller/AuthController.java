@@ -8,6 +8,7 @@ import com.elias.mismonedas.identity.dto.auth.LoginRequest;
 import com.elias.mismonedas.identity.dto.auth.LogoutRequest;
 import com.elias.mismonedas.identity.dto.auth.RefreshRequest;
 import com.elias.mismonedas.identity.domain.event.UserLoggedOutEvent;
+import com.elias.mismonedas.identity.domain.enums.AuthProvider;
 import com.elias.mismonedas.identity.domain.enums.EmailVerificationPurpose;
 import com.elias.mismonedas.identity.dto.auth.EmailVerificationResendRequest;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
@@ -117,7 +118,18 @@ public class AuthController {
     @PostMapping("/email-verification/resend")
     public ResponseEntity<Void> resendEmailVerification(
             @Valid @RequestBody EmailVerificationResendRequest request) {
-        emailVerificationService.issueChallenge(request.getEmail(), EmailVerificationPurpose.EXISTING_ACCOUNT);
+        String email = EmailNormalizer.normalize(request.getEmail());
+        userRepository.findByEmail(email).ifPresent(user -> {
+            AuthProvider provider = user.getAuthProvider();
+            boolean isLocal = provider == null || provider == AuthProvider.LOCAL;
+            if (isLocal && !Boolean.TRUE.equals(user.isEmailVerified())) {
+                try {
+                    emailVerificationService.issueChallenge(email, EmailVerificationPurpose.EXISTING_ACCOUNT);
+                } catch (Exception ignored) {
+                    // Do not reveal existence or leak details on resend
+                }
+            }
+        });
         return ResponseEntity.accepted().build();
     }
 
@@ -140,8 +152,13 @@ public class AuthController {
         if (result == EmailVerificationChallengeManager.VerificationResult.VERIFIED) {
             userRepository.findByEmail(EmailNormalizer.normalize(request.getEmail()))
                     .ifPresent(user -> {
-                        user.setEmailVerified(true);
-                        userRepository.save(user);
+                        if (user.getAuthProvider() == null) {
+                            user.setAuthProvider(AuthProvider.LOCAL);
+                        }
+                        if (user.getAuthProvider() == AuthProvider.LOCAL) {
+                            user.setEmailVerified(true);
+                            userRepository.save(user);
+                        }
                     });
         }
         return verificationResponse(result);
