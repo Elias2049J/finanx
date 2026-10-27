@@ -13,6 +13,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long>, JpaSpec
 
     List<Payment> findAllByUser_Id(Long userId);
 
+    void deleteAllByUser_Id(Long userId);
+
     Optional<Payment> findByIdAndUser_Id(Long id, Long userId);
 
     List<Payment> findAllBySubscription_Id(Long subscriptionId);

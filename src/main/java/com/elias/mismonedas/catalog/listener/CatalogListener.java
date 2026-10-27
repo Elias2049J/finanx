@@ -4,12 +4,14 @@ import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.repository.ReasonRepository;
 import com.elias.mismonedas.identity.domain.event.UserDeletedEvent;
+import com.elias.mismonedas.identity.domain.event.UserDeletionOrder;
 import com.elias.mismonedas.identity.domain.event.UserRegisteredEvent;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -28,6 +30,7 @@ public class CatalogListener {
     }
 
     @EventListener
+    @Order(UserDeletionOrder.CATALOG)
     public void onUserDeleted(UserDeletedEvent event) {
         categoryRepository.deleteAllByUser_Id(event.userId());
         reasonRepository.deleteAllByUser_Id(event.userId());

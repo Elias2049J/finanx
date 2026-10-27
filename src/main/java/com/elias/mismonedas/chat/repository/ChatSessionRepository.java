@@ -15,5 +15,7 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, Long> 
 
     List<ChatSession> findAllByUser_Id(Long userId);
 
+    void deleteAllByUser_Id(Long userId);
+
     Page<ChatSession> findAllByUser_Id(Long userId, Pageable pageable);
 }

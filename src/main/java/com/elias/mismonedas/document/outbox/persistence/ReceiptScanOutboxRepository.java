@@ -18,6 +18,11 @@ public interface ReceiptScanOutboxRepository extends JpaRepository<ReceiptScanOu
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
+    @Query("delete from ReceiptScanOutbox o where o.receiptId in :receiptIds")
+    int deleteAllByReceiptIdIn(@Param("receiptIds") Collection<Long> receiptIds);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
     @Query("update ReceiptScanOutbox o set o.state = :published, o.publishedAt = :now "
             + "where o.id = :id and o.state = :pending")
     int markPublishedIfPending(

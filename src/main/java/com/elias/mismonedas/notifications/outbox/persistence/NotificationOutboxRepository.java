@@ -18,6 +18,16 @@ import java.util.Optional;
 
 
 public interface NotificationOutboxRepository extends JpaRepository<NotificationOutbox, Long> {
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+            delete from NotificationOutbox outbox
+            where outbox.notificationId in (
+                select notification.id from Notification notification where notification.user.id = :userId
+            )
+            """)
+    int deleteAllForUser(@Param("userId") Long userId);
+
     @Query("""
             select o from NotificationOutbox o
             where o.state = :state

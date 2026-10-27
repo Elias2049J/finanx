@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface UserDataContextRepository extends JpaRepository<UserDataContext, Long> {
     Optional<UserDataContext> findByUser_Id(Long userId);
+
+    void deleteByUser_Id(Long userId);
 }

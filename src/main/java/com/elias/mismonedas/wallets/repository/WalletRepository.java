@@ -18,6 +18,8 @@ public interface WalletRepository extends JpaRepository<Wallet, Long> {
 
     List<Wallet> findByUserId(Long userId);
 
+    void deleteAllByUser_Id(Long userId);
+
     Page<Wallet> findByUserId(Long userId, Pageable pageable);
 
     Optional<Wallet> findByIdAndUser_Id(Long id, Long userId);

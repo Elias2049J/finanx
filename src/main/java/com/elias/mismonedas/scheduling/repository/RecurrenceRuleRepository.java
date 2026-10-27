@@ -6,5 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RecurrenceRuleRepository extends JpaRepository<RecurrenceRule, Long> {
+    void deleteAllByUser_Id(Long userId);
 }
 

@@ -1,6 +1,7 @@
 package com.elias.mismonedas.planning.listener;
 
 import com.elias.mismonedas.identity.domain.event.UserDeletedEvent;
+import com.elias.mismonedas.identity.domain.event.UserDeletionOrder;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.domain.event.TransactionDisabledEvent;
 import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
@@ -10,6 +11,7 @@ import com.elias.mismonedas.planning.repository.SavingGoalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -24,6 +26,7 @@ public class PlanningListener {
     private final PlanningRecheckService planningRecheckService;
 
     @EventListener
+    @Order(UserDeletionOrder.PLANNING)
     public void on(UserDeletedEvent event) {
         budgetRepository.deleteAllByUser_Id(event.userId());
         savingGoalRepository.deleteAllByUser_Id(event.userId());
