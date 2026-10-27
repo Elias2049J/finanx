@@ -46,7 +46,7 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 - Cliente OpenAPI regenerado y métodos OTP en `AuthRepository`.
 - `MainScreen` presenta `EmailVerificationScreen` tras el registro y ante `EMAIL_NOT_VERIFIED`; la pantalla permite confirmar y reenviar códigos.
 - `DeleteAccountScreen` solicita el borrado con advertencia de siete días. `LoginScreen` ofrece una acción explícita de recuperación que vuelve a autenticar; el método Android `cancelAccountDeletion` sigue sin caller porque el login cancela en backend.
-- Se retiró la UI de reset-data; quedaron referencias en documentación generada.
+- Se retiró la UI de reset-data, sus referencias de cliente y `UserDataResetEvent`.
 
 ## Hallazgos y estado
 
