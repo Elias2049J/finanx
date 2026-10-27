@@ -1,0 +1,31 @@
+# Tareas: auditoría de email y borrado
+
+- [x] AUD-01 — Restringir solicitud/cancelación de borrado al dueño o SYSTEM.
+  - Aceptación: USER con ID propio permitido; USER con ID ajeno recibe 403; SYSTEM puede operar sobre otro ID.
+  - Verificar: pruebas de controlador/seguridad y `\.\mvnw.cmd test`.
+- [x] AUD-02 — Hacer posible la cancelación durante los siete días y agregar UI explícita Android.
+  - Aceptación: cancelación antes del vencimiento restaura solo borrados pendientes; la UI informa resultado.
+  - Verificar: 508 tests backend, 40 tests Android unitarios, build y compilación instrumentada pasan; ejecución en dispositivo pendiente (adb no disponible).
+- [ ] AUD-03c — Aislar fallos del scheduler (procesar fila a fila/transacción independiente para evitar rollback de todo el lote).
+  - Aceptación: un fallo en un usuario no revierte eliminaciones de otros usuarios.
+  - Verificar: test de integración con fallo simulado y observación de batch processing.
+- [ ] AUD-04 — Conectar OTP Android para registro y cuentas existentes.
+  - Aceptación: registro muestra OTP; login `EMAIL_NOT_VERIFIED` permite confirmación existente.
+  - Verificar: tests de navegación/ViewModel y `assembleDebug`.
+- [ ] AUD-05 — Evitar abuso de reenvío de OTP.
+  - Aceptación: solo se envía para cuentas locales elegibles y la respuesta no revela existencia.
+  - Verificar: pruebas del endpoint y servicio.
+- [ ] AUD-06 — Corregir códigos HTTP de errores OTP y lectura del body en Android.
+  - Aceptación: cooldown/rate-limit/entrega no se traducen a 500 genérico; errores de login conservan mensaje parseado.
+  - Verificar: pruebas de handler, contrato y parser.
+- [ ] AUD-07 — Añadir pruebas de flujo reales; renombrar las pruebas actuales si permanecen unitarias.
+  - Aceptación: pruebas cubren la conexión navegación/API y detectan OTP/cancelación inaccesibles.
+  - Verificar: suites backend/Android.
+- [ ] AUD-08 — Corregir afirmaciones contradictorias de borrado.
+  - Aceptación: copy coincide con gracia, reversibilidad y política aprobada de reuso del email.
+  - Verificar: revisión de recursos y prueba UI si existe infraestructura.
+- [ ] AUD-09 — Limpiar referencias de reset-data obsoletas.
+  - Aceptación: artifacts generados/docs activos no anuncian rutas inexistentes; no quedan clases runtime huérfanas sin aprobación.
+  - Verificar: búsqueda global y regeneración vía scripts.
+- [ ] AUD-10 — Decidir la política de registro administrativo SYSTEM.
+  - Aceptación: decisión de producto/seguridad documentada antes de modificar el contrato.

@@ -28,13 +28,15 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 
 **Actualización 2026-10-27 (AUD-02):** login local y Google permiten cancelar una solicitud pendiente solo antes del vencimiento; la cancelación bloquea la fila y tokens/rutas de recursos siguen rechazando cuentas pendientes. El scheduler bloquea las filas candidatas y vuelve a evaluar la consulta tras una cancelación concurrente. Suite backend: 508 tests, 0 fallos. Android: 40 unit tests, `assembleDebug` y compilación instrumentada exitosos; el E2E instrumentado no se ejecutó por falta de `adb`.
 
+**Actualización 2026-10-27 (AUD-03a/b):** la eliminación programada limpia movimientos, presupuestos/metas, schedules/reglas, categorías/motivos, billeteras, contexto financiero, pagos/suscripciones, sesiones/mensajes de chat, notificaciones/FCM/outbox, desafíos de verificación de email, recibos/outboxes y elimina objetos de imágenes con orden explícito de listeners. La prueba PostgreSQL ampliada cubre wallet, movimiento, categoría, regla/agenda, recibo/imagen/outbox, billing, chat, notificaciones/outbox y desafío de email. Suite backend: 510 tests, 0 fallos. Queda aislar fallos por fila en el scheduler.
+
 ## Inventario de implementación
 
 ### Backend
 
 - **Email OTP:** entidad y migraciones V14/V15, código aleatorio de seis dígitos, hash HMAC, vencimiento de 15 minutos, cinco intentos, cooldown, rate limit global por nodo, locks PostgreSQL, limpieza programada, envío SMTP y endpoints de inicio/verificación/reenvío.
 - **Registro/login:** `/auth/register` emite el OTP; `/auth/register/verify` crea al usuario verificado; el login local rechaza cuentas no verificadas. Google Sign-In no recibió el flujo OTP.
-- **Borrado:** V16 agrega fechas de solicitud/programación; solicitud deshabilita la cuenta y revoca sesiones; existen endpoints de solicitud/cancelación y scheduler.
+- **Borrado:** V16 agrega fechas de solicitud/programación; solicitud deshabilita la cuenta y revoca sesiones; existen endpoints de solicitud/cancelación y scheduler. Parte de la limpieza relacional está conectada por listeners ordenados; queda terminar dependencias de billing, documentos/outboxes y chat.
 - **Reset-data:** endpoint y método de servicio fueron retirados del runtime.
 
 ### Android
@@ -50,7 +52,7 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 |---|---|---|---|
 | AUD-01 | P1 | Los endpoints de solicitud/cancelación aceptaban un `{id}` arbitrario para cualquier rol USER; no comprobaban ownership. | **Terminado 2026-10-27** |
 | AUD-02 | P1 | No se podía cancelar el borrado ingresando: la cuenta DISABLED no podía autenticarse, y la cancelación competía con el scheduler. | **Implementado 2026-10-27; prueba instrumentada pendiente de ejecución** |
-| AUD-03 | P1 | La eliminación física puede fallar por FKs a datos no limpiados (incluidas billeteras); el fallo revierte la transacción del lote. | Abierto |
+| AUD-03 | P1 | La eliminación física puede fallar por FKs a dependencias aún no limpiadas; el fallo revierte la transacción del lote. | **Parcial 2026-10-27 (AUD-03a/b); queda aislar fallos por fila en scheduler** |
 | AUD-04 | P1 | Tras registrar, `VerificationPending` muestra LoginScreen. `EmailVerificationScreen` no tiene caller; no existe flujo Android para confirmar cuentas existentes. | Abierto |
 | AUD-05 | P2 | El endpoint público de reenvío manda correo a cualquier dirección, sin comprobar que sea una cuenta local no verificada. | Abierto |
 | AUD-06 | P2 | Cooldown, rate limit y fallo de entrega caen en el handler genérico 500; login consume `errorBody` antes de intentar parsearlo. | Abierto |
@@ -63,7 +65,7 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 
 1. AUD-01: autorización por ownership, preservando SYSTEM para operaciones administrativas.
 2. AUD-02: **implementado**; queda ejecutar la prueba instrumentada en un entorno Android con `adb`.
-3. AUD-03: inventariar y limpiar las dependencias de usuario; proteger el scheduler contra rollback de lotes.
+3. AUD-03: proteger el scheduler contra rollback de lote (aislar por fila/transacción independiente).
 4. AUD-04: conectar la pantalla OTP para registro y para cuentas existentes, con pruebas de navegación/estado.
 5. AUD-05/06: limitar abuso de correo y mapear errores a contratos HTTP accionables.
 6. AUD-07/08/09: mejorar pruebas, corregir copy y retirar referencias obsoletas.
