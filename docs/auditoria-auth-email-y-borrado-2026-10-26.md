@@ -41,7 +41,7 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 
 - Cliente OpenAPI regenerado y métodos OTP en `AuthRepository`.
 - `AuthViewModel` y `EmailVerificationScreen` implementan parte de los estados/pantalla OTP, pero `MainScreen` no presenta esa pantalla.
-- `DeleteAccountScreen` solicita el borrado con advertencia de siete días. Repositorio y ViewModel tienen método de cancelación, pero ninguna pantalla lo invoca.
+- `DeleteAccountScreen` solicita el borrado con advertencia de siete días. `LoginScreen` ofrece una acción explícita de recuperación que vuelve a autenticar; el método Android `cancelAccountDeletion` sigue sin caller porque el login cancela en backend.
 - Se retiró la UI de reset-data; quedaron referencias en documentación generada.
 
 ## Hallazgos y estado
