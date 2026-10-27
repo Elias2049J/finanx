@@ -18,9 +18,9 @@ Los cambios principales existen, pero no están listos para producción. El OTP 
 
 | Comando | Resultado |
 |---|---|
-| `\.\mvnw.cmd test` en backend | 487 tests, 0 fallos |
-| `\.\gradlew.bat :app:testDebugUnitTest --rerun-tasks` en Android | 40 tests, 0 fallos |
-| `\.\gradlew.bat assembleDebug` en Android | BUILD SUCCESSFUL |
+| `.\mvnw.cmd test` en backend | 487 tests, 0 fallos |
+| `.\gradlew.bat :app:testDebugUnitTest --rerun-tasks` en Android | 40 tests, 0 fallos |
+| `.\gradlew.bat assembleDebug` en Android | BUILD SUCCESSFUL |
 
 Las pruebas Android recién añadidas usan mocks. No verifican navegación Compose, intercambio HTTP real ni el recorrido OTP/borrado de extremo a extremo. No se probó entrega SMTP real ni borrado contra una BD de despliegue.
 
@@ -87,7 +87,7 @@ Este documento nuevo no cambia el histórico `docs/auditoria-mejoras.md` ni cier
 
 ## Comandos de verificación
 
-- Backend: `\.\mvnw.cmd test`
-- Android: `\.\gradlew.bat :app:testDebugUnitTest`
-- Android build: `\.\gradlew.bat assembleDebug`
-- Sincronización OpenAPI Android: `\.\scripts\sync-openapi.ps1` desde el flujo/repositorio que ya lo usa.
+- Backend: `.\mvnw.cmd test`
+- Android: `.\gradlew.bat :app:testDebugUnitTest`
+- Android build: `.\gradlew.bat assembleDebug`
+- Sincronización OpenAPI Android: `.\scripts\sync-openapi.ps1` desde el flujo/repositorio que ya lo usa.
