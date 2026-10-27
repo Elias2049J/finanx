@@ -32,6 +32,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
@@ -220,10 +221,19 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public void processScheduledAccountDeletions() {
         OffsetDateTime now = OffsetDateTime.now();
         for (User user : userRepository.findUsersWithExpiredDeletionSchedule(now)) {
-            this.deleteUserData(user.getId());
-            userRepository.deleteById(user.getId());
-            log.info("Permanently deleted user {} after scheduled deletion", user.getId());
+            try {
+                deleteUserPermanently(user.getId());
+            } catch (Exception exception) {
+                log.error("Failed to permanently delete user {} after scheduled deletion", user.getId(), exception);
+            }
         }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void deleteUserPermanently(Long userId) {
+        this.deleteUserData(userId);
+        userRepository.deleteById(userId);
+        log.info("Permanently deleted user {} after scheduled deletion", userId);
     }
 
     private void deleteUserData(Long userId) {
