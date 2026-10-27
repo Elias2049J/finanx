@@ -77,6 +77,19 @@ class SecurityServiceImplTest {
     }
 
     @Test
+    void shouldRejectPendingDeletionEvenIfRefreshFamilyWasNotYetRevoked() {
+        User pendingDeletion = user(81L, UserState.ENABLED);
+        pendingDeletion.requestDeletion(OffsetDateTime.now().minusHours(1), OffsetDateTime.now().plusDays(7));
+        when(userRepository.findByIdAndActiveRefreshFamily(
+                eq(81L), eq("pending-deletion-family"), any(OffsetDateTime.class)))
+                .thenReturn(Optional.of(pendingDeletion));
+        authenticate("81", "pending-deletion-family");
+
+        assertThatThrownBy(securityService::getCurrentUser)
+                .isInstanceOf(InvalidBearerTokenException.class);
+    }
+
+    @Test
     void shouldSurfaceDatabaseOutageAsAuthenticationServiceFailure() {
         when(userRepository.findByIdAndActiveRefreshFamily(
                 eq(81L), eq("device-family"), any(OffsetDateTime.class)))

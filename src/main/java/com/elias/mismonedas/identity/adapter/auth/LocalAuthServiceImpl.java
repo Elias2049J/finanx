@@ -33,9 +33,7 @@ public class LocalAuthServiceImpl implements AuthService {
         if (!user.isEmailVerified()) {
             throw new EmailNotVerifiedException();
         }
-        if (user.isPendingDeletion()) {
-            userService.cancelAccountDeletion(user.getId());
-        }
+        userService.cancelAccountDeletion(user.getId());
         return authTokenService.issue(user);
     }
 }

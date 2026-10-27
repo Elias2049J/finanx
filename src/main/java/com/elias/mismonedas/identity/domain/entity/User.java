@@ -102,6 +102,10 @@ public class User implements UserDetails {
         return deletionRequestedAt != null && deletionScheduledAt != null;
     }
 
+    public boolean canCancelDeletionAt(OffsetDateTime now) {
+        return state == UserState.DISABLED && isPendingDeletion() && deletionScheduledAt.isAfter(now);
+    }
+
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (role == null) {
             return List.of();
@@ -133,7 +137,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return state.isEnabled();
+        return state != null && (state.isEnabled() || canCancelDeletionAt(OffsetDateTime.now()));
     }
 
     public String getFullName() {

@@ -60,7 +60,7 @@ public class SecurityServiceImpl implements SecurityService {
             throw new AuthenticationServiceException("Could not validate session state", ex);
         }
 
-        if (user.getState() == null || !user.isEnabled()) {
+        if (user.getState() == null || !user.isEnabled() || user.isPendingDeletion()) {
             throw new InvalidBearerTokenException("User account is not enabled");
         }
 

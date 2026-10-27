@@ -23,6 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     boolean existsByEmail(String email);
     Optional<User> findByAuthProviderAndProviderUserId(AuthProvider authProvider, String providerUserId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.deletionScheduledAt is not null and u.deletionScheduledAt <= :now")
     java.util.List<User> findUsersWithExpiredDeletionSchedule(@Param("now") OffsetDateTime now);
 

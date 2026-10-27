@@ -109,6 +109,7 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
         if (changed) {
             userRepository.save(user);
         }
+        userService.cancelAccountDeletion(user.getId());
         return authTokenService.issue(user);
     }
 

@@ -2,6 +2,7 @@ package com.elias.mismonedas.identity.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.RefreshToken;
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.domain.enums.UserState;
 import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.repository.RefreshTokenRepository;
 import com.elias.mismonedas.identity.repository.UserRepository;
@@ -9,6 +10,7 @@ import com.elias.mismonedas.identity.service.JwtTokenService;
 import com.elias.mismonedas.shared.exception.InvalidRefreshTokenException;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -66,6 +68,35 @@ class AuthTokenServiceImplTest {
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.issue(authenticatedSnapshot))
                 .isInstanceOf(BadCredentialsException.class);
+
+        verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
+        verify(jwtTokenService, never()).generateToken(any(UserDetails.class), anyString());
+    }
+
+    @Test
+    void shouldNotIssueTokensWhileDeletionIsPendingEvenDuringGracePeriod() {
+        User pendingDeletion = user(80L);
+        pendingDeletion.setPassword("same-password-hash");
+        pendingDeletion.requestDeletion(OffsetDateTime.now().minusHours(1), OffsetDateTime.now().plusDays(6));
+        when(userRepository.findByIdForUpdate(80L)).thenReturn(Optional.of(pendingDeletion));
+
+        assertThatThrownBy(() -> service.issue(pendingDeletion))
+                .isInstanceOf(DisabledException.class);
+
+        verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
+        verify(jwtTokenService, never()).generateToken(any(UserDetails.class), anyString());
+    }
+
+    @Test
+    void shouldRejectPendingDeletionWhenPersistedUserStateIsNull() {
+        User pendingDeletion = user(80L);
+        pendingDeletion.setPassword("same-password-hash");
+        pendingDeletion.requestDeletion(OffsetDateTime.now().minusHours(1), OffsetDateTime.now().plusDays(6));
+        pendingDeletion.setState(null);
+        when(userRepository.findByIdForUpdate(80L)).thenReturn(Optional.of(pendingDeletion));
+
+        assertThatThrownBy(() -> service.issue(pendingDeletion))
+                .isInstanceOf(DisabledException.class);
 
         verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
         verify(jwtTokenService, never()).generateToken(any(UserDetails.class), anyString());
@@ -213,6 +244,7 @@ class AuthTokenServiceImplTest {
     private User user(Long id) {
         User user = new User();
         user.setId(id);
+        user.setState(UserState.ENABLED);
         return user;
     }
 

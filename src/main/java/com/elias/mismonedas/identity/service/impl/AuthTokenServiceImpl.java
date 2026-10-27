@@ -171,7 +171,7 @@ public class AuthTokenServiceImpl implements AuthTokenService {
     }
 
     private static boolean isDisabled(User user) {
-        return user.getState() != null && !user.isEnabled();
+        return user.getState() == null || !user.isEnabled() || user.isPendingDeletion();
     }
 
     private static String randomToken() {

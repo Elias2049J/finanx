@@ -2,6 +2,7 @@ package com.elias.mismonedas.identity.service.impl;
 
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.event.UserRegisteredEvent;
+import com.elias.mismonedas.identity.domain.enums.UserState;
 import com.elias.mismonedas.identity.dto.auth.AuthResponse;
 import com.elias.mismonedas.identity.dto.user.UserRequest;
 import com.elias.mismonedas.identity.dto.user.UserResponse;
@@ -10,6 +11,7 @@ import com.elias.mismonedas.identity.repository.UserPreferencesRepository;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.identity.service.AuthTokenService;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +21,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
+import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -170,6 +173,54 @@ class UserServiceImplTest {
         assertThat(existing.getPassword()).isEqualTo("encoded-same-password");
         verify(authTokenService, never()).revokeAllForUser(any());
         verify(passwordEncoder, never()).encode("same-password");
+    }
+
+    @Test
+    void shouldLockAndCancelDeletionBeforeTheDeadline() {
+        OffsetDateTime now = OffsetDateTime.now();
+        User pending = userWithDeletionSchedule(7L, now.plusDays(1));
+        when(userRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(pending));
+        when(userRepository.save(pending)).thenReturn(pending);
+
+        service.cancelAccountDeletion(7L);
+
+        assertThat(pending.isPendingDeletion()).isFalse();
+        assertThat(pending.getState()).isEqualTo(UserState.ENABLED);
+        verify(userRepository).findByIdForUpdate(7L);
+        verify(userRepository).save(pending);
+    }
+
+    @Test
+    void shouldRejectCancellationAfterTheDeadline() {
+        User pending = userWithDeletionSchedule(7L, OffsetDateTime.now().minusMinutes(1));
+        when(userRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(pending));
+
+        assertThatThrownBy(() -> service.cancelAccountDeletion(7L))
+                .isInstanceOf(ConflictException.class);
+
+        assertThat(pending.isPendingDeletion()).isTrue();
+        assertThat(pending.getState()).isEqualTo(UserState.DISABLED);
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void shouldNotUnblockAnAccountBlockedDuringPendingDeletion() {
+        User pending = userWithDeletionSchedule(7L, OffsetDateTime.now().plusDays(1));
+        pending.setState(UserState.BLOCKED);
+        when(userRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(pending));
+
+        assertThatThrownBy(() -> service.cancelAccountDeletion(7L))
+                .isInstanceOf(ConflictException.class);
+
+        assertThat(pending.getState()).isEqualTo(UserState.BLOCKED);
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    private User userWithDeletionSchedule(Long id, OffsetDateTime scheduledAt) {
+        User user = new User();
+        user.setId(id);
+        user.requestDeletion(scheduledAt.minusDays(7), scheduledAt);
+        return user;
     }
 
     private UserRequest request(String email) {

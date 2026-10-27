@@ -15,10 +15,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -134,6 +136,23 @@ class GoogleAuthServiceImplTest {
         assertThat(user.getName()).isEqualTo("Ana");
         assertThat(user.getLastname()).isEqualTo("Perez");
         verify(userRepository).save(user);
+    }
+
+    @Test
+    void shouldCancelPendingDeletionBeforeIssuingGoogleSession() {
+        User user = user(1L, "ana@gmail.com", "random-hash");
+        user.requestDeletion(OffsetDateTime.now().minusDays(1), OffsetDateTime.now().plusDays(6));
+        AuthResponse response = new AuthResponse("access", "refresh", 3600L);
+        when(googleIdTokenVerifier.verify("id-token")).thenReturn(payload("google-1", "ana@gmail.com"));
+        when(userRepository.findByAuthProviderAndProviderUserId(AuthProvider.GOOGLE, "google-1"))
+                .thenReturn(Optional.of(user));
+        when(authTokenService.issue(user)).thenReturn(response);
+
+        assertThat(service.authenticate(request("id-token"))).isSameAs(response);
+
+        InOrder order = inOrder(userService, authTokenService);
+        order.verify(userService).cancelAccountDeletion(1L);
+        order.verify(authTokenService).issue(user);
     }
 
     private static GoogleLoginRequest request(String idToken) {

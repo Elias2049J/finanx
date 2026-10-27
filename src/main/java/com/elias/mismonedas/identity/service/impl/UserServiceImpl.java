@@ -20,6 +20,7 @@ import com.elias.mismonedas.identity.util.EmailNormalizer;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -202,9 +203,12 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     @Transactional
     public void cancelAccountDeletion(Long userId) {
-        User user = getEntityById(userId);
+        User user = userRepository.findByIdForUpdate(userId).orElseThrow();
         if (!user.isPendingDeletion()) {
             return;
+        }
+        if (!user.canCancelDeletionAt(OffsetDateTime.now())) {
+            throw new ConflictException("Account deletion can no longer be cancelled");
         }
         user.cancelDeletion();
         userRepository.save(user);
