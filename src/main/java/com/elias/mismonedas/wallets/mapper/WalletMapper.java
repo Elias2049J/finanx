@@ -13,11 +13,12 @@ public interface WalletMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
-    @Mapping(target = "alias", ignore = true)
+    @Mapping(target = "balance", ignore = true)
     Wallet toEntity(WalletRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
+    @Mapping(target = "balance", ignore = true)
     void updateFromDto(WalletRequest dto, @MappingTarget Wallet entity);
 }

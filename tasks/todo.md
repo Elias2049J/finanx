@@ -35,7 +35,7 @@
 - [x] WALLET-01 — Añadir alias y permitir repetir moneda en el modelo persistido.
   - Aceptación: Flyway V17/V18 agrega y backfillea `alias`, elimina constraints únicas heredadas de `(id_usuario, moneda)` y conserva un índice no único.
   - Verificar: `WalletSameCurrencyPersistenceIntegrationTest` persiste dos wallets del mismo usuario/moneda y valida los alias.
-- [ ] WALLET-02 — Aplicar reglas de creación por plan y alias en el backend.
+- [x] WALLET-02 — Aplicar reglas de creación por plan y alias en el backend.
   - Aceptación: FREE puede crear wallets ilimitadas en una sola moneda; PREMIUM puede usar varias monedas; alias requerido en wallets adicionales; primaria inicial `Principal`.
   - Verificar: pruebas de servicio/controlador para FREE/PREMIUM, moneda y validación de alias.
 - [ ] WALLET-03 — Extender contrato API y regenerar el cliente Android.

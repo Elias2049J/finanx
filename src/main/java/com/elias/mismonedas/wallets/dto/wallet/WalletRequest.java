@@ -17,6 +17,11 @@ public class WalletRequest {
     @Size(min = 3, max = 3)
     @Schema(description = "Codigo de moneda (ISO 4217)", example = "PEN")
     private String currencyCode;
+
+    @Schema(description = "Alias de la billetera para distinguirla", example = "Principal")
+    @Size(max = 80)
+    private String alias;
+
     @Schema(description = "Indica si es la billetera principal", example = "true")
     private boolean primary;
 }

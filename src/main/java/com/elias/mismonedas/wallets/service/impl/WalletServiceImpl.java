@@ -59,17 +59,39 @@ public class WalletServiceImpl implements WalletService {
                 throw new IllegalArgumentException(
                         "Debe crear sus preferencias antes de crear la primera wallet");
             }
-            return getOrCreatePrimary(userId, request.getCurrencyCode());
+            Wallet wallet = walletMapper.toEntity(request);
+            wallet.setUser(user);
+            wallet.setBalance(BigDecimal.ZERO);
+            if (request.isPrimary() || request.getCurrencyCode() != null) {
+                // ensure primary
+            }
+            wallet.setPrimary(true);
+            if (wallet.getAlias() == null || wallet.getAlias().isBlank()) {
+                wallet.setAlias("Principal");
+            }
+            return walletMapper.toResponse(walletRepository.save(wallet));
         }
 
+        List<Wallet> existingWallets = walletRepository.findByUserId(userId);
         SubscriptionPlan plan = subscriptionService.getActivePlanFor(userId);
-        if (plan != SubscriptionPlan.PREMIUM) {
-            throw new PlanRequiredException(
-                    new SubscriptionPlan[]{SubscriptionPlan.PREMIUM}, plan);
+        String requestedCurrency = request.getCurrencyCode();
+
+        if (existingWallets.isEmpty()) {
+            // should not happen
+        } else if (plan != SubscriptionPlan.PREMIUM) {
+            String existingCurrency = existingWallets.get(0).getCurrencyCode();
+            if (requestedCurrency != null && !requestedCurrency.equalsIgnoreCase(existingCurrency)) {
+                throw new PlanRequiredException(
+                        new SubscriptionPlan[]{SubscriptionPlan.PREMIUM}, plan);
+            }
         }
 
         Wallet wallet = walletMapper.toEntity(request);
         wallet.setUser(user);
+        wallet.setBalance(BigDecimal.ZERO);
+        if (wallet.getAlias() == null || wallet.getAlias().isBlank()) {
+            wallet.setAlias("Wallet " + (requestedCurrency != null ? requestedCurrency : "MONEDA"));
+        }
         if (request.isPrimary()) {
             walletRepository.findByUserIdAndPrimaryTrue(userId)
                     .ifPresent(w -> {

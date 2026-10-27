@@ -22,6 +22,9 @@ public class WalletResponse {
     @Schema(description = "Codigo de moneda (ISO 4217)", example = "PEN")
     private String currencyCode;
 
+    @Schema(description = "Alias de la billetera para distinguirla", example = "Principal")
+    private String alias;
+
     @Schema(description = "Balance actual", example = "1500.00")
     private BigDecimal balance;
 

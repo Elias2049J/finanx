@@ -120,6 +120,7 @@ class WalletServiceImplTest {
             return Wallet.builder()
                     .id(id)
                     .currencyCode(currency)
+                    .alias(primary ? "Principal" : "Wallet " + currency)
                     .balance(BigDecimal.ZERO)
                     .primary(primary)
                     .build();
@@ -127,7 +128,7 @@ class WalletServiceImplTest {
 
         private WalletResponse responseOf(Wallet wallet) {
             return new WalletResponse(
-                    wallet.getId(), USER_ID, wallet.getCurrencyCode(), wallet.getBalance(), wallet.isPrimary());
+                    wallet.getId(), USER_ID, wallet.getCurrencyCode(), wallet.getAlias(), wallet.getBalance(), wallet.isPrimary());
         }
 
         @Test
