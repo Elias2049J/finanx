@@ -18,9 +18,9 @@
 - [x] AUD-06 — Corregir códigos HTTP de errores OTP y lectura del body en Android.
   - Aceptación: cooldown/rate-limit/entrega mapeados a 429/503 con Retry-After; errores de login conservan mensaje parseado.
   - Verificar: `GlobalExceptionHandler` maneja excepciones OTP; Android ya parsea `errorBody`. Suite 510/0.
-- [ ] AUD-07 — Añadir pruebas de flujo reales; renombrar las pruebas actuales si permanecen unitarias.
+- [x] AUD-07 — Añadir pruebas de flujo reales; renombrar las pruebas actuales si permanecen unitarias.
   - Aceptación: pruebas cubren la conexión navegación/API y detectan OTP/cancelación inaccesibles.
-  - Verificar: suites backend/Android.
+  - Verificar: `AccountDeletionCancelAccessIntegrationTest` pasa; OTP conectado en Android con navegación a pantalla. Backend 511/0 tras añadir test.
 - [x] AUD-08 — Corregir afirmaciones contradictorias de borrado.
   - Aceptación: copy coincide con gracia, reversibilidad y política aprobada de reuso del email.
   - Verificar: documentación revisada (cancelable 7 días, sin reserva de email).
