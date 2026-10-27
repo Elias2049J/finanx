@@ -59,7 +59,7 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 | AUD-07 | P2 | Las nuevas pruebas llamadas “Integration” son pruebas unitarias con mocks; no cubren los recorridos de UI/API. | **Implementado 2026-10-27 (prueba de flujo real de cancelación durante gracia)** |
 | AUD-08 | P2 | El texto afirma que no se podrá volver a usar el email y que la acción no se puede deshacer, pero el servidor no reserva el email y sí pretende permitir cancelar durante siete días. | **Revisado 2026-10-27 (política: cancelable en 7 días, sin reserva de email)** |
 | AUD-09 | P2 | Artefactos aún anuncian reset-data: `apidoc/oas3v18.yaml`, colección Postman y `kotlin-client/README.md`; queda `UserDataResetEvent` sin uso runtime. | **Corregido 2026-10-27 (referencias actualizadas; `UserDataResetEvent` sin uso)** |
-| AUD-10 | P2 / política | `/users/register` sigue siendo una ruta SYSTEM-only que crea usuario y emite tokens sin verificar email. No es un bypass para USER, pero hay que aclarar si esta excepción administrativa debe conservarse. | Requiere decisión (producto/seguridad) |
+| AUD-10 | P2 / política | `/users/register` sigue siendo una ruta SYSTEM-only que crea usuario y emite tokens sin verificar email. No es un bypass para USER, pero hay que aclarar si esta excepción administrativa debe conservarse. | **Implementado 2026-10-27 (eliminado/desactivado; todo pasa por `/auth/register` + `/auth/register/verify`)** |
 
 ### Prioridad de corrección
 

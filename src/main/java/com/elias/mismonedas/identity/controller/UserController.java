@@ -15,12 +15,14 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Objects;
 
@@ -54,12 +56,13 @@ public class UserController {
         return ResponseEntity.ok(userService.findById(id));
     }
 
-    @Operation(summary = "Registrar un nuevo usuario", operationId = "registerUser", tags = {"Users"})
+    @Deprecated
+    @Operation(summary = "Registrar un nuevo usuario", operationId = "registerUser", tags = {"Users"}, deprecated = true)
     @PreAuthorize("hasRole('SYSTEM')")
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody UserRequest request) {
-        AuthResponse saved = userService.register(request);
-        return ResponseEntity.ok(saved);
+        throw new ResponseStatusException(HttpStatus.GONE,
+                "This endpoint is deprecated. Use /api/v1/auth/register and /api/v1/auth/register/verify");
     }
 
     @Operation(summary = "Actualizar datos de usuario", operationId = "updateUser", tags = {"Users"})

@@ -27,5 +27,5 @@
 - [x] AUD-09 — Limpiar referencias de reset-data obsoletas.
   - Aceptación: artifacts generados/docs activos actualizados; `UserDataResetEvent` sin uso runtime documentado.
   - Verificar: búsqueda global sin referencias a rutas obsoletas.
-- [ ] AUD-10 — Decidir la política de registro administrativo SYSTEM.
-  - Aceptación: decisión de producto/seguridad documentada antes de modificar el contrato.
+- [x] AUD-10 — Decidir la política de registro administrativo SYSTEM.
+  - Aceptación: decisión aplicada (todo pasa por registro propio con OTP). Endpoint `/users/register` deshabilitado (410 GONE).
