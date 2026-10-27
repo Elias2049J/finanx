@@ -28,7 +28,9 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 
 **Actualización 2026-10-27 (AUD-02):** login local y Google permiten cancelar una solicitud pendiente solo antes del vencimiento; la cancelación bloquea la fila y tokens/rutas de recursos siguen rechazando cuentas pendientes. El scheduler bloquea las filas candidatas y vuelve a evaluar la consulta tras una cancelación concurrente. Suite backend: 508 tests, 0 fallos. Android: 40 unit tests, `assembleDebug` y compilación instrumentada exitosos; el E2E instrumentado no se ejecutó por falta de `adb`.
 
-**Actualización 2026-10-27 (AUD-03a/b):** la eliminación programada limpia movimientos, presupuestos/metas, schedules/reglas, categorías/motivos, billeteras, contexto financiero, pagos/suscripciones, sesiones/mensajes de chat, notificaciones/FCM/outbox, desafíos de verificación de email, recibos/outboxes y elimina objetos de imágenes con orden explícito de listeners. La prueba PostgreSQL ampliada cubre wallet, movimiento, categoría, regla/agenda, recibo/imagen/outbox, billing, chat, notificaciones/outbox y desafío de email. Suite backend: 510 tests, 0 fallos. Queda aislar fallos por fila en el scheduler.
+**Actualización 2026-10-27 (AUD-03):** la eliminación programada limpia movimientos, presupuestos/metas, schedules/reglas, categorías/motivos, billeteras, contexto financiero, pagos/suscripciones, sesiones/mensajes de chat, notificaciones/FCM/outbox, desafíos de verificación de email, recibos/outboxes y objetos de imágenes con orden explícito de listeners. La prueba PostgreSQL ampliada cubre el grafo de dependencias; el scheduler aísla cada borrado en transacción independiente.
+
+**Actualización 2026-10-27 (AUD-07 y sincronización):** se corrigió el contexto de la prueba de flujo OTP; ahora cubre inicio/verificación de registro, reenvío/confirmación para cuenta local existente no verificada y rechazo de login no verificado. Backend: `514 tests, 0 fallos`. Se sincronizó el contrato desde `/v3/api-docs.yaml` y se regeneró `kotlin-client`; `:app:testDebugUnitTest` y `:app:assembleDebug` pasan. Se eliminó `apidoc/oas3v18.yaml` y la solicitud antigua de registro SYSTEM de Postman.
 
 ## Inventario de implementación
 
@@ -36,13 +38,13 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 
 - **Email OTP:** entidad y migraciones V14/V15, código aleatorio de seis dígitos, hash HMAC, vencimiento de 15 minutos, cinco intentos, cooldown, rate limit global por nodo, locks PostgreSQL, limpieza programada, envío SMTP y endpoints de inicio/verificación/reenvío.
 - **Registro/login:** `/auth/register` emite el OTP; `/auth/register/verify` crea al usuario verificado; el login local rechaza cuentas no verificadas. Google Sign-In no recibió el flujo OTP.
-- **Borrado:** V16 agrega fechas de solicitud/programación; solicitud deshabilita la cuenta y revoca sesiones; existen endpoints de solicitud/cancelación y scheduler. Parte de la limpieza relacional está conectada por listeners ordenados; queda terminar dependencias de billing, documentos/outboxes y chat.
+- **Borrado:** V16 agrega fechas de solicitud/programación; solicitud deshabilita la cuenta y revoca sesiones; existen endpoints de solicitud/cancelación y scheduler. La limpieza relacional está conectada por listeners ordenados y aislada por usuario/transacción.
 - **Reset-data:** endpoint y método de servicio fueron retirados del runtime.
 
 ### Android
 
 - Cliente OpenAPI regenerado y métodos OTP en `AuthRepository`.
-- `AuthViewModel` y `EmailVerificationScreen` implementan parte de los estados/pantalla OTP, pero `MainScreen` no presenta esa pantalla.
+- `MainScreen` presenta `EmailVerificationScreen` tras el registro y ante `EMAIL_NOT_VERIFIED`; la pantalla permite confirmar y reenviar códigos.
 - `DeleteAccountScreen` solicita el borrado con advertencia de siete días. `LoginScreen` ofrece una acción explícita de recuperación que vuelve a autenticar; el método Android `cancelAccountDeletion` sigue sin caller porque el login cancela en backend.
 - Se retiró la UI de reset-data; quedaron referencias en documentación generada.
 
@@ -56,9 +58,9 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 | AUD-04 | P1 | Tras registrar, `VerificationPending` muestra LoginScreen. `EmailVerificationScreen` no tiene caller; no existe flujo Android para confirmar cuentas existentes. | **Implementado 2026-10-27** |
 | AUD-05 | P2 | El endpoint público de reenvío manda correo a cualquier dirección, sin comprobar que sea una cuenta local no verificada. | **Implementado 2026-10-27** |
 | AUD-06 | P2 | Cooldown, rate limit y fallo de entrega caen en el handler genérico 500; login consume `errorBody` antes de intentar parsearlo. | **Implementado 2026-10-27** |
-| AUD-07 | P2 | Las nuevas pruebas llamadas “Integration” son pruebas unitarias con mocks; no cubren los recorridos de UI/API. | **Implementado 2026-10-27 (prueba de flujo real de cancelación durante gracia)** |
+| AUD-07 | P2 | Las nuevas pruebas llamadas “Integration” son pruebas unitarias con mocks; no cubren los recorridos de UI/API. | **Implementado 2026-10-27 (flujos HTTP OTP y cancelación durante gracia)** |
 | AUD-08 | P2 | El texto afirma que no se podrá volver a usar el email y que la acción no se puede deshacer, pero el servidor no reserva el email y sí pretende permitir cancelar durante siete días. | **Revisado 2026-10-27 (política: cancelable en 7 días, sin reserva de email)** |
-| AUD-09 | P2 | Artefactos aún anuncian reset-data: `apidoc/oas3v18.yaml`, colección Postman y `kotlin-client/README.md`; queda `UserDataResetEvent` sin uso runtime. | **Corregido 2026-10-27 (referencias actualizadas; `UserDataResetEvent` sin uso)** |
+| AUD-09 | P2 | Artefactos aún anuncian reset-data: `apidoc/oas3v18.yaml`, colección Postman y `kotlin-client/README.md`; queda `UserDataResetEvent` sin uso runtime. | **Corregido 2026-10-27 (artefactos y solicitud Postman retirados; evento huérfano eliminado)** |
 | AUD-10 | P2 / política | `/users/register` sigue siendo una ruta SYSTEM-only que crea usuario y emite tokens sin verificar email. No es un bypass para USER, pero hay que aclarar si esta excepción administrativa debe conservarse. | **Implementado 2026-10-27 (eliminado; todo pasa por `/auth/register` + `/auth/register/verify`)** |
 
 ### Prioridad de corrección
@@ -66,18 +68,18 @@ Las seis pruebas Android unitarias añadidas anteriormente usan mocks. No verifi
 1. AUD-01: autorización por ownership, preservando SYSTEM para operaciones administrativas.
 2. AUD-02: **implementado**; queda ejecutar la prueba instrumentada en un entorno Android con `adb`.
 3. AUD-03: **implementado** (limpieza por dominios + aislamiento por fila/transacción independiente).
-4. AUD-04: conectar la pantalla OTP para registro y para cuentas existentes, con pruebas de navegación/estado.
-5. AUD-05/06: limitar abuso de correo y mapear errores a contratos HTTP accionables.
-6. AUD-07/08/09: mejorar pruebas, corregir copy y retirar referencias obsoletas.
-7. AUD-10: resolver con producto/seguridad antes de cambiar la ruta administrativa.
+4. AUD-04: **implementado**; OTP Android conectado para registro y cuentas existentes no verificadas.
+5. AUD-05/06: **implementados**; reenvío limitado a cuentas elegibles y errores OTP con HTTP/Retry-After coherentes.
+6. AUD-07/08/09: **implementados**; pruebas de flujo, copy corregido y artefactos obsoletos retirados.
+7. AUD-10: **decisión aplicada**; se eliminó `/users/register`, y el alta local pasa por OTP.
 
 ## Estado de hallazgos previos relacionados
 
 Este documento nuevo no cambia el histórico `docs/auditoria-mejoras.md` ni cierra hallazgos ajenos a email/borrado.
 
-- **P0-8 (registro sin verificación + vinculación Google): PARCIAL / SUPERSEDIDO EN PARTE.** El backend de registro local ahora tiene OTP y el login local revisa verificación, pero Android no permite completar el flujo. El riesgo de vinculación Google es independiente y no se considera resuelto por esta implementación.
-- **P1-15 (reset/borrado): DEPRECATED / REEMPLAZADO PARA EL FLUJO ANTIGUO, NO TERMINADO FUNCIONALMENTE.** El endpoint reset-data fue retirado y el borrado inmediato se reemplazó por programación de siete días. La nueva eliminación/cancelación presenta AUD-01/02/03.
-- **Reset-data:** retirado del runtime; sus referencias documentales/clientes siguen obsoletas (AUD-09).
+- **P0-8 (registro sin verificación + vinculación Google): PARCIAL / SUPERSEDIDO EN PARTE.** El registro local pasa por OTP y el login rechaza cuentas no verificadas; Google Sign-In permanece fuera de este flujo y su riesgo independiente no se considera resuelto aquí.
+- **P1-15 (reset/borrado): DEPRECATED / REEMPLAZADO PARA EL FLUJO ANTIGUO.** El endpoint reset-data fue retirado y el borrado inmediato se reemplazó por programación de siete días; AUD-01/02/03 implementan ownership, cancelación y limpieza.
+- **Reset-data:** retirado del runtime; quedan solo menciones históricas en auditorías anteriores.
 
 ## Criterios de término
 

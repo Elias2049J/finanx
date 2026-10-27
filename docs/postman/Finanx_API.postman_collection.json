@@ -3545,47 +3545,6 @@
           }
         },
         {
-          "name": "Registrar un nuevo usuario",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/v1/users/register-removed",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "register"
-              ],
-              "variable": []
-            },
-            "description": "Registrar un nuevo usuario",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Jorge Jackson\",\n  \"lastname\": \"Valdivia Torreon\",\n  \"email\": \"jorge.valdivia@example.com\",\n  \"password\": \"StrongPassword123!\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
           "name": "Listar usuarios",
           "request": {
             "method": "GET",

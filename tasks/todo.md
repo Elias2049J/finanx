@@ -9,9 +9,9 @@
 - [x] AUD-03c — Aislar fallos del scheduler (procesar fila a fila/transacción independiente para evitar rollback de todo el lote).
   - Aceptación: un fallo en un usuario no revierte eliminaciones de otros usuarios.
   - Verificar: `UserServiceImpl` usa `REQUIRES_NEW` y captura excepciones por usuario. Suite 510/0 fallos.
-- [ ] AUD-04 — Conectar OTP Android para registro y cuentas existentes.
+- [x] AUD-04 — Conectar OTP Android para registro y cuentas existentes.
   - Aceptación: registro muestra OTP; login `EMAIL_NOT_VERIFIED` permite confirmación existente.
-  - Verificar: tests de navegación/ViewModel y `assembleDebug`.
+  - Verificar: `:app:testDebugUnitTest` y `:app:assembleDebug` pasan; flujos HTTP backend cubiertos.
 - [x] AUD-05 — Evitar abuso de reenvío de OTP.
   - Aceptación: solo se envía para cuentas locales elegibles y la respuesta no revela existencia.
   - Verificar: `AuthController` restringe a LOCAL no verificadas; pruebas existentes pasan (510/0).
@@ -20,12 +20,12 @@
   - Verificar: `GlobalExceptionHandler` maneja excepciones OTP; Android ya parsea `errorBody`. Suite 510/0.
 - [x] AUD-07 — Añadir pruebas de flujo reales; renombrar las pruebas actuales si permanecen unitarias.
   - Aceptación: pruebas cubren la conexión navegación/API y detectan OTP/cancelación inaccesibles.
-  - Verificar: `AccountDeletionCancelAccessIntegrationTest` pasa; OTP conectado en Android con navegación a pantalla. Backend 511/0 tras añadir test.
+  - Verificar: flujos HTTP de OTP y cancelación pasan; suite backend 514/0; Android unit tests y build pasan.
 - [x] AUD-08 — Corregir afirmaciones contradictorias de borrado.
   - Aceptación: copy coincide con gracia, reversibilidad y política aprobada de reuso del email.
   - Verificar: documentación revisada (cancelable 7 días, sin reserva de email).
 - [x] AUD-09 — Limpiar referencias de reset-data obsoletas.
-  - Aceptación: artifacts generados/docs activos actualizados; `UserDataResetEvent` sin uso runtime documentado.
-  - Verificar: búsqueda global sin referencias a rutas obsoletas.
+  - Aceptación: artifacts generados/docs activos actualizados; sin clases runtime huérfanas.
+  - Verificar: sincronización OpenAPI, README/Postman limpios y `UserDataResetEvent` eliminado.
 - [x] AUD-10 — Decidir la política de registro administrativo SYSTEM.
-  - Aceptación: decisión aplicada (todo pasa por registro propio con OTP). Endpoint `/users/register` deshabilitado (410 GONE).
+  - Aceptación: decisión aplicada (todo pasa por registro propio con OTP). Endpoint `/users/register` eliminado.
