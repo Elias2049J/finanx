@@ -24,6 +24,8 @@ Los cambios principales existen, pero no están listos para producción. El OTP 
 
 Las pruebas Android recién añadidas usan mocks. No verifican navegación Compose, intercambio HTTP real ni el recorrido OTP/borrado de extremo a extremo. No se probó entrega SMTP real ni borrado contra una BD de despliegue.
 
+**Actualización 2026-10-27 (AUD-01):** se añadió cobertura de ownership y `@PreAuthorize`; el test de regresión falló antes del cambio para los dos endpoints. Suite backend posterior: 492 tests, 0 fallos.
+
 ## Inventario de implementación
 
 ### Backend
@@ -44,7 +46,7 @@ Las pruebas Android recién añadidas usan mocks. No verifican navegación Compo
 
 | ID | Severidad | Hallazgo | Estado |
 |---|---|---|---|
-| AUD-01 | P1 | Los endpoints de solicitud/cancelación aceptan un `{id}` arbitrario para cualquier rol USER; no comprueban ownership. | Abierto |
+| AUD-01 | P1 | Los endpoints de solicitud/cancelación aceptaban un `{id}` arbitrario para cualquier rol USER; no comprobaban ownership. | **Terminado 2026-10-27** |
 | AUD-02 | P1 | No se puede cancelar el borrado ingresando: la cuenta ya está DISABLED antes de autenticarse; se revocan refresh tokens y el filtro rechaza access tokens existentes. | Abierto |
 | AUD-03 | P1 | La eliminación física puede fallar por FKs a datos no limpiados (incluidas billeteras); el fallo revierte la transacción del lote. | Abierto |
 | AUD-04 | P1 | Tras registrar, `VerificationPending` muestra LoginScreen. `EmailVerificationScreen` no tiene caller; no existe flujo Android para confirmar cuentas existentes. | Abierto |
