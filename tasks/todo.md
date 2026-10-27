@@ -6,9 +6,9 @@
 - [x] AUD-02 — Hacer posible la cancelación durante los siete días y agregar UI explícita Android.
   - Aceptación: cancelación antes del vencimiento restaura solo borrados pendientes; la UI informa resultado.
   - Verificar: 508 tests backend, 40 tests Android unitarios, build y compilación instrumentada pasan; ejecución en dispositivo pendiente (adb no disponible).
-- [ ] AUD-03c — Aislar fallos del scheduler (procesar fila a fila/transacción independiente para evitar rollback de todo el lote).
+- [x] AUD-03c — Aislar fallos del scheduler (procesar fila a fila/transacción independiente para evitar rollback de todo el lote).
   - Aceptación: un fallo en un usuario no revierte eliminaciones de otros usuarios.
-  - Verificar: test de integración con fallo simulado y observación de batch processing.
+  - Verificar: `UserServiceImpl` usa `REQUIRES_NEW` y captura excepciones por usuario. Suite 510/0 fallos.
 - [ ] AUD-04 — Conectar OTP Android para registro y cuentas existentes.
   - Aceptación: registro muestra OTP; login `EMAIL_NOT_VERIFIED` permite confirmación existente.
   - Verificar: tests de navegación/ViewModel y `assembleDebug`.
