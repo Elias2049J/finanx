@@ -3561,7 +3561,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/users/register",
+              "raw": "{{base_url}}/api/v1/users/register-removed",
               "host": [
                 "{{base_url}}"
               ],
