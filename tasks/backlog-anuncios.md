@@ -139,21 +139,22 @@ Reglas:
 placeholder y el Ad Unit ID como `BuildConfig` distinto por buildType.
 
 **Criterios de aceptación:**
-- [ ] `gradle/libs.versions.toml` incluye `play-services-ads = "25.5.0"` y el alias de librería.
-- [ ] `app/build.gradle.kts` agrega `implementation(libs.play.services.ads)` y `buildFeatures.buildConfig = true`.
-- [ ] `manifestPlaceholders["admobAppId"]` usa el App ID de test en `debug` y el real en `release`.
-- [ ] `buildConfigField("String", "ADMOB_BANNER_UNIT_ID", ...)` usa el banner de test en `debug` y el real en `release`.
-- [ ] El manifest declara `com.google.android.gms.ads.APPLICATION_ID` con `${admobAppId}`.
-- [ ] La guía `docs/integracion-anuncios-admob.md` se actualiza con la versión y los IDs.
+- [x] `gradle/libs.versions.toml` incluye `play-services-ads = "25.5.0"` y el alias de librería.
+- [x] `app/build.gradle.kts` agrega `implementation(libs.play.services.ads)` y `buildFeatures.buildConfig = true`.
+- [x] `manifestPlaceholders["admobAppId"]` usa el App ID de test en `debug` y el real en `release`.
+- [x] `buildConfigField("String", "ADMOB_BANNER_UNIT_ID", ...)` usa el banner de test en `debug` y el real en `release`.
+- [x] El manifest declara `com.google.android.gms.ads.APPLICATION_ID` con `${admobAppId}`.
+- [x] La guía `docs/integracion-anuncios-admob.md` se actualiza con la versión y los IDs.
 
 **Verificación:**
-- [ ] `gradlew.bat :app:assembleDebug` y `:app:assembleRelease` compilan.
-- [ ] `merged_manifests` de debug/release muestran el App ID correcto.
-- [ ] `BuildConfig.ADMOB_BANNER_UNIT_ID` es el de test en debug y el real en release.
+- [x] `gradlew.bat :app:assembleDebug` y `:app:assembleRelease` compilan.
+- [x] `merged_manifests` de debug/release muestran el App ID correcto.
+- [x] `BuildConfig.ADMOB_BANNER_UNIT_ID` es el de test en debug y el real en release.
 
 **Dependencias:** ninguna.
 **Archivos:** `gradle/libs.versions.toml`, `app/build.gradle.kts`, `app/src/main/AndroidManifest.xml`, `docs/integracion-anuncios-admob.md`.
 **Tamaño:** S.
+**Estado:** completado (frontend `9b7f49b`; guía actualizada).
 
 #### ADS-02 — Inicializar el SDK en la Application
 
