@@ -6,5 +6,6 @@ public enum ScheduleState {
     FINALIZED,
     CANCELLED,
     CREATED,
-    ERROR
+    ERROR,
+    PENDING_CONFIRMATION
 }

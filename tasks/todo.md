@@ -50,9 +50,9 @@
 
 ## Backlog: recordatorios accionables
 
-- [ ] REC-01 — Añadir `executionMode` y el estado `PENDING_CONFIRMATION` al modelo.
+- [x] REC-01 — Añadir `executionMode` y el estado `PENDING_CONFIRMATION` al modelo.
   - Aceptación: `Schedule` expone `executionMode` (default `MANUAL`); `V19` añade `modo_ejecucion` y recrea `programacion_estado_check` con el estado nuevo.
-  - Verificar: migración sobre V18 y compilación de la suite.
+  - Verificar: migración sobre V18 y compilación de la suite. Suite 518/0.
 - [ ] REC-02 — Scheduler en modo MANUAL no materializa.
   - Aceptación: al vencer en `MANUAL` pasa a `PENDING_CONFIRMATION` sin crear movimiento ni presupuesto; no genera la siguiente ocurrencia.
   - Verificar: pruebas de `runDueTransactions`/`runDueBudgets` en ambos modos.

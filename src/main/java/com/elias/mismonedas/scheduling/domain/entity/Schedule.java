@@ -2,6 +2,7 @@ package com.elias.mismonedas.scheduling.domain.entity;
 
 import com.elias.mismonedas.catalog.domain.entity.Category;
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import jakarta.persistence.*;
 import lombok.*;
@@ -49,6 +50,10 @@ public abstract class Schedule {
     @Column(name = "estado")
     private ScheduleState state;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "modo_ejecucion", nullable = false, length = 20)
+    private ExecutionMode executionMode;
+
     @OneToOne(fetch = FetchType.LAZY, orphanRemoval = true)
     @JoinColumn(name = "id_regla_recurrencia")
     private RecurrenceRule recurrenceRule;
@@ -63,6 +68,9 @@ public abstract class Schedule {
         }
         if (state == null) {
             state = ScheduleState.RUNNING;
+        }
+        if (executionMode == null) {
+            executionMode = ExecutionMode.MANUAL;
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.elias.mismonedas.scheduling.dto.schedule;
 
+import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.recurrencerule.RecurrenceRuleResponse;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -69,6 +70,9 @@ public class ScheduleResponse {
 
     @Schema(description = "Estado actual de la programacion", implementation = ScheduleState.class, example = "RUNNING")
     private ScheduleState state;
+
+    @Schema(description = "Modo de ejecucion del recordatorio", implementation = ExecutionMode.class, example = "MANUAL")
+    private ExecutionMode executionMode;
 
     @Schema(description = "Regla de recurrencia asociada a la programacion", implementation = RecurrenceRuleResponse.class)
     private RecurrenceRuleResponse recurrenceRule;

@@ -1,5 +1,6 @@
 package com.elias.mismonedas.scheduling.dto.schedule;
 
+import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
 import com.elias.mismonedas.scheduling.dto.recurrencerule.RecurrenceRuleRequest;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -47,5 +48,12 @@ public class ScheduleRequest {
             implementation = RecurrenceRuleRequest.class
     )
     private RecurrenceRuleRequest recurrenceRule;
+
+    @Schema(
+            description = "Modo de ejecucion: AUTO registra solo, MANUAL espera confirmacion del usuario",
+            implementation = ExecutionMode.class,
+            example = "MANUAL"
+    )
+    private ExecutionMode executionMode;
 }
 
