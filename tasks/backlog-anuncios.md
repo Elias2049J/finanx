@@ -162,33 +162,35 @@ placeholder y el Ad Unit ID como `BuildConfig` distinto por buildType.
 bloquear el arranque.
 
 **Criterios de aceptación:**
-- [ ] `MobileAds.initialize(this) { ... }` se ejecuta en `onCreate`.
-- [ ] El callback registra el resultado solo en `debug`.
-- [ ] No se inicializa dos veces ni se hace trabajo pesado en el hilo principal.
+- [x] `MobileAds.initialize(this) { ... }` se ejecuta en `onCreate`.
+- [x] El callback registra el resultado solo en `debug`.
+- [x] No se inicializa dos veces ni se hace trabajo pesado en el hilo principal.
 
 **Verificación:**
-- [ ] La app arranca sin crash ni ANR.
-- [ ] Logcat muestra la inicialización en debug.
+- [x] La app arranca sin crash ni ANR.
+- [x] Logcat muestra la inicialización en debug.
 
 **Dependencias:** ADS-01.
 **Archivos:** `MisMonedasApplication.kt`.
 **Tamaño:** XS.
+**Estado:** completado (frontend `d78dc2c`).
 
 #### ADS-03 — `AdsConfig` y destinos habilitados
 
 **Descripción:** centralizar IDs, flag de test y la lista de destinos con anuncio.
 
 **Criterios de aceptación:**
-- [ ] `AdsConfig` expone `bannerUnitId`, `isTest` y `adsEnabledDestinations`.
-- [ ] `adsEnabledDestinations = { Home, Transactions, SavingGoals }`; excluye `Chat`.
-- [ ] Test unitario verifica la lista de destinos y que no incluye pantallas críticas.
+- [x] `AdsConfig` expone `bannerUnitId`, `isTest` y `enabledDestinations`.
+- [x] `enabledDestinations = { Home, Transactions, SavingGoals }`; excluye `Chat`.
+- [x] Test unitario verifica la lista de destinos y que no incluye pantallas críticas.
 
 **Verificación:**
-- [ ] `:app:testDebugUnitTest --tests "*AdsConfigTest*"`.
+- [x] `:app:testDebugUnitTest --tests "*AdsConfigTest*"`.
 
 **Dependencias:** ADS-01.
-**Archivos:** `data/ads/AdsConfig.kt`, `data/ads/AdsConfigTest.kt`.
+**Archivos:** `ui/ads/AdsConfig.kt`, `ui/ads/AdsConfigTest.kt`.
 **Tamaño:** XS.
+**Estado:** completado (frontend `d78dc2c`).
 
 ### Tramo 1 — Política de anuncios según plan
 
