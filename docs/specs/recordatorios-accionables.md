@@ -75,11 +75,37 @@ Sin `ddl-auto`: Flyway es la única fuente del esquema.
 | `GET` | `/api/v1/schedule?state=PENDING_CONFIRMATION` | Lista pendientes (endpoint existente) |
 | `POST` | `/api/v1/schedule/{id}/confirm` | Confirma la ocurrencia pendiente |
 | `POST` | `/api/v1/schedule/{id}/ignore` | Omite la ocurrencia pendiente |
-| `GET` | `/api/v1/schedule/occurrences?from=&to=` | Proyección para calendario (opcional, fase 3) |
+| `GET` | `/api/v1/schedule/occurrences?from=&to=` | Proyección para calendario |
 
 `confirm` responde `200` con `{ occurrenceKey, transactionId | budgetId }`. `ignore` responde `204`.
 
 `ScheduleRequest`/`ScheduleResponse` exponen `executionMode`.
+
+`GET /schedule/occurrences` recibe dos `LocalDate` (`from` y `to`, ambos inclusive) y devuelve las ocurrencias en la zona horaria del usuario, ordenadas de forma ascendente:
+
+```json
+[
+  {
+    "scheduleId": 12,
+    "kind": "TRANSACTION",
+    "occurrenceAt": "2026-10-15T09:00:00",
+    "status": "PENDING",
+    "executionMode": "MANUAL",
+    "occurrenceKey": "schedule:12:1792054800000",
+    "categoryId": 3,
+    "categoryName": "Servicios",
+    "description": "Pago de internet",
+    "amount": 120.00,
+    "currencyCode": "PEN",
+    "transactionType": "SPENT"
+  }
+]
+```
+
+- Solo se proyectan programaciones `RUNNING` y `PENDING_CONFIRMATION`.
+- `status = PENDING` solo para la ocurrencia vencida que espera confirmación; lleva `occurrenceKey`. Las proyectadas son `UPCOMING` y no la llevan.
+- La proyección reutiliza `computeNextRunAt(st, base)` desde `nextRunAt`, así que respeta `end`, intervalo y día ancla.
+- Guard de 500 ocurrencias por respuesta (no por rango de fechas); si se alcanza, la respuesta se trunca y se registra un warning.
 
 ## Cambios en el scheduler
 
@@ -97,8 +123,10 @@ Sin `ddl-auto`: Flyway es la única fuente del esquema.
 - Presupuesto confirmado: `start` = fecha de confirmación.
 - Ownership: solo el dueño puede confirmar/omitir (`403` ajeno).
 - Agrupación de fecha con zona horaria del usuario.
+- `occurrences`: proyecta solo `RUNNING`/`PENDING_CONFIRMATION`, respeta `end`, ordena ascendente y trunca en 500.
+- `occurrences`: la pendiente lleva `occurrenceKey`; las proyectadas no.
 - Ejecutar `mvnw.cmd test`.
-- Android: unit tests y `:app:assembleDebug`.
+- Android: unit tests (agrupado por día y rango de 6 semanas) y `:app:assembleDebug`.
 
 ## Límites
 

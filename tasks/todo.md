@@ -65,12 +65,12 @@
 - [x] REC-05 — UI "Recordatorios" con acciones.
   - Aceptación: copy ES/EN renombrado; agrupación Hoy/Mañana/Próximos; Confirmar y Omitir con feedback; formulario pre-rellenado y editable al confirmar un movimiento (overrides opcionales en `OccurrenceKeyRequest`).
   - Verificar: `ReminderBucketTest` (5 casos) y `:app:assembleDebug` OK. Backend suite 541/0. Frontend `aaeedce` (contrato) y commit de UI.
-- [ ] REC-06a - Endpoint de ocurrencias proyectadas.
+- [x] REC-06a - Endpoint de ocurrencias proyectadas.
   - Aceptación: `GET /schedule/occurrences?from=&to=` devuelve `scheduleId`, `kind`, `occurrenceAt`, `status` (`PENDING`|`UPCOMING`), `executionMode`, `occurrenceKey` (solo pendiente), `categoryId`, `categoryName`, `description`, `amount`, `currencyCode`, `transactionType`; proyecta con `computeNextRunAt(st, base)` desde `nextRunAt`; solo `RUNNING` y `PENDING_CONFIRMATION`; orden ascendente; guard de 500 ocurrencias por respuesta (no por rango); sin tope máximo de rango de fechas.
-  - Verificar: tests de proyección (mensual con día ancla, `end`, pausados/finalizados fuera, pendiente marcada, ownership), suite en verde y OpenAPI regenerado.
-- [ ] REC-06b - UI de calendario en Android.
+  - Verificar: tests de proyección (mensual con día ancla, `end`, pausados/finalizados fuera, pendiente marcada, ownership), suite en verde y OpenAPI regenerado. Suite 550/0; `ScheduleServiceImplOccurrencesTest` 9/9.
+- [x] REC-06b - UI de calendario en Android.
   - Aceptación: switch Lista/Calendario en Recordatorios con `com.kizitonwose.calendar:compose`; grid de 6 semanas con puntos por día; detalle del día con acciones Confirmar/Omitir solo para pendientes; proyecciones `AUTO` sin acciones y con tono distinto; chips y búsqueda ocultos en modo calendario (se conservan al volver); caché por mes invalidada al confirmar/omitir/crear/pausar/reanudar; strings ES/EN.
-  - Verificar: `:app:assembleDebug`, tests unitarios del agrupado por día y `:kotlin-client:compileKotlin`.
-- [ ] REC-06c - Documentación del calendario.
+  - Verificar: `:app:assembleDebug`, tests unitarios del agrupado por día y `:kotlin-client:compileKotlin`. `CalendarOccurrencesTest` 5/5; `:app:assembleDebug` y `:app:testDebugUnitTest` OK.
+- [x] REC-06c - Documentación del calendario.
   - Aceptación: `tasks/plan.md` y este backlog reflejan REC-06 como tramo obligatorio con el contrato final y el límite de 500 ocurrencias.
-  - Verificar: revisión de docs y commits por tramo.
+  - Verificar: revisión de docs y commits por tramo. Contrato documentado en `docs/specs/recordatorios-accionables.md`.

@@ -55,6 +55,7 @@ Que las programaciones de movimientos y presupuestos dejen de registrarse solas 
 - Solo `RUNNING` y `PENDING_CONFIRMATION`; las pendientes llevan `occurrenceKey`, las proyectadas no.
 - Guard de 500 ocurrencias por respuesta (no por rango); sin tope máximo de rango de fechas.
 - Android: switch Lista/Calendario sobre `com.kizitonwose.calendar:compose` 2.10.1 (Compose UI 1.10.x), caché por mes y detalle del día.
+- Checkpoint: suite backend en verde (550), `:app:assembleDebug`, tests unitarios del agrupado por día y `:kotlin-client:compileKotlin`.
 
 ## Riesgos y mitigaciones
 
