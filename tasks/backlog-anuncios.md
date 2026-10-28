@@ -345,9 +345,9 @@ cuenta, datos financieros, notificaciones, AdMob/ID de publicidad y derechos del
 No bloquea la integración técnica; sí es requisito para publicar.
 
 **Criterios de aceptación:**
-- [ ] Documento en `docs/politica-privacidad.md` (o `.txt` si se prefiere).
-- [ ] Menciona AdMob, el ID de publicidad y el enlace a la política de Google.
-- [ ] Menciona datos de cuenta, transacciones, presupuestos, metas y notificaciones.
+- [x] Documento en `docs/politica-privacidad.md` (o `.txt` si se prefiere).
+- [x] Menciona AdMob, el ID de publicidad y el enlace a la política de Google.
+- [x] Menciona datos de cuenta, transacciones, presupuestos, metas y notificaciones.
 - [ ] Incluye contacto del responsable y fecha de vigencia.
 - [ ] Se publica en una URL accesible y se enlaza en Play Console.
 
@@ -359,6 +359,7 @@ No bloquea la integración técnica; sí es requisito para publicar.
 **Archivos:** `docs/politica-privacidad.md`.
 **Tamaño:** S.
 **Prioridad:** baja.
+**Estado:** borrador creado; faltan datos del responsable, fecha y publicación.
 
 #### ADS-12 — Beneficio "Sin anuncios" en la suscripción
 
@@ -366,18 +367,19 @@ No bloquea la integración técnica; sí es requisito para publicar.
 incluyen "Sin anuncios", alineado con `AdsPolicy`.
 
 **Criterios de aceptación:**
-- [ ] `SubscriptionScreen` muestra el beneficio "Sin anuncios" para planes de pago.
-- [ ] Strings ES/EN (`subscription_no_ads` o equivalente), sin literales hardcodeados.
-- [ ] No promete "sin anuncios" a FREE.
+- [x] `SubscriptionScreen` muestra el beneficio "Sin anuncios" para planes de pago.
+- [x] Strings ES/EN (`subscription_no_ads` o equivalente), sin literales hardcodeados.
+- [x] No promete "sin anuncios" a FREE.
 - [ ] Verificación visual en ambos idiomas.
 
 **Verificación:**
-- [ ] `:app:assembleDebug` + revisión visual ES/EN.
+- [x] `:app:assembleDebug` + revisión visual ES/EN.
 - [ ] Usuario PREMIUM no ve banner (coordinado con ADS-04).
 
 **Dependencias:** ADS-04 (para que la promesa sea real).
 **Archivos:** `ui/screens/subscription/SubscriptionScreen.kt`, `res/values/strings.xml`, `res/values-en/strings.xml`.
 **Tamaño:** XS.
+**Estado:** implementado (frontend `e85870f`); revisión visual pendiente.
 
 ### Tramo 4 — Futuro (no comprometido)
 
