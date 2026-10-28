@@ -41,7 +41,7 @@
 - [x] WALLET-03 — Extender contrato API y regenerar el cliente Android.
   - Aceptación: `WalletRequest`/`WalletResponse` exponen alias y errores de plan/validación quedan documentados.
   - Verificar: OpenAPI y Kotlin client regenerados desde backend, sin editar artefactos a mano.
-- [ ] WALLET-04 — Incorporar alias en flujos y etiquetas de wallet Android.
+- [x] WALLET-04 — Incorporar alias en flujos y etiquetas de wallet Android.
   - Aceptación: alta/selección/listado distinguen wallets homónimas por alias y moneda.
   - Verificar: unit/instrumentation tests y `:app:assembleDebug`.
 - [ ] WALLET-05 — Actualizar documentación de planes y guía de uso.
