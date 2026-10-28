@@ -9,6 +9,7 @@ import com.elias.mismonedas.identity.domain.enums.TimeZone;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.entity.Transaction;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
+import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
 import com.elias.mismonedas.ledger.service.TransactionService;
@@ -269,6 +270,47 @@ class ScheduleServiceImplConfirmationTest {
         assertThat(saved.getValue().getEnd()).isEqualTo(next);
         assertThat(saved.getValue().getIdempotencyKey()).isEqualTo(key);
         assertThat(schedule.getNextRunAt()).isEqualTo(next);
+    }
+
+    @Test
+    void confirmAppliesEditedTransactionValues() {
+        User user = user();
+        OffsetDateTime pendingAt = OffsetDateTime.now(user.getTimeZone().toZoneId()).minusHours(2);
+        OffsetDateTime next = pendingAt.plusMonths(1);
+        TransactionSchedule schedule = transactionSchedule(user, pendingAt, ScheduleState.PENDING_CONFIRMATION);
+        String key = occurrenceKey(55L, pendingAt);
+
+        TransactionResponse created = new TransactionResponse();
+        created.setId(42L);
+
+        when(scheduleRepository.findById(55L)).thenReturn(Optional.of(schedule));
+        when(securityService.getCurrentUser()).thenReturn(user);
+        when(scheduleRepository.claimPendingConfirmation(55L, pendingAt)).thenReturn(1);
+        when(transactionService.create(anyLong(), anyLong(), any(), anyString())).thenReturn(created);
+        when(rcService.computeNextRunAt(eq(schedule), any())).thenReturn(Optional.of(next));
+
+        OccurrenceKeyRequest request = new OccurrenceKeyRequest();
+        request.setOccurrenceKey(key);
+        request.setAmount(new BigDecimal("99.90"));
+        request.setWalletId(11L);
+        request.setCategoryId(101L);
+        request.setReasonId(7L);
+        request.setDescription("Renta ajustada");
+        request.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
+
+        service.confirm(55L, request);
+
+        ArgumentCaptor<TransactionRequest> captor = ArgumentCaptor.forClass(TransactionRequest.class);
+        verify(transactionService).create(eq(1L), eq(55L), captor.capture(), eq(key));
+
+        TransactionRequest sent = captor.getValue();
+        assertThat(sent.getAmount()).isEqualByComparingTo("99.90");
+        assertThat(sent.getWalletId()).isEqualTo(11L);
+        assertThat(sent.getCategoryId()).isEqualTo(101L);
+        assertThat(sent.getReasonId()).isEqualTo(7L);
+        assertThat(sent.getDescription()).isEqualTo("Renta ajustada");
+        assertThat(sent.getPaymentMethod()).isEqualTo(PaymentMethod.BANK_TRANSFER);
+        assertThat(sent.getType()).isEqualTo(TransactionType.SPENT);
     }
 
     @Test

@@ -248,7 +248,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         Long transactionId = null;
         Long budgetId = null;
         if (st instanceof TransactionSchedule ts) {
-            transactionId = executeTransaction(ts, expected, confirmedAt);
+            transactionId = executeTransaction(ts, expected, confirmedAt, request);
         } else if (st instanceof BudgetSchedule bs) {
             budgetId = executeBudget(bs, expected, confirmedAt);
         } else {
@@ -401,7 +401,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             return null;
         }
 
-        executeTransaction(st, expected, expected);
+        executeTransaction(st, expected, expected, null);
 
         scheduleRepository.save(st);
         return st.getUser().getId();
@@ -559,18 +559,31 @@ public class ScheduleServiceImpl implements ScheduleService {
         return false;
     }
 
-    private Long executeTransaction(TransactionSchedule st, OffsetDateTime occurrenceAt, OffsetDateTime executedAt) {
+    private Long executeTransaction(TransactionSchedule st, OffsetDateTime occurrenceAt, OffsetDateTime executedAt,
+                                    OccurrenceKeyRequest overrides) {
         st.setLastRunAt(executedAt);
 
+        Long walletId = overrides != null && overrides.getWalletId() != null
+                ? overrides.getWalletId()
+                : st.getWallet().getId();
+        Long categoryId = overrides != null && overrides.getCategoryId() != null
+                ? overrides.getCategoryId()
+                : st.getCategory().getId();
+        Long reasonId = overrides != null && overrides.getReasonId() != null
+                ? overrides.getReasonId()
+                : (st.getReason() != null ? st.getReason().getId() : null);
+
         TransactionRequest txRequest = new TransactionRequest();
-        txRequest.setWalletId(st.getWallet().getId());
-        txRequest.setCategoryId(st.getCategory().getId());
-        txRequest.setReasonId(st.getReason() != null ? st.getReason().getId() : null);
-        txRequest.setDescription(null);
+        txRequest.setWalletId(walletId);
+        txRequest.setCategoryId(categoryId);
+        txRequest.setReasonId(reasonId);
+        txRequest.setDescription(overrides != null ? overrides.getDescription() : null);
         txRequest.setSavingGoalId(null);
         txRequest.setReceiptId(null);
-        txRequest.setAmount(st.getAmount());
-        txRequest.setPaymentMethod(st.getPaymentMethod());
+        txRequest.setAmount(overrides != null && overrides.getAmount() != null ? overrides.getAmount() : st.getAmount());
+        txRequest.setPaymentMethod(overrides != null && overrides.getPaymentMethod() != null
+                ? overrides.getPaymentMethod()
+                : st.getPaymentMethod());
         txRequest.setType(st.getTransactionType());
         txRequest.setConvertCurrency(false);
 
@@ -581,10 +594,10 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         if (hasNext) {
             log.info("ScheduledTransaction executed: id={} userId={} walletId={} executedAt={} nextRunAt={}",
-                    st.getId(), st.getUser().getId(), st.getWallet().getId(), executedAt, st.getNextRunAt());
+                    st.getId(), st.getUser().getId(), walletId, executedAt, st.getNextRunAt());
         } else {
             log.info("ScheduledTransaction completed: id={} userId={} walletId={} executedAt={} (no further occurrences)",
-                    st.getId(), st.getUser().getId(), st.getWallet().getId(), executedAt);
+                    st.getId(), st.getUser().getId(), walletId, executedAt);
         }
 
         return created.getId();
