@@ -226,21 +226,22 @@ sesión y con refresh explícito.
 correcta de recursos.
 
 **Criterios de aceptación:**
-- [ ] Usa `AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize` (o el tamaño inline adaptativo) con el ancho disponible en dp.
-- [ ] `loadAd` se ejecuta una sola vez por instancia, no en cada recomposición.
-- [ ] `onAdLoaded` reporta la altura al contenedor; `onAdFailedToLoad` colapsa el banner y registra el error en debug.
-- [ ] `DisposableEffect` llama a `destroy()`; el ciclo de vida pausa/reanuda el `AdView`.
-- [ ] En debug usa el Ad Unit de test; nunca el real.
+- [x] Usa `AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize` (o el tamaño inline adaptativo) con el ancho disponible en dp.
+- [x] `loadAd` se ejecuta una sola vez por instancia, no en cada recomposición.
+- [x] `onAdLoaded` reporta la altura al contenedor; `onAdFailedToLoad` colapsa el banner y registra el error en debug.
+- [x] `DisposableEffect` llama a `destroy()`; el ciclo de vida pausa/reanuda el `AdView`.
+- [x] En debug usa el Ad Unit de test; nunca el real.
 - [ ] Sin fugas: entrar y salir de Home 20 veces no incrementa `AdView` vivos.
 
 **Verificación:**
 - [ ] Manual con test ads: el banner carga y se ve.
 - [ ] Logcat sin `Ad failed to load` inesperado.
-- [ ] `:app:assembleDebug`.
+- [x] `:app:assembleDebug`.
 
 **Dependencias:** ADS-01, ADS-02, ADS-03.
 **Archivos:** `ui/components/AdBanner.kt`.
 **Tamaño:** M.
+**Estado:** implementado (frontend `0a3d6be`); QA manual pendiente.
 
 #### ADS-06 — Integrar en `AppScaffold` y ajustar el FAB
 
@@ -248,29 +249,30 @@ correcta de recursos.
 para que no quede tapado.
 
 **Criterios de aceptación:**
-- [ ] `bottomBar = Column { AdBanner(); NavigationBar() }` solo si `showBottomBar && showAds && destino habilitado`.
-- [ ] El FAB central se desplaza por la altura real del banner y sigue siendo visible y tappable.
-- [ ] El último ítem de las listas no queda oculto tras el banner (padding del Scaffold).
+- [x] `bottomBar = Column { AdBanner(); NavigationBar() }` solo si `showBottomBar && showAds && destino habilitado`.
+- [x] El FAB central se desplaza por la altura real del banner y sigue siendo visible y tappable.
+- [x] El último ítem de las listas no queda oculto tras el banner (padding del Scaffold).
 - [ ] Sin solapamiento en portrait, landscape, dark mode y con font scale alto.
-- [ ] El banner no aparece en destinos no habilitados ni en pantallas de detalle.
+- [x] El banner no aparece en destinos no habilitados ni en pantallas de detalle.
 
 **Verificación:**
 - [ ] Matriz manual de pantallas y orientaciones.
 - [ ] Capturas de Home/Movimientos/Metas con banner y sin banner.
-- [ ] `:app:assembleDebug`.
+- [x] `:app:assembleDebug`.
 
 **Dependencias:** ADS-04, ADS-05.
 **Archivos:** `ui/navigation/AppScaffold.kt`, `ui/AppNavigation.kt`.
 **Tamaño:** M.
+**Estado:** implementado (frontend `0a3d6be`); QA manual pendiente.
 
 #### ADS-07 — Exclusiones y teclado
 
 **Descripción:** blindar los flujos críticos y el chat.
 
 **Criterios de aceptación:**
-- [ ] Sin banner en auth, onboarding, verificación, bloqueo, pago, formularios, confirmación de recordatorios, escáner y Chat.
-- [ ] Si en el futuro una pantalla habilitada abre el teclado, el banner se oculta mientras el IME esté visible.
-- [ ] Al volver a un destino habilitado, el banner reaparece sin recargar la pantalla.
+- [x] Sin banner en auth, onboarding, verificación, bloqueo, pago, formularios, confirmación de recordatorios, escáner y Chat.
+- [x] Si en el futuro una pantalla habilitada abre el teclado, el banner se oculta mientras el IME esté visible.
+- [x] Al volver a un destino habilitado, el banner reaparece sin recargar la pantalla.
 
 **Verificación:**
 - [ ] Recorrido manual por cada pantalla crítica.
@@ -279,6 +281,7 @@ para que no quede tapado.
 **Dependencias:** ADS-06.
 **Archivos:** `ui/navigation/AppScaffold.kt`, `ui/navigation/AppDestinations.kt`.
 **Tamaño:** S.
+**Estado:** implementado (frontend `0a3d6be`); QA manual pendiente.
 
 ### Tramo 3 — QA y publicación
 
