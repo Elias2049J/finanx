@@ -59,9 +59,9 @@
 - [x] REC-03 — Confirmar y omitir con idempotencia.
   - Aceptación: `POST /schedule/{id}/confirm` y `/ignore`; `confirm` valida `occurrenceKey`, no duplica y devuelve `409` si la ocurrencia es obsoleta; presupuesto ancla `start` a la fecha de confirmación.
   - Verificar: pruebas de servicio/controlador, doble confirmación y ownership. Suite 538/0.
-- [ ] REC-04 — Contrato API y cliente Android.
+- [x] REC-04 — Contrato API y cliente Android.
   - Aceptación: `executionMode` en request/response y endpoints nuevos documentados; cliente regenerado.
-  - Verificar: OpenAPI y `kotlin-client` regenerados sin edición manual.
+  - Verificar: OpenAPI y `kotlin-client` regenerados sin edición manual. Frontend `ef7f075`; `:kotlin-client:compileKotlin` OK.
 - [ ] REC-05 — UI "Recordatorios" con acciones.
   - Aceptación: copy ES/EN renombrado; agrupación Hoy/Mañana/Próximos; Confirmar y Omitir con feedback; formulario pre-rellenado al confirmar.
   - Verificar: unit tests y `:app:assembleDebug`.
