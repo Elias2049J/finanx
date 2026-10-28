@@ -92,7 +92,7 @@ placeholders `${VARIABLE}`. Los valores concretos viven unicamente en `.env`.
 | Feature | Descripción | Constraints |
 |---------|-------------|-------------|
 | **Autenticación** | Registro con email+password, login con Google OAuth2 | — |
-| **Billeteras** | Una billetera principal creada al registrarse | Máximo **1 billetera** por usuario. No se puede crear una segunda sin PREMIUM. |
+| **Billeteras** | Varias billeteras en una sola moneda, distinguidas por alias | Sin límite de cantidad, pero todas deben usar la misma moneda. La primera se crea como "Principal"; las adicionales exigen alias (máx. 80 caracteres). |
 | **Transacciones** | CRUD completo (ingresos/gastos). Asociadas obligatoriamente a una billetera. Opcionalmente a una meta de ahorro. | El tipo de transacción debe coincidir con el tipo de la categoría (INCOME/SPENT). |
 | **Categorías** | CRUD de categorías para clasificar transacciones | — |
 | **Motivos** | CRUD de motivos personalizados para transacciones | — |
@@ -110,7 +110,7 @@ placeholders `${VARIABLE}`. Los valores concretos viven unicamente en `.env`.
 
 | Feature | Descripción | Constraints |
 |---------|-------------|-------------|
-| **Múltiples Billeteras** | Crear más de una billetera en distintas monedas | Sin límite de cantidad. Cada billetera puede tener una moneda ISO 4217 distinta. Solo una puede ser principal. |
+| **Múltiples Monedas** | Crear billeteras en distintas monedas y varias billeteras por moneda | Sin límite de cantidad. Cada billetera usa una moneda ISO 4217 y exige alias propio (máx. 80 caracteres). Solo una puede ser principal. |
 | **ChatBot Financiero** | Asistente de IA con contexto financiero del usuario | Sesiones con historial. Skills: ADVISOR (consejos contextuales) y CHITCHAT. Usa Google Gemini. |
 | **Insights Financieros** | Generación automática de análisis y recomendaciones basadas en IA sobre los datos del usuario | — |
 | **Escaneo de Recibos (OCR)** | Escaneo de recibos vía el microservicio `doc-processing` (RapidOCR / PP-OCRv6, modelos en español) que publica el resultado por RabbitMQ + extracción estructurada con parser regex y fallback Gemini. Los datos detectados se precargan en el formulario de transacción para verificación del usuario. | La imagen se sube a SeaweedFS. Límite de 30 escaneos/día. |

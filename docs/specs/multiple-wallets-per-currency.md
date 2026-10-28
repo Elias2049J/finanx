@@ -13,9 +13,9 @@ Permitir que una persona organice su dinero en varias wallets incluso si usan la
 - Las wallets adicionales deben recibir un alias del usuario; máximo 80 caracteres.
 - Se conserva la regla de una sola wallet primaria por usuario.
 
-## Alcance de esta entrega
+## Alcance implementado
 
-Solo se implementa la base del modelo: propiedad JPA `alias`, compatibilidad de creación mientras el API se actualiza y migraciones Flyway V17/V18 que agregan/backfillean `alias`, eliminan restricciones únicas heredadas sobre `(id_usuario, moneda)` y crean un índice no único. La lógica de planes, contrato API y Android quedan en `tasks/todo.md`.
+WALLET-01 a WALLET-05: propiedad JPA `alias` y migraciones Flyway V17/V18 que agregan/backfillean el alias, eliminan las restricciones únicas heredadas sobre `(id_usuario, moneda)` y crean un índice no único; reglas de plan y alias obligatorio en `WalletServiceImpl`; contrato `WalletRequest`/`WalletResponse` y cliente Android regenerado; UI Android con alias obligatorio en billeteras adicionales, hint de plan y mensaje específico para el 403; README y copy ES/EN alineados.
 
 ## Stack y estructura
 
@@ -32,25 +32,25 @@ Solo se implementa la base del modelo: propiedad JPA `alias`, compatibilidad de 
 private String alias;
 ```
 
-Mantener campos y mapeos con anotaciones JPA existentes, e inicializar el alias automático de forma determinista cuando una creación antigua no lo envíe.
+Mantener campos y mapeos con anotaciones JPA existentes. La primera billetera usa `Principal` si no se envía alias; las adicionales exigen un alias no vacío (máximo 80 caracteres, se recorta antes de guardar).
 
 ## Pruebas y verificación
 
 - Prueba PostgreSQL: dos wallets del mismo usuario pueden persistirse con la misma moneda y alias diferentes.
 - Verificar que las migraciones V17/V18 funcionan sobre el esquema V16 y desde una base nueva.
 - Ejecutar `./mvnw test` (Windows: `..\mvnw.cmd test`).
-- La API y la UI se verifican en los tramos pendientes del backlog.
+- Android: `:app:testDebugUnitTest` y `:app:assembleDebug`.
 
 ## Límites
 
-- En esta entrega no cambiar el límite de planes en el servicio/API ni la UI Android.
+- No hacer únicos los alias en la base de datos.
 - No cambiar formatos de moneda, conversión de saldos ni asociaciones de transacciones (siguen usando `walletId`).
-- No hacer únicos los alias en la base de datos; la regla se puede precisar en el tramo API/UI.
 - No usar `ddl-auto=create/update`; el esquema se versiona exclusivamente con Flyway.
 
-## Criterios de éxito del tramo de modelo
+## Criterios de éxito
 
 - El esquema admite varias wallets del mismo usuario con la misma moneda, incluso si existe una constraint heredada con nombre generado.
 - Toda fila tiene alias no nulo; las wallets existentes reciben un alias de backfill.
-- La entidad ya no declara unicidad usuario-moneda.
-- La suite backend pasa.
+- FREE puede crear billeteras ilimitadas en una sola moneda; PREMIUM puede usar varias monedas y varias billeteras por moneda.
+- Una billetera adicional sin alias responde 400 y la UI deshabilita «Crear» hasta que se escriba uno.
+- La suite backend y la compilación Android pasan.
