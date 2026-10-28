@@ -24,6 +24,7 @@ import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
 import com.elias.mismonedas.scheduling.domain.entity.Schedule;
 import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
+import com.elias.mismonedas.scheduling.domain.event.SchedulePendingConfirmationEvent;
 import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
 import com.elias.mismonedas.scheduling.domain.enums.OccurrenceStatus;
 import com.elias.mismonedas.scheduling.domain.enums.RecurrenceType;
@@ -644,6 +645,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
         log.info("Schedule occurrence pending confirmation: id={} type={} nextRunAt={}",
                 st.getId(), scheduleType, expected);
+        eventPublisher.publishEvent(new SchedulePendingConfirmationEvent(
+                st.getId(), st.getUser().getId(), scheduleType));
     }
 
     private record BudgetBatchPage(List<Long> dueIds, Long nextCursor) {}
@@ -753,7 +756,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                     st.getId(), st.getUser().getId(), executedAt);
         }
 
-        eventPublisher.publishEvent(new BudgetRegisteredEvent(budget.getId(), st.getUser().getId()));
+        eventPublisher.publishEvent(new BudgetRegisteredEvent(budget.getId(), st.getUser().getId(), st.getId()));
         return budget.getId();
     }
 

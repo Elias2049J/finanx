@@ -54,7 +54,7 @@ class BudgetNotificationListenerTest {
         Budget budget = Budget.builder().id(1L).build();
         when(userRepository.getReferenceById(2L)).thenReturn(user);
         when(budgetRepository.getReferenceById(1L)).thenReturn(budget);
-        when(formatter.budgetExceeded(any(), eq(user))).thenReturn(new RenderedNotification("MSG", "<html/>"));
+        when(formatter.budgetExceeded(any(), eq(user))).thenReturn(new RenderedNotification(null, "MSG", "<html/>"));
 
         listener.onBudgetExceeded(new BudgetExceededEvent(
                 1L, 2L, "Comida", BigDecimal.ONE, BigDecimal.TEN, "PEN",
@@ -73,7 +73,7 @@ class BudgetNotificationListenerTest {
         Budget budget = Budget.builder().id(1L).build();
         when(userRepository.getReferenceById(2L)).thenReturn(user);
         when(budgetRepository.getReferenceById(1L)).thenReturn(budget);
-        when(formatter.budgetNearLimit(any(), eq(user))).thenReturn(new RenderedNotification("NEAR", "<html/>"));
+        when(formatter.budgetNearLimit(any(), eq(user))).thenReturn(new RenderedNotification(null, "NEAR", "<html/>"));
 
         listener.onBudgetNearLimit(new BudgetNearLimitEvent(
                 1L, 2L, "Comida", BigDecimal.ONE, BigDecimal.TEN, 80, "PEN",

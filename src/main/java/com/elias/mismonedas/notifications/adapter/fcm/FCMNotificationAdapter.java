@@ -29,6 +29,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class FCMNotificationAdapter implements NotificationPort {
+    private static final String CLICK_ACTION_PREFIX = "com.elias.mismonedas.";
+
     private final FCMProperties fcmProperties;
     private final FcmTokenRepository fcmTokenRepository;
     private final JsonMessageCatalog messageCatalog;
@@ -84,17 +86,29 @@ public class FCMNotificationAdapter implements NotificationPort {
         if (notification.getBudgetState() != null) data.put("budgetState", notification.getBudgetState().name());
         if (notification.getSavingGoalId() != null) data.put("savingGoalId", notification.getSavingGoalId().toString());
         if (notification.getSavingGoalDescription() != null) data.put("savingGoalDescription", notification.getSavingGoalDescription());
+        if (notification.getScheduleId() != null) data.put("scheduleId", notification.getScheduleId().toString());
+        if (notification.getAction() != null) data.put("action", notification.getAction());
+        if (notification.getTitle() != null) data.put("title", notification.getTitle());
         if (idempotencyKey != null && !idempotencyKey.isBlank()) data.put("deliveryKey", idempotencyKey);
 
         List<Message> messages = tokens.stream()
-                .map(token -> Message.builder()
-                        .setToken(token)
-                        .setNotification(Notification.builder()
-                                .setTitle(title)
-                                .setBody(body)
-                                .build())
-                        .putAllData(data)
-                        .build())
+                .map(token -> {
+                    Message.Builder message = Message.builder()
+                            .setToken(token)
+                            .setNotification(Notification.builder()
+                                    .setTitle(title)
+                                    .setBody(body)
+                                    .build())
+                            .putAllData(data);
+                    if (notification.getAction() != null && !notification.getAction().isBlank()) {
+                        message.setAndroidConfig(AndroidConfig.builder()
+                                .setNotification(AndroidNotification.builder()
+                                        .setClickAction(CLICK_ACTION_PREFIX + notification.getAction())
+                                        .build())
+                                .build());
+                    }
+                    return message.build();
+                })
                 .toList();
 
         BatchResponse response;

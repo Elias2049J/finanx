@@ -3,11 +3,19 @@ package com.elias.mismonedas.notifications.template;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import com.elias.mismonedas.identity.domain.enums.TimeZone;
+import com.elias.mismonedas.catalog.domain.entity.Category;
+import com.elias.mismonedas.ledger.domain.enums.TransactionType;
+import com.elias.mismonedas.ledger.domain.event.TransactionRegisteredEvent;
 import com.elias.mismonedas.planning.domain.event.BudgetExceededEvent;
 import com.elias.mismonedas.planning.domain.event.BudgetNearLimitEvent;
+import com.elias.mismonedas.planning.domain.event.BudgetRegisteredEvent;
 import com.elias.mismonedas.planning.domain.event.SavingGoalCompletedEvent;
+import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
+import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
+import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
 import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
 import com.elias.mismonedas.shared.mapper.DateMapper;
+import com.elias.mismonedas.wallets.domain.entity.Wallet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +34,7 @@ import java.util.Locale;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,7 +53,7 @@ class NotificationMessageFormatterTest {
         JsonMessageCatalog messageCatalog = new JsonMessageCatalog(new ObjectMapper());
         messageCatalog.initialize();
         formatter = new NotificationMessageFormatter(dateMapper, templateEngine, messageCatalog);
-        when(dateMapper.toStringLocalized(any(OffsetDateTime.class), any(ZoneId.class), any(Locale.class)))
+        lenient().when(dateMapper.toStringLocalized(any(OffsetDateTime.class), any(ZoneId.class), any(Locale.class)))
                 .thenReturn("FECHA");
     }
 
@@ -128,5 +137,61 @@ class NotificationMessageFormatterTest {
 
         assertThat(rendered.text()).isEqualTo(
                 "¡Felicitaciones! Has alcanzado tu meta de ahorro «Viaje» con un total acumulado de 500.00 PEN de 500.00 PEN.");
+    }
+
+    @Test
+    void transactionSchedulePendingRendersActionableReminder() {
+        TransactionSchedule schedule = new TransactionSchedule();
+        schedule.setAmount(new BigDecimal("50.00"));
+        schedule.setWallet(Wallet.builder().currencyCode("PEN").alias("BCP").build());
+        Category category = new Category();
+        category.setName("Comida");
+        schedule.setCategory(category);
+
+        RenderedNotification rendered = formatter.transactionSchedulePending(schedule, user);
+
+        assertThat(rendered.title()).isEqualTo("Recordatorio");
+        assertThat(rendered.text())
+                .isEqualTo("Recordatorio pendiente: 50.00 PEN en Comida. Confírmalo en la app.");
+        verify(templateEngine).process(eq("notifications/schedule-reminder"), any());
+    }
+
+    @Test
+    void budgetSchedulePendingRendersActionableReminder() {
+        BudgetSchedule schedule = new BudgetSchedule();
+        schedule.setDescription("Transporte");
+
+        RenderedNotification rendered = formatter.budgetSchedulePending(schedule, user);
+
+        assertThat(rendered.title()).isEqualTo("Recordatorio");
+        assertThat(rendered.text())
+                .isEqualTo("Recordatorio pendiente para el presupuesto «Transporte». Confírmalo en la app.");
+        verify(templateEngine).process(eq("notifications/schedule-reminder"), any());
+    }
+
+    @Test
+    void transactionScheduleExecutedDistinguishesAutoFromManual() {
+        TransactionRegisteredEvent event =
+                new TransactionRegisteredEvent(
+                        1L, new BigDecimal("50.00"), 2L, 3L, TransactionType.SPENT, 4L, 5L, null);
+
+        RenderedNotification auto = formatter.transactionScheduleExecuted(event, user, ExecutionMode.AUTO);
+        RenderedNotification manual = formatter.transactionScheduleExecuted(event, user, ExecutionMode.MANUAL);
+
+        assertThat(auto.title()).isEqualTo("Movimiento registrado");
+        assertThat(auto.text()).isEqualTo("Se registró automáticamente un movimiento de 50.00.");
+        assertThat(manual.text()).isEqualTo("Confirmaste el recordatorio: se registró un movimiento de 50.00.");
+    }
+
+    @Test
+    void budgetScheduleExecutedDistinguishesAutoFromManual() {
+        BudgetRegisteredEvent event = new BudgetRegisteredEvent(1L, 2L, 3L);
+
+        RenderedNotification auto = formatter.budgetScheduleExecuted(event, user, ExecutionMode.AUTO, "Transporte");
+        RenderedNotification manual = formatter.budgetScheduleExecuted(event, user, ExecutionMode.MANUAL, "Transporte");
+
+        assertThat(auto.title()).isEqualTo("Presupuesto registrado");
+        assertThat(auto.text()).isEqualTo("Se registró automáticamente el presupuesto «Transporte».");
+        assertThat(manual.text()).isEqualTo("Confirmaste el recordatorio del presupuesto «Transporte».");
     }
 }

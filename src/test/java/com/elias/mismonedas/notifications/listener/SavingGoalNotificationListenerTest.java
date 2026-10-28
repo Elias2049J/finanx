@@ -53,7 +53,7 @@ class SavingGoalNotificationListenerTest {
         goal.setId(5L);
         when(userRepository.getReferenceById(2L)).thenReturn(user);
         when(savingGoalRepository.getReferenceById(5L)).thenReturn(goal);
-        when(formatter.savingGoalCompleted(any(), eq(user))).thenReturn(new RenderedNotification("DONE", "<html/>"));
+        when(formatter.savingGoalCompleted(any(), eq(user))).thenReturn(new RenderedNotification(null, "DONE", "<html/>"));
 
         listener.onSavingGoalCompleted(new SavingGoalCompletedEvent(
                 5L, 2L, "Viaje", BigDecimal.ONE, BigDecimal.TEN, "PEN",

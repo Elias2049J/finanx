@@ -109,10 +109,12 @@ public class NotificationServiceImpl implements NotificationService {
                 ? localeTagOf(notification.getUser())
                 : SupportedLocale.canonicalizeOrDefault(notification.getLocale());
         dto.setLocale(localeTag);
-        String titleKey = notification.getType() == null
-                ? "notification.title.INFO"
-                : "notification.title." + notification.getType().name();
-        dto.setTitle(messageCatalog.getMessage(titleKey, SupportedLocale.toLocale(localeTag)));
+        if (dto.getTitle() == null || dto.getTitle().isBlank()) {
+            String titleKey = notification.getType() == null
+                    ? "notification.title.INFO"
+                    : "notification.title." + notification.getType().name();
+            dto.setTitle(messageCatalog.getMessage(titleKey, SupportedLocale.toLocale(localeTag)));
+        }
         return dto;
     }
 

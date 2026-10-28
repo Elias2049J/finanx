@@ -7,6 +7,9 @@ import com.elias.mismonedas.planning.domain.event.BudgetExceededEvent;
 import com.elias.mismonedas.planning.domain.event.BudgetNearLimitEvent;
 import com.elias.mismonedas.planning.domain.event.BudgetRegisteredEvent;
 import com.elias.mismonedas.planning.domain.event.SavingGoalCompletedEvent;
+import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
+import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
+import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
 import com.elias.mismonedas.shared.i18n.JsonMessageCatalog;
 import com.elias.mismonedas.shared.mapper.DateMapper;
 import lombok.RequiredArgsConstructor;
@@ -52,7 +55,7 @@ public class NotificationMessageFormatter {
 
         String text = message("notification.budget.exceeded.text", locale,
                 event.categoryName(), spent, currency, limitAmount, lastAmount, event.lastTransactionMethod());
-        return new RenderedNotification(text, render("budget-exceeded", vars, locale));
+        return new RenderedNotification(null, text, render("budget-exceeded", vars, locale));
     }
 
     public RenderedNotification budgetNearLimit(BudgetNearLimitEvent event, User user) {
@@ -79,7 +82,7 @@ public class NotificationMessageFormatter {
 
         String text = message("notification.budget.near_limit.text", locale,
                 event.percentAlert(), event.categoryName(), spent, currency, limitAmount);
-        return new RenderedNotification(text, render("budget-near-limit", vars, locale));
+        return new RenderedNotification(null, text, render("budget-near-limit", vars, locale));
     }
 
     public RenderedNotification savingGoalCompleted(SavingGoalCompletedEvent event, User user) {
@@ -105,30 +108,71 @@ public class NotificationMessageFormatter {
 
         String text = message("notification.saving_goal.completed.text", locale,
                 event.description(), accumulated, currency, targetAmount);
-        return new RenderedNotification(text, render("saving-goal-completed", vars, locale));
+        return new RenderedNotification(null, text, render("saving-goal-completed", vars, locale));
     }
 
-    public RenderedNotification transactionScheduleExecuted(TransactionRegisteredEvent event, User user) {
+    public RenderedNotification transactionScheduleExecuted(
+            TransactionRegisteredEvent event, User user, ExecutionMode mode) {
         Locale locale = localeOf(user);
         String amount = money(event.amount(), locale);
+        String variant = executionVariant(mode);
+        String heading = message("notification.schedule.transaction." + variant + ".heading", locale);
         Map<String, Object> vars = new HashMap<>();
-        vars.put("heading", message("notification.schedule.transaction.heading", locale));
-        vars.put("intro", message("notification.schedule.transaction.intro", locale, amount));
+        vars.put("heading", heading);
+        vars.put("intro", message("notification.schedule.transaction." + variant + ".intro", locale, amount));
         vars.put("disclaimer", message("notification.common.disclaimer", locale));
         return new RenderedNotification(
-                message("notification.schedule.transaction.text", locale),
+                heading,
+                message("notification.schedule.transaction." + variant + ".text", locale, amount),
                 render("schedule-transaction", vars, locale));
     }
 
-    public RenderedNotification budgetScheduleExecuted(BudgetRegisteredEvent event, User user) {
+    public RenderedNotification budgetScheduleExecuted(
+            BudgetRegisteredEvent event, User user, ExecutionMode mode, String description) {
         Locale locale = localeOf(user);
+        String variant = executionVariant(mode);
+        String heading = message("notification.schedule.budget." + variant + ".heading", locale);
         Map<String, Object> vars = new HashMap<>();
-        vars.put("heading", message("notification.schedule.budget.heading", locale));
-        vars.put("intro", message("notification.schedule.budget.intro", locale));
+        vars.put("heading", heading);
+        vars.put("intro", message("notification.schedule.budget." + variant + ".intro", locale, description));
         vars.put("disclaimer", message("notification.common.disclaimer", locale));
         return new RenderedNotification(
-                message("notification.schedule.budget.text", locale),
+                heading,
+                message("notification.schedule.budget." + variant + ".text", locale, description),
                 render("schedule-budget", vars, locale));
+    }
+
+    public RenderedNotification transactionSchedulePending(TransactionSchedule schedule, User user) {
+        Locale locale = localeOf(user);
+        String amount = money(schedule.getAmount(), locale);
+        String currency = schedule.getWallet() == null ? "" : schedule.getWallet().getCurrencyCode();
+        String category = schedule.getCategory() == null ? "" : schedule.getCategory().getName();
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("heading", message("notification.schedule.transaction.pending.heading", locale));
+        vars.put("intro", message("notification.schedule.transaction.pending.intro", locale,
+                amount, currency, category));
+        vars.put("disclaimer", message("notification.common.disclaimer", locale));
+        return new RenderedNotification(
+                message("notification.reminder.title", locale),
+                message("notification.schedule.transaction.pending.text", locale, amount, currency, category),
+                render("schedule-reminder", vars, locale));
+    }
+
+    public RenderedNotification budgetSchedulePending(BudgetSchedule schedule, User user) {
+        Locale locale = localeOf(user);
+        String description = schedule.getDescription() == null ? "" : schedule.getDescription();
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("heading", message("notification.schedule.budget.pending.heading", locale));
+        vars.put("intro", message("notification.schedule.budget.pending.intro", locale, description));
+        vars.put("disclaimer", message("notification.common.disclaimer", locale));
+        return new RenderedNotification(
+                message("notification.reminder.title", locale),
+                message("notification.schedule.budget.pending.text", locale, description),
+                render("schedule-reminder", vars, locale));
+    }
+
+    private static String executionVariant(ExecutionMode mode) {
+        return mode == ExecutionMode.AUTO ? "auto" : "manual";
     }
 
     private String render(String template, Map<String, Object> vars, Locale locale) {

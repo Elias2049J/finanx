@@ -73,4 +73,6 @@
   - Verificar: `:app:assembleDebug`, tests unitarios del agrupado por día y `:kotlin-client:compileKotlin`. `CalendarOccurrencesTest` 5/5; `:app:assembleDebug` y `:app:testDebugUnitTest` OK.
 - [x] REC-06c - Documentación del calendario.
   - Aceptación: `tasks/plan.md` y este backlog reflejan REC-06 como tramo obligatorio con el contrato final y el límite de 500 ocurrencias.
+- [x] REC-07 - Notificaciones accionables por modo.
+  - Aceptación: pendiente notificada una sola vez con acción `OPEN_REMINDERS`; ejecución AUTO y confirmación MANUAL con copy distinto; push con `scheduleId`/`action` y deep link a Recordatorios.
   - Verificar: revisión de docs y commits por tramo. Contrato documentado en `docs/specs/recordatorios-accionables.md`.

@@ -77,5 +77,4 @@ Que las programaciones de movimientos y presupuestos dejen de registrarse solas 
 
 - Tabla de ocurrencias, historial de omisiones y snooze.
 - Cambios al cálculo de recurrencia.
-- Notificaciones push accionables (fase posterior).
 - Anuncios en el flujo de confirmación.

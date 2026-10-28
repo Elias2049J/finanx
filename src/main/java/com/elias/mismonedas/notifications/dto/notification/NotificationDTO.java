@@ -32,6 +32,10 @@ public class NotificationDTO {
     @Schema(description = "Titulo localizado de la notificacion", example = "Finanx - Notice")
     private String title;
 
+    /** Accion de navegacion para el cliente (p. ej. OPEN_REMINDERS). Interna del push. */
+    @Schema(hidden = true)
+    private String action;
+
     @Schema(description = "Indica si el usuario tiene habilitadas las notificaciones por email", example = "true")
     private boolean emailNotifications;
 

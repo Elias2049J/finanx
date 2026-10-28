@@ -128,6 +128,22 @@ Sin `ddl-auto`: Flyway es la única fuente del esquema.
 - Ejecutar `mvnw.cmd test`.
 - Android: unit tests (agrupado por día y rango de 6 semanas) y `:app:assembleDebug`.
 
+## Notificaciones (REC-07)
+
+- Al quedar una ocurrencia en `PENDING_CONFIRMATION` se genera **una** notificación
+  (in-app + push/email según preferencias) enlazada al `schedule`.
+- La notificación de pendiente lleva `action = OPEN_REMINDERS` y título "Recordatorio";
+  al tocarla, la app abre la pantalla de Recordatorios (los pendientes aparecen arriba).
+- Las notificaciones de ejecución distinguen el modo:
+  - `AUTO`: "Se registró automáticamente…" (solo aviso, sin acción forzada).
+  - `MANUAL`: "Confirmaste el recordatorio…" (no se usa la palabra "automático").
+- El título específico se guarda en `notificaciones.titulo`; si es nulo se usa el
+  título genérico por tipo (`Finanx - Información`, etc.).
+- El push incluye `scheduleId` y `action` en el payload. Para la app en segundo plano
+  o cerrada se usa `click_action = com.elias.mismonedas.OPEN_REMINDERS`; en primer
+  plano la notificación local usa un `PendingIntent` con el extra `DESTINATION`.
+- La campana muestra "Ver recordatorio" en las notificaciones con `scheduleId`.
+
 ## Límites
 
 - No renombrar entidades, tablas ni rutas existentes.

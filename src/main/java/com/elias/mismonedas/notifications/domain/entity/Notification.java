@@ -36,6 +36,12 @@ public class Notification {
     @Column(name = "mensaje", nullable = false)
     private String message;
 
+    @Column(name = "titulo", length = 120)
+    private String title;
+
+    @Column(name = "accion", length = 32)
+    private String action;
+
     @Column(name = "mensaje_html", columnDefinition = "TEXT")
     private String htmlMessage;
 
