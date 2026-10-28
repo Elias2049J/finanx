@@ -5,6 +5,7 @@ import com.elias.mismonedas.catalog.repository.CategoryRepository;
 import com.elias.mismonedas.catalog.service.ReasonResolver;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
+import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
 import com.elias.mismonedas.ledger.repository.TransactionRepository;
@@ -24,6 +25,7 @@ import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
 import com.elias.mismonedas.scheduling.domain.entity.Schedule;
 import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
 import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
+import com.elias.mismonedas.scheduling.domain.enums.OccurrenceStatus;
 import com.elias.mismonedas.scheduling.domain.enums.RecurrenceType;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.recurrencerule.RecurrenceRuleRequest;
@@ -56,8 +58,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.SQLRecoverableException;
 import java.sql.SQLTransientException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -69,6 +75,7 @@ import java.util.Set;
 public class ScheduleServiceImpl implements ScheduleService {
 
     private static final int BATCH_SIZE = 100;
+    private static final int MAX_OCCURRENCES = 500;
 
     private final ScheduleRepository scheduleRepository;
     private final TransactionScheduleRepository tsRepository;
@@ -162,6 +169,100 @@ public class ScheduleServiceImpl implements ScheduleService {
             response.setOccurrenceKey(occurrenceKeyFor(ts));
             return response;
         });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OccurrenceResponse> listOccurrences(LocalDate from, LocalDate to) {
+        if (from == null || to == null || to.isBefore(from)) {
+            throw new IllegalArgumentException("El rango de fechas es invalido");
+        }
+
+        User user = securityService.getCurrentUser();
+        ZoneId zone = user.getTimeZone().toZoneId();
+        OffsetDateTime fromInclusive = from.atStartOfDay(zone).toOffsetDateTime();
+        OffsetDateTime toInclusive = to.plusDays(1).atStartOfDay(zone).toOffsetDateTime().minusNanos(1);
+        String budgetCurrency = primaryCurrency(user);
+
+        List<Schedule> candidates = new ArrayList<>();
+        candidates.addAll(tsRepository.findAllByUser_IdAndActiveAndState(user.getId(), true, ScheduleState.RUNNING));
+        candidates.addAll(bsRepository.findAllByUser_IdAndActiveAndState(user.getId(), true, ScheduleState.RUNNING));
+        candidates.addAll(tsRepository.findAllByUser_IdAndActiveAndState(user.getId(), true, ScheduleState.PENDING_CONFIRMATION));
+        candidates.addAll(bsRepository.findAllByUser_IdAndActiveAndState(user.getId(), true, ScheduleState.PENDING_CONFIRMATION));
+
+        List<OccurrenceResponse> occurrences = new ArrayList<>();
+        for (Schedule schedule : candidates) {
+            if (occurrences.size() >= MAX_OCCURRENCES) {
+                log.warn("Se alcanzo el limite de {} ocurrencias para el usuario {}; el rango solicitado queda truncado",
+                        MAX_OCCURRENCES, user.getId());
+                break;
+            }
+            projectOccurrences(schedule, zone, fromInclusive, toInclusive, budgetCurrency, occurrences);
+        }
+
+        occurrences.sort(Comparator.comparing(OccurrenceResponse::getOccurrenceAt));
+        return occurrences;
+    }
+
+    private void projectOccurrences(Schedule schedule, ZoneId zone, OffsetDateTime from, OffsetDateTime to,
+                                    String budgetCurrency, List<OccurrenceResponse> occurrences) {
+        OffsetDateTime cursor = schedule.getNextRunAt();
+        if (cursor == null) {
+            return;
+        }
+
+        boolean current = true;
+        while (cursor != null && !cursor.isAfter(to) && occurrences.size() < MAX_OCCURRENCES) {
+            if (!cursor.isBefore(from)) {
+                boolean pending = current && schedule.getState() == ScheduleState.PENDING_CONFIRMATION;
+                OccurrenceResponse occurrence = buildOccurrence(schedule, cursor, pending, zone, budgetCurrency);
+                if (occurrence != null) {
+                    occurrences.add(occurrence);
+                }
+            }
+            cursor = rcService.computeNextRunAt(schedule, cursor).orElse(null);
+            current = false;
+        }
+    }
+
+    private OccurrenceResponse buildOccurrence(Schedule schedule, OffsetDateTime occurrenceAt, boolean pending,
+                                               ZoneId zone, String budgetCurrency) {
+        String kind;
+        BigDecimal amount;
+        String currencyCode;
+        TransactionType transactionType = null;
+        String description;
+
+        if (schedule instanceof TransactionSchedule ts) {
+            kind = "TRANSACTION";
+            amount = ts.getAmount();
+            currencyCode = ts.getWallet() != null ? ts.getWallet().getCurrencyCode() : null;
+            transactionType = ts.getTransactionType();
+            description = ts.getReason() != null ? ts.getReason().getDescription() : null;
+        } else if (schedule instanceof BudgetSchedule bs) {
+            kind = "BUDGET";
+            amount = bs.getLimitAmount();
+            currencyCode = budgetCurrency;
+            description = bs.getDescription();
+        } else {
+            return null;
+        }
+
+        Category category = schedule.getCategory();
+        return new OccurrenceResponse(
+                schedule.getId(),
+                kind,
+                occurrenceAt.atZoneSameInstant(zone).toLocalDateTime(),
+                pending ? OccurrenceStatus.PENDING : OccurrenceStatus.UPCOMING,
+                schedule.getExecutionMode(),
+                pending ? occurrenceKey(schedule, occurrenceAt) : null,
+                category != null ? category.getId() : null,
+                category != null ? category.getName() : null,
+                description,
+                amount,
+                currencyCode,
+                transactionType
+        );
     }
 
     private ScheduleResponse mapSchedule(Schedule s) {

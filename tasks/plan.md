@@ -49,10 +49,12 @@ Que las programaciones de movimientos y presupuestos dejen de registrarse solas 
 - Los presupuestos se confirman con un toque (sin formulario).
 - Checkpoint: unit tests y `:app:assembleDebug`.
 
-### Tramo 6 — Calendario (opcional)
+### Tramo 6 - Calendario
 
-- Proyección de ocurrencias futuras desde la regla de recurrencia.
-- Sin tope máximo de rango de fechas.
+- Endpoint `GET /schedule/occurrences?from=&to=` que proyecta ocurrencias con `computeNextRunAt(st, base)`.
+- Solo `RUNNING` y `PENDING_CONFIRMATION`; las pendientes llevan `occurrenceKey`, las proyectadas no.
+- Guard de 500 ocurrencias por respuesta (no por rango); sin tope máximo de rango de fechas.
+- Android: switch Lista/Calendario sobre `com.kizitonwose.calendar:compose` 2.10.1 (Compose UI 1.10.x), caché por mes y detalle del día.
 
 ## Riesgos y mitigaciones
 

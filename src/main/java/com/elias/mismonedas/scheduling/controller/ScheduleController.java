@@ -3,6 +3,7 @@ package com.elias.mismonedas.scheduling.controller;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.schedule.OccurrenceConfirmationResponse;
 import com.elias.mismonedas.scheduling.dto.schedule.OccurrenceKeyRequest;
+import com.elias.mismonedas.scheduling.dto.schedule.OccurrenceResponse;
 import com.elias.mismonedas.scheduling.dto.schedule.ScheduleRequest;
 import com.elias.mismonedas.scheduling.dto.schedule.ScheduleResponse;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
@@ -10,6 +11,7 @@ import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,10 +21,12 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -66,6 +70,26 @@ public class ScheduleController {
             @ParameterObject @PageableDefault(size = PaginationDefaults.DEFAULT_PAGE_SIZE, sort = "nextRunAt", direction = Sort.Direction.ASC)
             Pageable pageable) {
         return ResponseEntity.ok(scheduleService.list(state, pageable));
+    }
+
+    @Operation(
+            summary = "Listar ocurrencias de recordatorios",
+            description = "Proyecta las ocurrencias pendientes y futuras de los recordatorios activos del usuario entre dos fechas, en su zona horaria.",
+            operationId = "listScheduleOccurrences",
+            tags = {"Schedule"},
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Ocurrencias proyectadas",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = OccurrenceResponse.class)))),
+                    @ApiResponse(responseCode = "400", description = "Rango de fechas invalido")
+            }
+    )
+    @GetMapping("/occurrences")
+    public ResponseEntity<List<OccurrenceResponse>> listOccurrences(
+            @Parameter(description = "Fecha inicial inclusive", example = "2026-10-01")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @Parameter(description = "Fecha final inclusive", example = "2026-11-15")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(scheduleService.listOccurrences(from, to));
     }
 
     @Operation(
