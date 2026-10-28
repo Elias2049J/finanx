@@ -200,22 +200,23 @@ bloquear el arranque.
 sesión y con refresh explícito.
 
 **Criterios de aceptación:**
-- [ ] `AdsPolicy` consulta `GET /api/v1/subscriptions/current`; `404`/`null` → FREE.
-- [ ] `PREMIUM` y `PREMIUM_TRIAL` → `showAds = false`.
-- [ ] `FREE` → `showAds = true`.
-- [ ] Error de red → conserva el último valor; sin valor previo → `false`.
-- [ ] No hay peticiones por recomposición: una al iniciar sesión + refresh explícito.
-- [ ] `AdsViewModel` expone `showAds` y `refresh()`; `AppNavigation` lo crea con `hiltViewModel()`.
-- [ ] `SubscriptionViewModel` dispara `refresh()` tras crear o cancelar una suscripción.
-- [ ] Tests unitarios cubren FREE, PREMIUM, PREMIUM_TRIAL y error.
+- [x] `AdsPolicy` consulta `GET /api/v1/subscriptions/current`; `404`/`null` → FREE.
+- [x] `PREMIUM` y `PREMIUM_TRIAL` → `showAds = false`.
+- [x] `FREE` → `showAds = true`.
+- [x] Error de red → conserva el último valor; sin valor previo → `false`.
+- [x] No hay peticiones por recomposición: una al iniciar sesión + refresh explícito.
+- [x] `AdsViewModel` expone `showAds` y `refresh()`; `AppNavigation` lo crea con `hiltViewModel()`.
+- [x] `SubscriptionViewModel` dispara `refresh()` tras cancelar (no hay flujo de creación en la app).
+- [x] Tests unitarios cubren FREE, PREMIUM, PREMIUM_TRIAL y error.
 
 **Verificación:**
-- [ ] `:app:testDebugUnitTest --tests "*AdsPolicyTest*"`.
-- [ ] Manual: usuario FREE ve banner; usuario PREMIUM no; tras cancelar, el banner aparece sin reiniciar.
+- [x] `:app:testDebugUnitTest --tests "*AdsPolicyTest*"`.
+- [ ] Manual: FREE/PREMIUM/tras cancelar con el banner visible (se valida en ADS-06).
 
 **Dependencias:** ADS-01.
 **Archivos:** `data/ads/AdsPolicy.kt`, `ui/viewmodel/AdsViewModel.kt`, `ui/AppNavigation.kt`, `ui/viewmodel/SubscriptionViewModel.kt`, tests.
 **Tamaño:** M.
+**Estado:** completado (frontend `203b7ee`); verificación visual pendiente en ADS-06.
 
 ### Tramo 2 — Banner
 
