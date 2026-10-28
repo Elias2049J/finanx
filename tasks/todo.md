@@ -47,3 +47,24 @@
 - [ ] WALLET-05 — Actualizar documentación de planes y guía de uso.
   - Aceptación: README y ayuda describen FREE same-currency y PREMIUM multi-currency.
   - Verificar: revisar copy ES/EN y límites mostrados.
+
+## Backlog: recordatorios accionables
+
+- [ ] REC-01 — Añadir `executionMode` y el estado `PENDING_CONFIRMATION` al modelo.
+  - Aceptación: `Schedule` expone `executionMode` (default `MANUAL`); `V19` añade `modo_ejecucion` y recrea `programacion_estado_check` con el estado nuevo.
+  - Verificar: migración sobre V18 y compilación de la suite.
+- [ ] REC-02 — Scheduler en modo MANUAL no materializa.
+  - Aceptación: al vencer en `MANUAL` pasa a `PENDING_CONFIRMATION` sin crear movimiento ni presupuesto; no genera la siguiente ocurrencia.
+  - Verificar: pruebas de `runDueTransactions`/`runDueBudgets` en ambos modos.
+- [ ] REC-03 — Confirmar y omitir con idempotencia.
+  - Aceptación: `POST /schedule/{id}/confirm` y `/ignore`; `confirm` valida `occurrenceKey`, no duplica y devuelve `409` si la ocurrencia es obsoleta; presupuesto ancla `start` a la fecha de confirmación.
+  - Verificar: pruebas de servicio/controlador, doble confirmación y ownership.
+- [ ] REC-04 — Contrato API y cliente Android.
+  - Aceptación: `executionMode` en request/response y endpoints nuevos documentados; cliente regenerado.
+  - Verificar: OpenAPI y `kotlin-client` regenerados sin edición manual.
+- [ ] REC-05 — UI "Recordatorios" con acciones.
+  - Aceptación: copy ES/EN renombrado; agrupación Hoy/Mañana/Próximos; Confirmar y Omitir con feedback; formulario pre-rellenado al confirmar.
+  - Verificar: unit tests y `:app:assembleDebug`.
+- [ ] REC-06 — Vista de calendario (opcional).
+  - Aceptación: proyección de ocurrencias futuras desde la regla de recurrencia, sin tope máximo de rango.
+  - Verificar: pruebas de proyección y render en Android.
