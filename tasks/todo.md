@@ -62,9 +62,9 @@
 - [x] REC-04 — Contrato API y cliente Android.
   - Aceptación: `executionMode` en request/response y endpoints nuevos documentados; cliente regenerado.
   - Verificar: OpenAPI y `kotlin-client` regenerados sin edición manual. Frontend `ef7f075`; `:kotlin-client:compileKotlin` OK.
-- [ ] REC-05 — UI "Recordatorios" con acciones.
-  - Aceptación: copy ES/EN renombrado; agrupación Hoy/Mañana/Próximos; Confirmar y Omitir con feedback; formulario pre-rellenado al confirmar.
-  - Verificar: unit tests y `:app:assembleDebug`.
+- [x] REC-05 — UI "Recordatorios" con acciones.
+  - Aceptación: copy ES/EN renombrado; agrupación Hoy/Mañana/Próximos; Confirmar y Omitir con feedback; formulario pre-rellenado y editable al confirmar un movimiento (overrides opcionales en `OccurrenceKeyRequest`).
+  - Verificar: `ReminderBucketTest` (5 casos) y `:app:assembleDebug` OK. Backend suite 541/0. Frontend `aaeedce` (contrato) y commit de UI.
 - [ ] REC-06 — Vista de calendario (opcional).
   - Aceptación: proyección de ocurrencias futuras desde la regla de recurrencia, sin tope máximo de rango.
   - Verificar: pruebas de proyección y render en Android.

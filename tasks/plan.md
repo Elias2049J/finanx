@@ -45,7 +45,8 @@ Que las programaciones de movimientos y presupuestos dejen de registrarse solas 
 
 - Renombrar a "Recordatorios" en strings ES/EN y navegación.
 - Agrupar `Hoy / Mañana / Próximos` y añadir acciones Confirmar/Omitir.
-- Pre-rellenar el formulario al confirmar un movimiento.
+- Pre-rellenar el formulario al confirmar un movimiento; el usuario puede editar monto, billetera, categoría y método de pago. `confirm` acepta esos valores como overrides opcionales.
+- Los presupuestos se confirman con un toque (sin formulario).
 - Checkpoint: unit tests y `:app:assembleDebug`.
 
 ### Tramo 6 — Calendario (opcional)
