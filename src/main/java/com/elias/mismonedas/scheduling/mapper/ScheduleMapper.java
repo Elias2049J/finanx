@@ -51,6 +51,7 @@ public interface ScheduleMapper {
     @Mapping(source = "nextRunAt", target = "nextRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "lastRunAt", target = "lastRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(target = "type", constant = "TRANSACTION")
+    @Mapping(target = "occurrenceKey", ignore = true)
     TransactionScheduleResponse toResponseWithContext(TransactionSchedule entity, @Context User user);
 
     @Mapping(source = "user.id", target = "userId")
@@ -62,6 +63,7 @@ public interface ScheduleMapper {
     @Mapping(source = "nextRunAt", target = "nextRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(source = "lastRunAt", target = "lastRunAt", qualifiedByName = "OffsetToLocal")
     @Mapping(target = "type", constant = "BUDGET")
+    @Mapping(target = "occurrenceKey", ignore = true)
     @Mapping(target = "currencyCode", ignore = true)
     BudgetScheduleResponse toResponseWithContext(BudgetSchedule entity, @Context User user);
 

@@ -157,7 +157,11 @@ public class ScheduleServiceImpl implements ScheduleService {
         Page<TransactionSchedule> page = state == null
                 ? tsRepository.findAllByUser_IdAndActiveTrue(userId, stablePage)
                 : tsRepository.findAllByUser_IdAndActiveAndState(userId, true, state, stablePage);
-        return PageResponseFactory.from(page, tsMapper::toResponse);
+        return PageResponseFactory.from(page, ts -> {
+            TransactionScheduleResponse response = tsMapper.toResponse(ts);
+            response.setOccurrenceKey(occurrenceKeyFor(ts));
+            return response;
+        });
     }
 
     private ScheduleResponse mapSchedule(Schedule s) {
@@ -169,6 +173,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         if (response instanceof BudgetScheduleResponse bs) {
             bs.setCurrencyCode(currencyCode);
         }
+        response.setOccurrenceKey(occurrenceKeyFor(s));
         return response;
     }
 
@@ -179,6 +184,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private BudgetScheduleResponse mapBudgetSchedule(BudgetSchedule bs, String currencyCode) {
         BudgetScheduleResponse response = tsMapper.toResponse(bs);
         response.setCurrencyCode(currencyCode);
+        response.setOccurrenceKey(occurrenceKeyFor(bs));
         return response;
     }
 
@@ -640,6 +646,12 @@ public class ScheduleServiceImpl implements ScheduleService {
     private boolean isDue(Schedule st) {
         OffsetDateTime nowForUser = OffsetDateTime.now(st.getUser().getTimeZone().toZoneId());
         return !st.getNextRunAt().isAfter(nowForUser);
+    }
+
+    private String occurrenceKeyFor(Schedule st) {
+        return st.getState() == ScheduleState.PENDING_CONFIRMATION && st.getNextRunAt() != null
+                ? occurrenceKey(st, st.getNextRunAt())
+                : null;
     }
 
     private String occurrenceKey(Schedule st, OffsetDateTime expected) {

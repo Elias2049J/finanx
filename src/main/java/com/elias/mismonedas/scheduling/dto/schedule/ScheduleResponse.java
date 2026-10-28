@@ -74,6 +74,12 @@ public class ScheduleResponse {
     @Schema(description = "Modo de ejecucion del recordatorio", implementation = ExecutionMode.class, example = "MANUAL")
     private ExecutionMode executionMode;
 
+    @Schema(
+            description = "Clave de la ocurrencia pendiente de confirmar u omitir; null si no hay una pendiente",
+            example = "schedule:2001:1761700000000"
+    )
+    private String occurrenceKey;
+
     @Schema(description = "Regla de recurrencia asociada a la programacion", implementation = RecurrenceRuleResponse.class)
     private RecurrenceRuleResponse recurrenceRule;
 }

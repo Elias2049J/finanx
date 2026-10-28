@@ -20,6 +20,8 @@ import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.schedule.OccurrenceConfirmationResponse;
 import com.elias.mismonedas.scheduling.dto.schedule.OccurrenceKeyRequest;
+import com.elias.mismonedas.scheduling.dto.schedule.ScheduleResponse;
+import com.elias.mismonedas.scheduling.dto.schedule.TransactionScheduleResponse;
 import com.elias.mismonedas.scheduling.mapper.ScheduleMapper;
 import com.elias.mismonedas.scheduling.repository.BudgetScheduleRepository;
 import com.elias.mismonedas.scheduling.repository.ScheduleRepository;
@@ -267,6 +269,38 @@ class ScheduleServiceImplConfirmationTest {
         assertThat(saved.getValue().getEnd()).isEqualTo(next);
         assertThat(saved.getValue().getIdempotencyKey()).isEqualTo(key);
         assertThat(schedule.getNextRunAt()).isEqualTo(next);
+    }
+
+    @Test
+    void findByIdExposesOccurrenceKeyOnlyWhilePending() {
+        User user = user();
+        OffsetDateTime pendingAt = OffsetDateTime.now(user.getTimeZone().toZoneId()).minusHours(1);
+        TransactionSchedule pending = transactionSchedule(user, pendingAt, ScheduleState.PENDING_CONFIRMATION);
+        TransactionScheduleResponse response = new TransactionScheduleResponse();
+
+        when(securityService.getCurrentUser()).thenReturn(user);
+        when(scheduleRepository.findByIdAndUser_Id(55L, 1L)).thenReturn(Optional.of(pending));
+        when(tsMapper.toResponseDispatch(pending)).thenReturn(response);
+        when(walletRepository.findByUserIdAndPrimaryTrue(1L)).thenReturn(Optional.empty());
+
+        ScheduleResponse result = service.findById(55L);
+
+        assertThat(result.getOccurrenceKey()).isEqualTo(occurrenceKey(55L, pendingAt));
+    }
+
+    @Test
+    void findByIdOmitsOccurrenceKeyWhenOccurrenceIsNotPending() {
+        User user = user();
+        OffsetDateTime next = OffsetDateTime.now(user.getTimeZone().toZoneId()).plusDays(1);
+        TransactionSchedule running = transactionSchedule(user, next, ScheduleState.RUNNING);
+        TransactionScheduleResponse response = new TransactionScheduleResponse();
+
+        when(securityService.getCurrentUser()).thenReturn(user);
+        when(scheduleRepository.findByIdAndUser_Id(55L, 1L)).thenReturn(Optional.of(running));
+        when(tsMapper.toResponseDispatch(running)).thenReturn(response);
+        when(walletRepository.findByUserIdAndPrimaryTrue(1L)).thenReturn(Optional.empty());
+
+        assertThat(service.findById(55L).getOccurrenceKey()).isNull();
     }
 
     private User user() {
