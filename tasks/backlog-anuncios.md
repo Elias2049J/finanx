@@ -21,6 +21,10 @@ queda preparada para evaluar otros formatos más adelante.
 | Formatos | Solo banner ahora; `AdsPolicy`/`AdsConfig` extensibles. |
 | Métricas | Solo las de AdMob; sin Firebase Analytics. |
 | Play Console | Declaración "contiene anuncios" y Data Safety incluidas como tramo de publicación. |
+| Chat | Excluido del banner (teclado + taps accidentales). |
+| Copy de suscripción | PREMIUM y PREMIUM_TRIAL se presentan como "Sin anuncios". |
+| Política de privacidad | No existe; se redacta un borrador elemental en Markdown (baja prioridad, ADS-11). |
+| Cuenta de AdMob | Datos de pago/fiscales completos; no bloquea el código. |
 
 ## 3. Estándar de emplazamiento (criterio aplicado)
 
@@ -44,7 +48,7 @@ Aplicado a Finanx:
 | Home | Sí | Pantalla principal de resumen. |
 | Movimientos | Sí | Listado; el banner queda bajo la lista. |
 | Metas de ahorro | Sí | Listado principal. |
-| Chat | No | Teclado + contexto conversacional; alto riesgo de tap accidental. |
+| Chat | No (confirmado) | Teclado + contexto conversacional; alto riesgo de tap accidental. |
 | Detalle de movimiento / presupuesto | No | Tarea concreta. |
 | Carteras, Presupuestos, Análisis, Recordatorios | No en este tramo | Pantallas de gestión; se evalúan después. |
 | Auth, onboarding, pago, formularios, confirmación | No | Flujos críticos. |
@@ -319,13 +323,54 @@ para que no quede tapado.
 - [ ] Data Safety declara el ID de publicidad y la recolección de datos de AdMob.
 - [ ] Política de privacidad enlazada y con sección de publicidad.
 - [ ] Clasificación de contenido y público objetivo revisados (app financiera, no infantil).
-- [ ] Copy de suscripción menciona que PREMIUM oculta anuncios.
+- [ ] El copy de ADS-12 está publicado.
 
 **Verificación:**
 - [ ] Revisión de la ficha en Play Console antes de enviar a revisión.
 
 **Dependencias:** ADS-09.
 **Tamaño:** S (documentación).
+
+#### ADS-11 — Borrador de política de privacidad (baja prioridad)
+
+**Descripción:** redactar una política de privacidad elemental en Markdown que cubra
+cuenta, datos financieros, notificaciones, AdMob/ID de publicidad y derechos del usuario.
+No bloquea la integración técnica; sí es requisito para publicar.
+
+**Criterios de aceptación:**
+- [ ] Documento en `docs/politica-privacidad.md` (o `.txt` si se prefiere).
+- [ ] Menciona AdMob, el ID de publicidad y el enlace a la política de Google.
+- [ ] Menciona datos de cuenta, transacciones, presupuestos, metas y notificaciones.
+- [ ] Incluye contacto del responsable y fecha de vigencia.
+- [ ] Se publica en una URL accesible y se enlaza en Play Console.
+
+**Verificación:**
+- [ ] Revisión legal básica (aunque sea elemental).
+- [ ] La URL abre sin autenticación.
+
+**Dependencias:** ninguna (paralelizable).
+**Archivos:** `docs/politica-privacidad.md`.
+**Tamaño:** S.
+**Prioridad:** baja.
+
+#### ADS-12 — Beneficio "Sin anuncios" en la suscripción
+
+**Descripción:** comunicar en la pantalla de suscripción que PREMIUM y PREMIUM_TRIAL
+incluyen "Sin anuncios", alineado con `AdsPolicy`.
+
+**Criterios de aceptación:**
+- [ ] `SubscriptionScreen` muestra el beneficio "Sin anuncios" para planes de pago.
+- [ ] Strings ES/EN (`subscription_no_ads` o equivalente), sin literales hardcodeados.
+- [ ] No promete "sin anuncios" a FREE.
+- [ ] Verificación visual en ambos idiomas.
+
+**Verificación:**
+- [ ] `:app:assembleDebug` + revisión visual ES/EN.
+- [ ] Usuario PREMIUM no ve banner (coordinado con ADS-04).
+
+**Dependencias:** ADS-04 (para que la promesa sea real).
+**Archivos:** `ui/screens/subscription/SubscriptionScreen.kt`, `res/values/strings.xml`, `res/values-en/strings.xml`.
+**Tamaño:** XS.
 
 ### Tramo 4 — Futuro (no comprometido)
 
@@ -357,6 +402,8 @@ para que no quede tapado.
 - [ ] QA manual completo.
 - [ ] Release con IDs reales verificado.
 - [ ] Play Console actualizado.
+- [ ] Copy "Sin anuncios" publicado (ADS-12).
+- [ ] Política de privacidad publicada (ADS-11, puede quedar para el final).
 
 ## 9. Riesgos y mitigaciones
 
@@ -372,6 +419,7 @@ para que no quede tapado.
 | IDs de test en release | Cero ingresos | Verificación de `BuildConfig`/manifest en ADS-09. |
 | Fuga de `AdView` | Memoria | `destroy()` + lifecycle en ADS-05. |
 | Data Safety incompleto | Rechazo de Play | ADS-10 antes de enviar. |
+| Política de privacidad ausente | Rechazo de Play | Borrador elemental (ADS-11) antes de publicar; no bloquea el código. |
 
 ## 10. Fuera de alcance
 
@@ -381,9 +429,11 @@ para que no quede tapado.
 - Anuncios en iOS o web.
 - Cambios de precio o beneficios de la suscripción (salvo el copy de "sin anuncios").
 
-## 11. Preguntas abiertas
+## 11. Decisiones cerradas
 
-1. ¿Confirmas excluir Chat del banner? La recomendación es sí (teclado + tap accidental).
-2. ¿La política de privacidad actual ya menciona AdMob y el ID de publicidad? Si no, ADS-10 la actualiza.
-3. ¿Quieres que la pantalla de suscripción diga explícitamente "Sin anuncios" como beneficio? La recomendación es sí.
-4. ¿La cuenta de AdMob ya tiene datos de pago/fiscales completos? Es operativo, no bloquea el código.
+1. Chat excluido del banner — confirmado.
+2. No existe política de privacidad; se redacta un borrador elemental (ADS-11, baja prioridad).
+3. La suscripción mostrará "Sin anuncios" como beneficio (ADS-12).
+4. La cuenta de AdMob ya tiene datos de pago/fiscales completos.
+
+No quedan preguntas bloqueantes para ADS-01.
