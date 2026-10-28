@@ -18,7 +18,10 @@ public class WalletRequest {
     @Schema(description = "Codigo de moneda (ISO 4217)", example = "PEN")
     private String currencyCode;
 
-    @Schema(description = "Alias de la billetera para distinguirla", example = "Principal")
+    @Schema(
+            description = "Alias de la billetera. Obligatorio para billeteras adicionales; "
+                    + "la primera billetera usa \"Principal\" si se omite",
+            example = "Efectivo")
     @Size(max = 80)
     private String alias;
 

@@ -1,12 +1,16 @@
 package com.elias.mismonedas.wallets.service.impl;
 
 import com.elias.mismonedas.billing.service.SubscriptionService;
+import com.elias.mismonedas.billing.domain.enums.SubscriptionPlan;
+import com.elias.mismonedas.billing.plan.PlanRequiredException;
 import com.elias.mismonedas.identity.domain.entity.User;
+import com.elias.mismonedas.identity.domain.entity.UserPreferences;
 import com.elias.mismonedas.identity.repository.UserPreferencesRepository;
 import com.elias.mismonedas.identity.repository.UserRepository;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.domain.enums.TransactionType;
 import com.elias.mismonedas.wallets.domain.entity.Wallet;
+import com.elias.mismonedas.wallets.dto.wallet.WalletRequest;
 import com.elias.mismonedas.wallets.dto.wallet.WalletResponse;
 import com.elias.mismonedas.wallets.dto.wallet.WalletBalanceResponse;
 import com.elias.mismonedas.wallets.mapper.WalletMapper;
@@ -258,6 +262,145 @@ class WalletServiceImplTest {
             when(wallet.getCurrencyCode()).thenReturn(currency);
             when(wallet.getBalance()).thenReturn(new BigDecimal(balance));
             return wallet;
+        }
+    }
+
+    @Nested
+    class CreateTest {
+
+        private static final long USER_ID = 7L;
+
+        private void currentUser() {
+            User user = mock(User.class);
+            when(user.getId()).thenReturn(USER_ID);
+            when(securityService.getCurrentUser()).thenReturn(user);
+        }
+
+        private WalletRequest request(String currency, String alias) {
+            WalletRequest request = new WalletRequest();
+            request.setCurrencyCode(currency);
+            request.setAlias(alias);
+            return request;
+        }
+
+        private Wallet walletOf(String currency, String alias) {
+            return Wallet.builder()
+                    .currencyCode(currency)
+                    .alias(alias)
+                    .balance(BigDecimal.ZERO)
+                    .build();
+        }
+
+        private void stubCreation(WalletRequest request) {
+            when(walletMapper.toEntity(request)).thenAnswer(inv -> {
+                WalletRequest dto = inv.getArgument(0);
+                return walletOf(dto.getCurrencyCode(), dto.getAlias());
+            });
+            when(walletRepository.save(any(Wallet.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(walletMapper.toResponse(any(Wallet.class))).thenAnswer(inv -> {
+                Wallet wallet = inv.getArgument(0);
+                return new WalletResponse(
+                        wallet.getId(), USER_ID, wallet.getCurrencyCode(),
+                        wallet.getAlias(), wallet.getBalance(), wallet.isPrimary());
+            });
+        }
+
+        @Test
+        @DisplayName("la primera billetera se llama Principal si no se envia alias")
+        void shouldDefaultFirstWalletAliasToPrincipal() {
+            currentUser();
+            WalletRequest request = request("PEN", null);
+            when(walletRepository.countByUser_Id(USER_ID)).thenReturn(0L);
+            when(preferencesRepository.findByUser_Id(USER_ID)).thenReturn(Optional.of(mock(UserPreferences.class)));
+            stubCreation(request);
+
+            WalletResponse response = service.create(request);
+
+            assertThat(response.getAlias()).isEqualTo("Principal");
+            assertThat(response.isPrimary()).isTrue();
+        }
+
+        @Test
+        @DisplayName("rechaza una billetera adicional sin alias")
+        void shouldRejectAdditionalWalletWithoutAlias() {
+            currentUser();
+            WalletRequest request = request("PEN", "   ");
+            when(walletRepository.countByUser_Id(USER_ID)).thenReturn(1L);
+            when(walletRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(walletOf("PEN", "Principal")));
+            when(subscriptionService.getActivePlanFor(USER_ID)).thenReturn(SubscriptionPlan.FREE);
+
+            assertThatThrownBy(() -> service.create(request))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("alias");
+
+            verify(walletRepository, never()).save(any(Wallet.class));
+        }
+
+        @Test
+        @DisplayName("FREE puede crear otra billetera en la misma moneda")
+        void shouldAllowSameCurrencyWalletForFreePlan() {
+            currentUser();
+            WalletRequest request = request("PEN", "Efectivo");
+            when(walletRepository.countByUser_Id(USER_ID)).thenReturn(1L);
+            when(walletRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(walletOf("PEN", "Principal")));
+            when(subscriptionService.getActivePlanFor(USER_ID)).thenReturn(SubscriptionPlan.FREE);
+            stubCreation(request);
+
+            WalletResponse response = service.create(request);
+
+            assertThat(response.getCurrencyCode()).isEqualTo("PEN");
+            assertThat(response.getAlias()).isEqualTo("Efectivo");
+        }
+
+        @Test
+        @DisplayName("FREE no puede crear una billetera en otra moneda")
+        void shouldRejectDifferentCurrencyForFreePlan() {
+            currentUser();
+            WalletRequest request = request("USD", "Ahorro");
+            when(walletRepository.countByUser_Id(USER_ID)).thenReturn(1L);
+            when(walletRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(walletOf("PEN", "Principal")));
+            when(subscriptionService.getActivePlanFor(USER_ID)).thenReturn(SubscriptionPlan.FREE);
+
+            assertThatThrownBy(() -> service.create(request))
+                    .isInstanceOf(PlanRequiredException.class);
+
+            verify(walletRepository, never()).save(any(Wallet.class));
+        }
+
+        @Test
+        @DisplayName("PREMIUM puede crear billeteras en varias monedas")
+        void shouldAllowMultipleCurrenciesForPremiumPlan() {
+            currentUser();
+            WalletRequest request = request("USD", "Ahorro");
+            when(walletRepository.countByUser_Id(USER_ID)).thenReturn(1L);
+            when(walletRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(walletOf("PEN", "Principal")));
+            when(subscriptionService.getActivePlanFor(USER_ID)).thenReturn(SubscriptionPlan.PREMIUM);
+            stubCreation(request);
+
+            WalletResponse response = service.create(request);
+
+            assertThat(response.getCurrencyCode()).isEqualTo("USD");
+            assertThat(response.getAlias()).isEqualTo("Ahorro");
+        }
+
+        @Test
+        @DisplayName("guarda el alias sin espacios sobrantes")
+        void shouldTrimAlias() {
+            currentUser();
+            WalletRequest request = request("PEN", "  Efectivo  ");
+            when(walletRepository.countByUser_Id(USER_ID)).thenReturn(1L);
+            when(walletRepository.findByUserId(USER_ID))
+                    .thenReturn(List.of(walletOf("PEN", "Principal")));
+            when(subscriptionService.getActivePlanFor(USER_ID)).thenReturn(SubscriptionPlan.FREE);
+            stubCreation(request);
+
+            WalletResponse response = service.create(request);
+
+            assertThat(response.getAlias()).isEqualTo("Efectivo");
         }
     }
 }

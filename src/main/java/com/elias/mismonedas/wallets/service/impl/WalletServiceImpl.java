@@ -62,13 +62,9 @@ public class WalletServiceImpl implements WalletService {
             Wallet wallet = walletMapper.toEntity(request);
             wallet.setUser(user);
             wallet.setBalance(BigDecimal.ZERO);
-            if (request.isPrimary() || request.getCurrencyCode() != null) {
-                // ensure primary
-            }
             wallet.setPrimary(true);
-            if (wallet.getAlias() == null || wallet.getAlias().isBlank()) {
-                wallet.setAlias("Principal");
-            }
+            String alias = wallet.getAlias() == null ? null : wallet.getAlias().trim();
+            wallet.setAlias(alias == null || alias.isBlank() ? "Principal" : alias);
             return walletMapper.toResponse(walletRepository.save(wallet));
         }
 
@@ -86,12 +82,16 @@ public class WalletServiceImpl implements WalletService {
             }
         }
 
+        String alias = request.getAlias() == null ? null : request.getAlias().trim();
+        if (alias == null || alias.isBlank()) {
+            throw new IllegalArgumentException(
+                    "El alias es obligatorio para las billeteras adicionales");
+        }
+
         Wallet wallet = walletMapper.toEntity(request);
         wallet.setUser(user);
         wallet.setBalance(BigDecimal.ZERO);
-        if (wallet.getAlias() == null || wallet.getAlias().isBlank()) {
-            wallet.setAlias("Wallet " + (requestedCurrency != null ? requestedCurrency : "MONEDA"));
-        }
+        wallet.setAlias(alias);
         if (request.isPrimary()) {
             walletRepository.findByUserIdAndPrimaryTrue(userId)
                     .ifPresent(w -> {
