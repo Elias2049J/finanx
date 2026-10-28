@@ -2,6 +2,8 @@ package com.elias.mismonedas.scheduling.service;
 
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.schedule.BudgetScheduleResponse;
+import com.elias.mismonedas.scheduling.dto.schedule.OccurrenceConfirmationResponse;
+import com.elias.mismonedas.scheduling.dto.schedule.OccurrenceKeyRequest;
 import com.elias.mismonedas.scheduling.dto.schedule.ScheduleRequest;
 import com.elias.mismonedas.scheduling.dto.schedule.ScheduleResponse;
 import com.elias.mismonedas.scheduling.dto.schedule.TransactionScheduleResponse;
@@ -19,6 +21,10 @@ public interface ScheduleService {
     void resume(Long id);
     void cancel(Long id);
     void disable(Long id);
+
+    OccurrenceConfirmationResponse confirm(Long id, OccurrenceKeyRequest request);
+
+    void ignore(Long id, OccurrenceKeyRequest request);
 
     PageResponse<ScheduleResponse> list(ScheduleState state, Pageable pageable);
 

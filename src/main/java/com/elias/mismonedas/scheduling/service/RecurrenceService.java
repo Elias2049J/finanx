@@ -18,5 +18,12 @@ public interface RecurrenceService {
 
     Optional<OffsetDateTime> computeNextRunAt(Schedule st);
 
+    /**
+     * Calcula la siguiente ocurrencia tomando {@code base} como punto de partida
+     * en lugar de {@code nextRunAt}. Se usa al confirmar un presupuesto, cuyo
+     * periodo debe anclarse a la fecha de confirmacion.
+     */
+    Optional<OffsetDateTime> computeNextRunAt(Schedule st, OffsetDateTime base);
+
     OffsetDateTime computeCurrentPeriodStart(RecurrenceRule rr, OffsetDateTime now, ZoneId zoneId);
 }

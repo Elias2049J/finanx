@@ -56,9 +56,9 @@
 - [x] REC-02 — Scheduler en modo MANUAL no materializa.
   - Aceptación: al vencer en `MANUAL` pasa a `PENDING_CONFIRMATION` sin crear movimiento ni presupuesto; no genera la siguiente ocurrencia.
   - Verificar: pruebas de `runDueTransactions`/`runDueBudgets` en ambos modos. Suite 523/0.
-- [ ] REC-03 — Confirmar y omitir con idempotencia.
+- [x] REC-03 — Confirmar y omitir con idempotencia.
   - Aceptación: `POST /schedule/{id}/confirm` y `/ignore`; `confirm` valida `occurrenceKey`, no duplica y devuelve `409` si la ocurrencia es obsoleta; presupuesto ancla `start` a la fecha de confirmación.
-  - Verificar: pruebas de servicio/controlador, doble confirmación y ownership.
+  - Verificar: pruebas de servicio/controlador, doble confirmación y ownership. Suite 538/0.
 - [ ] REC-04 — Contrato API y cliente Android.
   - Aceptación: `executionMode` en request/response y endpoints nuevos documentados; cliente regenerado.
   - Verificar: OpenAPI y `kotlin-client` regenerados sin edición manual.

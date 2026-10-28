@@ -90,6 +90,7 @@ class ScheduleServiceImplBatchTest {
     @Mock private WalletService walletService;
     @Mock private WalletRepository walletRepository;
     @Mock private TransactionService transactionService;
+    @Mock private TransactionRepository transactionRepository;
     @Mock private EntityManager entityManager;
     @Mock private TransactionTemplate transactionTemplate;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -209,7 +210,7 @@ class ScheduleServiceImplBatchTest {
         when(bsRepository.findById(66L)).thenReturn(Optional.of(schedule));
         when(scheduleRepository.claimOccurrence(eq(66L), eq(schedule.getNextRunAt()), eq(ScheduleState.RUNNING.name())))
                 .thenReturn(1);
-        when(rcService.computeNextRunAt(schedule)).thenReturn(Optional.empty());
+        when(rcService.computeNextRunAt(eq(schedule), any())).thenReturn(Optional.empty());
         when(walletRepository.findByUserIdAndPrimaryTrue(1L)).thenReturn(Optional.of(wallet));
         when(entityManager.getReference(User.class, 1L)).thenReturn(user);
         when(categoryRepository.getReferenceById(100L)).thenReturn(category);
@@ -247,7 +248,7 @@ class ScheduleServiceImplBatchTest {
                 .thenReturn(1);
         when(budgetRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(existingBudget));
         when(budgetRepository.save(any(Budget.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(rcService.computeNextRunAt(schedule)).thenReturn(Optional.empty());
+        when(rcService.computeNextRunAt(eq(schedule), any())).thenReturn(Optional.empty());
 
         service.runDueBudgets();
 
@@ -521,7 +522,7 @@ class ScheduleServiceImplBatchTest {
             ScheduleServiceImpl schedulerService = new ScheduleServiceImpl(
                     scheduleRepository, tsRepository, bsRepository, categoryRepository, tsMapper,
                     budgetRepository, rcService, reasonResolver, recurrenceService, eventPublisher,
-                    realTransactionService, entityManager, walletService, walletRepository,
+                    realTransactionService, transactionRepository, entityManager, walletService, walletRepository,
                     transactionTemplate, securityService);
 
             when(tsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
@@ -529,7 +530,7 @@ class ScheduleServiceImplBatchTest {
             when(tsRepository.findById(55L)).thenReturn(Optional.of(schedule));
             when(scheduleRepository.claimOccurrence(eq(55L), eq(schedule.getNextRunAt()), eq(ScheduleState.RUNNING.name())))
                     .thenReturn(1);
-            when(rcService.computeNextRunAt(schedule)).thenReturn(Optional.empty());
+            when(rcService.computeNextRunAt(eq(schedule), any())).thenReturn(Optional.empty());
 
             when(walletService.getOwned(10L, 1L)).thenReturn(wallet);
             when(categoryService.getOwned(100L, 1L)).thenReturn(category);

@@ -1,6 +1,8 @@
 package com.elias.mismonedas.scheduling.controller;
 
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
+import com.elias.mismonedas.scheduling.dto.schedule.OccurrenceConfirmationResponse;
+import com.elias.mismonedas.scheduling.dto.schedule.OccurrenceKeyRequest;
 import com.elias.mismonedas.scheduling.dto.schedule.ScheduleRequest;
 import com.elias.mismonedas.scheduling.dto.schedule.ScheduleResponse;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
@@ -114,6 +116,42 @@ public class ScheduleController {
     public ResponseEntity<Void> cancel(
             @Parameter(description = "ID de la programacion") @PathVariable Long id) {
         scheduleService.cancel(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Confirmar ocurrencia pendiente",
+            description = "Materializa la ocurrencia pendiente de un recordatorio manual.",
+            operationId = "confirmScheduleOccurrence",
+            tags = {"Schedule"},
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Ocurrencia confirmada",
+                            content = @Content(schema = @Schema(implementation = OccurrenceConfirmationResponse.class))),
+                    @ApiResponse(responseCode = "409", description = "La ocurrencia ya no esta pendiente")
+            }
+    )
+    @PostMapping("/{id}/confirm")
+    public ResponseEntity<OccurrenceConfirmationResponse> confirm(
+            @Parameter(description = "ID de la programacion") @PathVariable Long id,
+            @Valid @RequestBody OccurrenceKeyRequest request) {
+        return ResponseEntity.ok(scheduleService.confirm(id, request));
+    }
+
+    @Operation(
+            summary = "Omitir ocurrencia pendiente",
+            description = "Descarta la ocurrencia pendiente sin materializarla.",
+            operationId = "ignoreScheduleOccurrence",
+            tags = {"Schedule"},
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Ocurrencia omitida"),
+                    @ApiResponse(responseCode = "409", description = "La ocurrencia ya no esta pendiente")
+            }
+    )
+    @PostMapping("/{id}/ignore")
+    public ResponseEntity<Void> ignore(
+            @Parameter(description = "ID de la programacion") @PathVariable Long id,
+            @Valid @RequestBody OccurrenceKeyRequest request) {
+        scheduleService.ignore(id, request);
         return ResponseEntity.noContent().build();
     }
 

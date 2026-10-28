@@ -61,11 +61,15 @@ public class RecurrenceServiceImpl implements RecurrenceService {
 
     @Override
     public Optional<OffsetDateTime> computeNextRunAt(Schedule st) {
-        RecurrenceRule rule = st.getRecurrenceRule();
-
-        OffsetDateTime baseOdt = st.getNextRunAt() != null
+        OffsetDateTime base = st.getNextRunAt() != null
                 ? st.getNextRunAt()
                 : st.getLastRunAt();
+        return computeNextRunAt(st, base);
+    }
+
+    @Override
+    public Optional<OffsetDateTime> computeNextRunAt(Schedule st, OffsetDateTime baseOdt) {
+        RecurrenceRule rule = st.getRecurrenceRule();
 
         ZoneId zone = st.getUser().getTimeZone().toZoneId();
         ZonedDateTime base = baseOdt.toInstant().atZone(zone);

@@ -6,6 +6,8 @@ import com.elias.mismonedas.catalog.service.ReasonResolver;
 import com.elias.mismonedas.identity.domain.entity.User;
 import com.elias.mismonedas.identity.security.SecurityService;
 import com.elias.mismonedas.ledger.dto.transaction.TransactionRequest;
+import com.elias.mismonedas.ledger.dto.transaction.TransactionResponse;
+import com.elias.mismonedas.ledger.repository.TransactionRepository;
 import com.elias.mismonedas.ledger.service.TransactionService;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
@@ -33,6 +35,7 @@ import com.elias.mismonedas.scheduling.repository.TransactionScheduleRepository;
 import com.elias.mismonedas.shared.dto.pagination.PageResponse;
 import com.elias.mismonedas.shared.dto.pagination.PageResponseFactory;
 import com.elias.mismonedas.shared.dto.pagination.PaginationDefaults;
+import com.elias.mismonedas.shared.exception.ConflictException;
 import com.elias.mismonedas.scheduling.service.RecurrenceService;
 import com.elias.mismonedas.scheduling.service.ScheduleService;
 import jakarta.persistence.EntityManager;
@@ -47,6 +50,7 @@ import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -77,6 +81,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final RecurrenceService recurrenceService;
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionService transactionService;
+    private final TransactionRepository transactionRepository;
     private final EntityManager entityManager;
     private final WalletService walletService;
     private final WalletRepository walletRepository;
@@ -217,6 +222,99 @@ public class ScheduleServiceImpl implements ScheduleService {
         scheduleRepository.save(st);
     }
 
+    @Transactional
+    @Override
+    public OccurrenceConfirmationResponse confirm(Long id, OccurrenceKeyRequest request) {
+        Schedule st = getOwnedForAction(id);
+        String key = request.getOccurrenceKey();
+        OffsetDateTime expected = st.getNextRunAt();
+
+        if (!isPendingOccurrence(st, expected, key)) {
+            return replayOrConflict(st, key);
+        }
+
+        if (scheduleRepository.claimPendingConfirmation(id, expected) == 0) {
+            return replayOrConflict(st, key);
+        }
+
+        OffsetDateTime confirmedAt = OffsetDateTime.now(st.getUser().getTimeZone().toZoneId());
+
+        Long transactionId = null;
+        Long budgetId = null;
+        if (st instanceof TransactionSchedule ts) {
+            transactionId = executeTransaction(ts, expected, confirmedAt);
+        } else if (st instanceof BudgetSchedule bs) {
+            budgetId = executeBudget(bs, expected, confirmedAt);
+        } else {
+            throw new IllegalStateException("Unsupported schedule type: " + st.getClass().getName());
+        }
+
+        scheduleRepository.save(st);
+        return new OccurrenceConfirmationResponse(key, transactionId, budgetId);
+    }
+
+    @Transactional
+    @Override
+    public void ignore(Long id, OccurrenceKeyRequest request) {
+        Schedule st = getOwnedForAction(id);
+        String key = request.getOccurrenceKey();
+        OffsetDateTime expected = st.getNextRunAt();
+
+        if (!isPendingOccurrence(st, expected, key)
+                || scheduleRepository.claimPendingConfirmation(id, expected) == 0) {
+            throw new ConflictException("Occurrence is no longer pending: " + key);
+        }
+
+        if (st instanceof BudgetSchedule) {
+            advanceOrFinalize(st, OffsetDateTime.now(st.getUser().getTimeZone().toZoneId()));
+        } else {
+            advanceOrFinalize(st, expected);
+        }
+        scheduleRepository.save(st);
+    }
+
+    private boolean isPendingOccurrence(Schedule st, OffsetDateTime expected, String key) {
+        return expected != null
+                && st.getState() == ScheduleState.PENDING_CONFIRMATION
+                && occurrenceKey(st, expected).equals(key);
+    }
+
+    /**
+     * Reintento idempotente de una confirmacion ya aplicada.
+     *
+     * <p>La clave codifica el id del recordatorio, asi que se exige ese prefijo
+     * antes de buscar por idempotencia: de lo contrario un usuario podria usar
+     * la clave de otro recordatorio para leer su movimiento.</p>
+     */
+    private OccurrenceConfirmationResponse replayOrConflict(Schedule st, String key) {
+        String prefix = "schedule:" + st.getId() + ":";
+        if (key == null || !key.startsWith(prefix)) {
+            throw new ConflictException("Occurrence is no longer pending: " + key);
+        }
+
+        if (st instanceof TransactionSchedule) {
+            return transactionRepository.findByIdempotencyKey(key)
+                    .map(tx -> new OccurrenceConfirmationResponse(key, tx.getId(), null))
+                    .orElseThrow(() -> new ConflictException("Occurrence is no longer pending: " + key));
+        }
+        if (st instanceof BudgetSchedule) {
+            return budgetRepository.findByIdempotencyKey(key)
+                    .map(budget -> new OccurrenceConfirmationResponse(key, null, budget.getId()))
+                    .orElseThrow(() -> new ConflictException("Occurrence is no longer pending: " + key));
+        }
+        throw new ConflictException("Occurrence is no longer pending: " + key);
+    }
+
+    private Schedule getOwnedForAction(Long id) {
+        Long userId = securityService.getCurrentUser().getId();
+        Schedule st = scheduleRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Schedule not found: " + id));
+        if (st.getUser() == null || !userId.equals(st.getUser().getId())) {
+            throw new AccessDeniedException("Schedule does not belong to the current user");
+        }
+        return st;
+    }
+
     private Schedule getOwned(Long id) {
         Long userId = securityService.getCurrentUser().getId();
         return scheduleRepository.findByIdAndUser_Id(id, userId)
@@ -297,7 +395,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             return null;
         }
 
-        executeTransaction(st, expected);
+        executeTransaction(st, expected, expected);
 
         scheduleRepository.save(st);
         return st.getUser().getId();
@@ -400,7 +498,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             return;
         }
 
-        executeBudget(st, expected);
+        executeBudget(st, expected, expected);
 
         scheduleRepository.save(st);
     }
@@ -455,7 +553,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         return false;
     }
 
-    private void executeTransaction(TransactionSchedule st, OffsetDateTime executedAt) {
+    private Long executeTransaction(TransactionSchedule st, OffsetDateTime occurrenceAt, OffsetDateTime executedAt) {
         st.setLastRunAt(executedAt);
 
         TransactionRequest txRequest = new TransactionRequest();
@@ -470,9 +568,10 @@ public class ScheduleServiceImpl implements ScheduleService {
         txRequest.setType(st.getTransactionType());
         txRequest.setConvertCurrency(false);
 
-        transactionService.create(st.getUser().getId(), st.getId(), txRequest, occurrenceKey(st, executedAt));
+        TransactionResponse created = transactionService.create(
+                st.getUser().getId(), st.getId(), txRequest, occurrenceKey(st, occurrenceAt));
 
-        boolean hasNext = advanceOrFinalize(st);
+        boolean hasNext = advanceOrFinalize(st, occurrenceAt);
 
         if (hasNext) {
             log.info("ScheduledTransaction executed: id={} userId={} walletId={} executedAt={} nextRunAt={}",
@@ -481,24 +580,27 @@ public class ScheduleServiceImpl implements ScheduleService {
             log.info("ScheduledTransaction completed: id={} userId={} walletId={} executedAt={} (no further occurrences)",
                     st.getId(), st.getUser().getId(), st.getWallet().getId(), executedAt);
         }
+
+        return created.getId();
     }
 
-    private void executeBudget(BudgetSchedule st, OffsetDateTime executedAt) {
+    private Long executeBudget(BudgetSchedule st, OffsetDateTime occurrenceAt, OffsetDateTime executedAt) {
         st.setLastRunAt(executedAt);
 
-        String idempotencyKey = occurrenceKey(st, executedAt);
-        if (budgetRepository.findByIdempotencyKey(idempotencyKey).isPresent()) {
-            advanceOrFinalize(st);
+        String idempotencyKey = occurrenceKey(st, occurrenceAt);
+        Optional<Budget> existing = budgetRepository.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            advanceOrFinalize(st, executedAt);
             log.atWarn()
                     .addKeyValue("event", "schedule_occurrence_replayed")
                     .addKeyValue("schedule_id", st.getId())
                     .addKeyValue("occurrence_key", idempotencyKey)
                     .log("Budget occurrence already materialized; advanced the schedule");
-            return;
+            return existing.get().getId();
         }
 
-        OffsetDateTime budgetEnd = rcService.computeNextRunAt(st)
-                .orElse(st.getRecurrenceRule().getEnd());
+        OffsetDateTime budgetEnd = rcService.computeNextRunAt(st, executedAt)
+                .orElseGet(() -> st.getRecurrenceRule().getEnd());
 
         User user = entityManager.getReference(User.class, st.getUser().getId());
         Category category = st.getCategory() != null
@@ -521,7 +623,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                 .idempotencyKey(idempotencyKey)
                 .build());
 
-        boolean hasNext = advanceOrFinalize(st);
+        boolean hasNext = advanceOrFinalize(st, executedAt);
 
         if (hasNext) {
             log.info("BudgetSchedule executed: id={} userId={} executedAt={} nextRunAt={}",
@@ -532,6 +634,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
 
         eventPublisher.publishEvent(new BudgetRegisteredEvent(budget.getId(), st.getUser().getId()));
+        return budget.getId();
     }
 
     private boolean isDue(Schedule st) {
@@ -543,10 +646,11 @@ public class ScheduleServiceImpl implements ScheduleService {
         return "schedule:" + st.getId() + ":" + expected.toInstant().toEpochMilli();
     }
 
-    private boolean advanceOrFinalize(Schedule st) {
-        Optional<OffsetDateTime> next = rcService.computeNextRunAt(st);
+    private boolean advanceOrFinalize(Schedule st, OffsetDateTime base) {
+        Optional<OffsetDateTime> next = rcService.computeNextRunAt(st, base);
         if (next.isPresent()) {
             st.setNextRunAt(next.get());
+            st.setState(ScheduleState.RUNNING);
             return true;
         }
         st.setActive(false);

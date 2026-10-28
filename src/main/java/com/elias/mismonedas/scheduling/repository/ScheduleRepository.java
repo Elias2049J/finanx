@@ -71,4 +71,22 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
             """, nativeQuery = true)
     int markPendingConfirmation(@Param("id") Long id,
                                 @Param("expected") OffsetDateTime expected);
+
+    /**
+     * Toma la ocurrencia pendiente solo si sigue siendo la esperada. Solo un
+     * confirmador u omisor puede materializarla; el resto recibe {@code 0}.
+     *
+     * <p>Mismo motivo que {@link #claimOccurrence} para usar SQL nativo.</p>
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE programacion
+               SET estado = 'RUNNING'
+             WHERE id = :id
+               AND proxima_ejecucion = :expected
+               AND estado = 'PENDING_CONFIRMATION'
+               AND activo = true
+            """, nativeQuery = true)
+    int claimPendingConfirmation(@Param("id") Long id,
+                                 @Param("expected") OffsetDateTime expected);
 }

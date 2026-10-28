@@ -26,6 +26,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 @SpringBootTest(properties = {
         "app.messaging.rabbitmq.consumer-auto-startup=false",
@@ -104,8 +105,7 @@ class ScheduleExecutionModePersistenceIntegrationTest {
         entityManager.clear();
         TransactionSchedule reloaded = transactionScheduleRepository.findById(schedule.getId()).orElseThrow();
         assertThat(reloaded.getState()).isEqualTo(ScheduleState.PENDING_CONFIRMATION);
-        assertThat(reloaded.getNextRunAt().toInstant())
-                .isEqualTo(dueAt.toInstant().truncatedTo(ChronoUnit.MICROS));
+        assertThat(reloaded.getNextRunAt()).isCloseTo(dueAt, within(1, ChronoUnit.MICROS));
     }
 
     @Test
@@ -122,6 +122,43 @@ class ScheduleExecutionModePersistenceIntegrationTest {
         entityManager.clear();
         TransactionSchedule reloaded = transactionScheduleRepository.findById(schedule.getId()).orElseThrow();
         assertThat(reloaded.getState()).isEqualTo(ScheduleState.RUNNING);
+    }
+
+    @Test
+    @Transactional
+    void claimsPendingOccurrenceOnlyOnce() {
+        TransactionSchedule schedule = persistSchedule(ExecutionMode.MANUAL);
+        OffsetDateTime dueAt = OffsetDateTime.now().minusMinutes(5);
+        schedule.setNextRunAt(dueAt);
+        transactionScheduleRepository.saveAndFlush(schedule);
+        scheduleRepository.markPendingConfirmation(schedule.getId(), dueAt);
+
+        int first = scheduleRepository.claimPendingConfirmation(schedule.getId(), dueAt);
+        int second = scheduleRepository.claimPendingConfirmation(schedule.getId(), dueAt);
+
+        assertThat(first).isEqualTo(1);
+        assertThat(second).isZero();
+        entityManager.clear();
+        TransactionSchedule reloaded = transactionScheduleRepository.findById(schedule.getId()).orElseThrow();
+        assertThat(reloaded.getState()).isEqualTo(ScheduleState.RUNNING);
+        assertThat(reloaded.getNextRunAt()).isCloseTo(dueAt, within(1, ChronoUnit.MICROS));
+    }
+
+    @Test
+    @Transactional
+    void doesNotClaimPendingOccurrenceWhenRunAtChanged() {
+        TransactionSchedule schedule = persistSchedule(ExecutionMode.MANUAL);
+        OffsetDateTime dueAt = OffsetDateTime.now().minusMinutes(5);
+        schedule.setNextRunAt(dueAt);
+        transactionScheduleRepository.saveAndFlush(schedule);
+        scheduleRepository.markPendingConfirmation(schedule.getId(), dueAt);
+
+        int updated = scheduleRepository.claimPendingConfirmation(schedule.getId(), dueAt.plusHours(1));
+
+        assertThat(updated).isZero();
+        entityManager.clear();
+        TransactionSchedule reloaded = transactionScheduleRepository.findById(schedule.getId()).orElseThrow();
+        assertThat(reloaded.getState()).isEqualTo(ScheduleState.PENDING_CONFIRMATION);
     }
 
     private TransactionSchedule persistSchedule(ExecutionMode executionMode) {
