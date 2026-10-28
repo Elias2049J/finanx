@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +47,9 @@ class ScheduleExecutionModePersistenceIntegrationTest {
 
     @Autowired
     private TransactionScheduleRepository transactionScheduleRepository;
+
+    @Autowired
+    private ScheduleRepository scheduleRepository;
 
     @Autowired
     private EntityManager entityManager;
@@ -84,6 +88,40 @@ class ScheduleExecutionModePersistenceIntegrationTest {
 
         TransactionSchedule reloaded = transactionScheduleRepository.findById(schedule.getId()).orElseThrow();
         assertThat(reloaded.getState()).isEqualTo(ScheduleState.PENDING_CONFIRMATION);
+    }
+
+    @Test
+    @Transactional
+    void marksDueOccurrenceAsPendingConfirmation() {
+        TransactionSchedule schedule = persistSchedule(ExecutionMode.MANUAL);
+        OffsetDateTime dueAt = OffsetDateTime.now().minusMinutes(5);
+        schedule.setNextRunAt(dueAt);
+        transactionScheduleRepository.saveAndFlush(schedule);
+
+        int updated = scheduleRepository.markPendingConfirmation(schedule.getId(), dueAt);
+
+        assertThat(updated).isEqualTo(1);
+        entityManager.clear();
+        TransactionSchedule reloaded = transactionScheduleRepository.findById(schedule.getId()).orElseThrow();
+        assertThat(reloaded.getState()).isEqualTo(ScheduleState.PENDING_CONFIRMATION);
+        assertThat(reloaded.getNextRunAt().toInstant())
+                .isEqualTo(dueAt.toInstant().truncatedTo(ChronoUnit.MICROS));
+    }
+
+    @Test
+    @Transactional
+    void doesNotMarkPendingWhenOccurrenceNoLongerMatches() {
+        TransactionSchedule schedule = persistSchedule(ExecutionMode.MANUAL);
+        OffsetDateTime dueAt = OffsetDateTime.now().minusMinutes(5);
+        schedule.setNextRunAt(dueAt);
+        transactionScheduleRepository.saveAndFlush(schedule);
+
+        int updated = scheduleRepository.markPendingConfirmation(schedule.getId(), dueAt.plusHours(1));
+
+        assertThat(updated).isZero();
+        entityManager.clear();
+        TransactionSchedule reloaded = transactionScheduleRepository.findById(schedule.getId()).orElseThrow();
+        assertThat(reloaded.getState()).isEqualTo(ScheduleState.RUNNING);
     }
 
     private TransactionSchedule persistSchedule(ExecutionMode executionMode) {

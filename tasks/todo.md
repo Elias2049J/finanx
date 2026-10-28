@@ -53,9 +53,9 @@
 - [x] REC-01 — Añadir `executionMode` y el estado `PENDING_CONFIRMATION` al modelo.
   - Aceptación: `Schedule` expone `executionMode` (default `MANUAL`); `V19` añade `modo_ejecucion` y recrea `programacion_estado_check` con el estado nuevo.
   - Verificar: migración sobre V18 y compilación de la suite. Suite 518/0.
-- [ ] REC-02 — Scheduler en modo MANUAL no materializa.
+- [x] REC-02 — Scheduler en modo MANUAL no materializa.
   - Aceptación: al vencer en `MANUAL` pasa a `PENDING_CONFIRMATION` sin crear movimiento ni presupuesto; no genera la siguiente ocurrencia.
-  - Verificar: pruebas de `runDueTransactions`/`runDueBudgets` en ambos modos.
+  - Verificar: pruebas de `runDueTransactions`/`runDueBudgets` en ambos modos. Suite 523/0.
 - [ ] REC-03 — Confirmar y omitir con idempotencia.
   - Aceptación: `POST /schedule/{id}/confirm` y `/ignore`; `confirm` valida `occurrenceKey`, no duplica y devuelve `409` si la ocurrencia es obsoleta; presupuesto ancla `start` a la fecha de confirmación.
   - Verificar: pruebas de servicio/controlador, doble confirmación y ownership.

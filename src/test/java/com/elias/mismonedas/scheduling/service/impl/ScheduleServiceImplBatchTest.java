@@ -25,6 +25,7 @@ import com.elias.mismonedas.planning.service.SavingGoalService;
 import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
 import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
+import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
 import com.elias.mismonedas.scheduling.domain.enums.RecurrenceType;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.mapper.ScheduleMapper;
@@ -139,6 +140,7 @@ class ScheduleServiceImplBatchTest {
         schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
         schedule.setActive(true);
         schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.AUTO);
 
         when(tsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
                 .thenReturn(List.of(schedule));
@@ -162,6 +164,7 @@ class ScheduleServiceImplBatchTest {
         transactionSchedule.setNextRunAt(future);
         transactionSchedule.setActive(true);
         transactionSchedule.setState(ScheduleState.RUNNING);
+        transactionSchedule.setExecutionMode(ExecutionMode.AUTO);
         when(tsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
                 .thenReturn(List.of(transactionSchedule));
 
@@ -171,6 +174,7 @@ class ScheduleServiceImplBatchTest {
         budgetSchedule.setNextRunAt(future);
         budgetSchedule.setActive(true);
         budgetSchedule.setState(ScheduleState.RUNNING);
+        budgetSchedule.setExecutionMode(ExecutionMode.AUTO);
         when(bsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
                 .thenReturn(List.of(budgetSchedule));
 
@@ -197,6 +201,7 @@ class ScheduleServiceImplBatchTest {
         schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
         schedule.setActive(true);
         schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.AUTO);
         schedule.setRecurrenceRule(rule);
 
         when(bsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
@@ -229,6 +234,7 @@ class ScheduleServiceImplBatchTest {
         schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
         schedule.setActive(true);
         schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.AUTO);
         schedule.setRecurrenceRule(rule);
 
         String idempotencyKey = "schedule:66:" + schedule.getNextRunAt().toInstant().toEpochMilli();
@@ -262,6 +268,7 @@ class ScheduleServiceImplBatchTest {
         schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
         schedule.setActive(true);
         schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.AUTO);
 
         when(bsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
                 .thenReturn(List.of(schedule));
@@ -288,6 +295,7 @@ class ScheduleServiceImplBatchTest {
         schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
         schedule.setActive(true);
         schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.AUTO);
 
         when(tsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
                 .thenReturn(List.of(schedule));
@@ -314,6 +322,7 @@ class ScheduleServiceImplBatchTest {
         schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
         schedule.setActive(true);
         schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.AUTO);
 
         when(bsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
                 .thenReturn(List.of(schedule));
@@ -338,6 +347,7 @@ class ScheduleServiceImplBatchTest {
         schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
         schedule.setActive(true);
         schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.AUTO);
 
         when(tsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
                 .thenReturn(List.of(schedule));
@@ -350,6 +360,77 @@ class ScheduleServiceImplBatchTest {
         assertThat(schedule.getActive()).isFalse();
         assertThat(schedule.getState()).isEqualTo(ScheduleState.ERROR);
         verify(scheduleRepository).save(schedule);
+    }
+
+    @Test
+    void shouldMarkManualTransactionPendingWithoutCreatingTransaction() {
+        User user = user();
+        TransactionSchedule schedule = new TransactionSchedule();
+        schedule.setId(55L);
+        schedule.setUser(user);
+        schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
+        schedule.setActive(true);
+        schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.MANUAL);
+
+        when(tsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
+                .thenReturn(List.of(schedule));
+        when(tsRepository.findById(55L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.markPendingConfirmation(55L, schedule.getNextRunAt())).thenReturn(1);
+        OffsetDateTime pendingAt = schedule.getNextRunAt();
+
+        service.runDueTransactions();
+
+        verify(scheduleRepository).markPendingConfirmation(55L, pendingAt);
+        verify(scheduleRepository, never()).claimOccurrence(any(), any(), anyString());
+        verify(transactionService, never()).create(any(), any(), any(), any());
+        assertThat(schedule.getNextRunAt()).isEqualTo(pendingAt);
+    }
+
+    @Test
+    void shouldMarkManualBudgetPendingWithoutMaterializingBudget() {
+        User user = user();
+        BudgetSchedule schedule = new BudgetSchedule();
+        schedule.setId(66L);
+        schedule.setUser(user);
+        schedule.setLimitAmount(new BigDecimal("100.00"));
+        schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
+        schedule.setActive(true);
+        schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.MANUAL);
+
+        when(bsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
+                .thenReturn(List.of(schedule));
+        when(bsRepository.findById(66L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.markPendingConfirmation(66L, schedule.getNextRunAt())).thenReturn(1);
+
+        service.runDueBudgets();
+
+        verify(scheduleRepository).markPendingConfirmation(66L, schedule.getNextRunAt());
+        verify(scheduleRepository, never()).claimOccurrence(any(), any(), anyString());
+        verify(budgetRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldNotMaterializeManualOccurrenceWhenPendingTransitionLosesRace() {
+        User user = user();
+        TransactionSchedule schedule = new TransactionSchedule();
+        schedule.setId(55L);
+        schedule.setUser(user);
+        schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
+        schedule.setActive(true);
+        schedule.setState(ScheduleState.RUNNING);
+        schedule.setExecutionMode(ExecutionMode.MANUAL);
+
+        when(tsRepository.findByActiveTrueAndStateAndIdGreaterThan(any(), any(), any()))
+                .thenReturn(List.of(schedule));
+        when(tsRepository.findById(55L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.markPendingConfirmation(55L, schedule.getNextRunAt())).thenReturn(0);
+
+        service.runDueTransactions();
+
+        verify(scheduleRepository, never()).claimOccurrence(any(), any(), anyString());
+        verify(transactionService, never()).create(any(), any(), any(), any());
     }
 
     private User user() {
@@ -430,6 +511,7 @@ class ScheduleServiceImplBatchTest {
             schedule.setNextRunAt(OffsetDateTime.now(user.getTimeZone().toZoneId()).minusMinutes(1));
             schedule.setActive(true);
             schedule.setState(ScheduleState.RUNNING);
+            schedule.setExecutionMode(ExecutionMode.AUTO);
 
             TransactionServiceImpl realTransactionService = new TransactionServiceImpl(
                     transactionRepository, walletService, categoryService, savingGoalService,

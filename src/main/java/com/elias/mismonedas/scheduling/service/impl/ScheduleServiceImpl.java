@@ -21,6 +21,7 @@ import com.elias.mismonedas.scheduling.domain.entity.BudgetSchedule;
 import com.elias.mismonedas.scheduling.domain.entity.RecurrenceRule;
 import com.elias.mismonedas.scheduling.domain.entity.Schedule;
 import com.elias.mismonedas.scheduling.domain.entity.TransactionSchedule;
+import com.elias.mismonedas.scheduling.domain.enums.ExecutionMode;
 import com.elias.mismonedas.scheduling.domain.enums.RecurrenceType;
 import com.elias.mismonedas.scheduling.domain.enums.ScheduleState;
 import com.elias.mismonedas.scheduling.dto.recurrencerule.RecurrenceRuleRequest;
@@ -281,6 +282,11 @@ public class ScheduleServiceImpl implements ScheduleService {
             return null;
         }
 
+        if (st.getExecutionMode() != ExecutionMode.AUTO) {
+            markPendingConfirmation(st, "transaction");
+            return st.getUser().getId();
+        }
+
         OffsetDateTime expected = st.getNextRunAt();
         if (scheduleRepository.claimOccurrence(id, expected, ScheduleState.RUNNING.name()) == 0) {
             log.atInfo()
@@ -379,6 +385,11 @@ public class ScheduleServiceImpl implements ScheduleService {
             return;
         }
 
+        if (st.getExecutionMode() != ExecutionMode.AUTO) {
+            markPendingConfirmation(st, "budget");
+            return;
+        }
+
         OffsetDateTime expected = st.getNextRunAt();
         if (scheduleRepository.claimOccurrence(id, expected, ScheduleState.RUNNING.name()) == 0) {
             log.atInfo()
@@ -407,6 +418,27 @@ public class ScheduleServiceImpl implements ScheduleService {
         } catch (Exception e) {
             log.error("Could not mark BudgetSchedule as ERROR: id={}", id, e);
         }
+    }
+
+    /**
+     * Deja la ocurrencia vencida en espera de confirmacion del usuario.
+     * No materializa nada ni avanza {@code nextRunAt}: la ocurrencia pendiente
+     * sigue siendo la misma hasta que se confirme u omita.
+     */
+    private void markPendingConfirmation(Schedule st, String scheduleType) {
+        OffsetDateTime expected = st.getNextRunAt();
+        int updated = scheduleRepository.markPendingConfirmation(st.getId(), expected);
+        if (updated == 0) {
+            log.atInfo()
+                    .addKeyValue("event", "schedule_occurrence_pending_skipped")
+                    .addKeyValue("schedule_id", st.getId())
+                    .addKeyValue("schedule_type", scheduleType)
+                    .addKeyValue("occurrence_key", occurrenceKey(st, expected))
+                    .log("Scheduled occurrence was already claimed or marked pending");
+            return;
+        }
+        log.info("Schedule occurrence pending confirmation: id={} type={} nextRunAt={}",
+                st.getId(), scheduleType, expected);
     }
 
     private record BudgetBatchPage(List<Long> dueIds, Long nextCursor) {}

@@ -52,4 +52,23 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     int claimOccurrence(@Param("id") Long id,
                         @Param("expected") OffsetDateTime expected,
                         @Param("state") String state);
+
+    /**
+     * Marca la ocurrencia vencida como pendiente de confirmacion sin materializarla.
+     *
+     * <p>Igual que {@link #claimOccurrence}, usa SQL nativo para revalidar estado y
+     * fecha despues del lock de fila; un UPDATE JPQL sobre la jerarquia JOINED se
+     * traduce a un UPDATE con CTE que no revalida correctamente en concurrencia.</p>
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE programacion
+               SET estado = 'PENDING_CONFIRMATION'
+             WHERE id = :id
+               AND proxima_ejecucion = :expected
+               AND estado = 'RUNNING'
+               AND activo = true
+            """, nativeQuery = true)
+    int markPendingConfirmation(@Param("id") Long id,
+                                @Param("expected") OffsetDateTime expected);
 }
