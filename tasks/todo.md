@@ -44,9 +44,9 @@
 - [x] WALLET-04 — Incorporar alias en flujos y etiquetas de wallet Android.
   - Aceptación: alta/selección/listado distinguen wallets homónimas por alias y moneda.
   - Verificar: unit/instrumentation tests y `:app:assembleDebug`.
-- [ ] WALLET-05 — Actualizar documentación de planes y guía de uso.
-  - Aceptación: README y ayuda describen FREE same-currency y PREMIUM multi-currency.
-  - Verificar: revisar copy ES/EN y límites mostrados.
+- [x] WALLET-05 - Actualizar documentación de planes y guía de uso.
+  - Aceptación: README y ayuda describen FREE same-currency y PREMIUM multi-currency; el alias es obligatorio en billeteras adicionales.
+  - Verificar: README actualizado, spec alineado, copy ES/EN con hint de plan y mensaje de 403; `WalletServiceImplTest` 16/16, suite 556/0, `:app:testDebugUnitTest` y `:app:assembleDebug` OK.
 
 ## Backlog: recordatorios accionables
 
