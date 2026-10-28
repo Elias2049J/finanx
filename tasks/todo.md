@@ -38,7 +38,7 @@
 - [x] WALLET-02 — Aplicar reglas de creación por plan y alias en el backend.
   - Aceptación: FREE puede crear wallets ilimitadas en una sola moneda; PREMIUM puede usar varias monedas; alias requerido en wallets adicionales; primaria inicial `Principal`.
   - Verificar: pruebas de servicio/controlador para FREE/PREMIUM, moneda y validación de alias.
-- [ ] WALLET-03 — Extender contrato API y regenerar el cliente Android.
+- [x] WALLET-03 — Extender contrato API y regenerar el cliente Android.
   - Aceptación: `WalletRequest`/`WalletResponse` exponen alias y errores de plan/validación quedan documentados.
   - Verificar: OpenAPI y Kotlin client regenerados desde backend, sin editar artefactos a mano.
 - [ ] WALLET-04 — Incorporar alias en flujos y etiquetas de wallet Android.
