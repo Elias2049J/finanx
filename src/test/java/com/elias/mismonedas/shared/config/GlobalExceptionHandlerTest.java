@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -55,6 +56,20 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getCode()).isEqualTo("AUTHENTICATION_REQUIRED");
         assertThat(response.getBody().getMessage())
                 .isEqualTo("Se requiere autenticación o la sesión no es válida.");
+    }
+
+    @Test
+    void shouldReturnInvalidCredentialsForBadCredentials() {
+        HttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/login");
+
+        var response = handler.handleBadCredentials(
+                new BadCredentialsException("Bad credentials"),
+                request
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody().getCode()).isEqualTo("INVALID_CREDENTIALS");
+        assertThat(response.getBody().getMessage()).isEqualTo("Correo o contraseña incorrectos.");
     }
 
     @Test

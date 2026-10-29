@@ -49,7 +49,12 @@ public class GlobalExceptionHandler {
     private final JsonMessageCatalog messageCatalog;
     private final CurrentLocaleProvider localeProvider;
 
-    @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
+        return respond(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "error.invalid_credentials", request, ex);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
         return respond(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "error.authentication_required", request, ex);
     }

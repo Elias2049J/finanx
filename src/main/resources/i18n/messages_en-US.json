@@ -1,5 +1,6 @@
 {
   "error.authentication_required": "Authentication is required or the session is invalid.",
+  "error.invalid_credentials": "Incorrect email or password.",
   "error.authentication_unavailable": "The session could not be validated temporarily. Please try again.",
   "error.refresh_token_invalid": "The refresh token is invalid.",
   "error.invalid_argument": "The request contains invalid data.",
