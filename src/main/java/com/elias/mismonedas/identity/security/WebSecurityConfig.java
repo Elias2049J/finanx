@@ -38,9 +38,6 @@ public class WebSecurityConfig {
     @Value("${app.front-url}")
     private String frontUrl;
 
-    @Value("${app.front-url-https:https://localhost:4200}")
-    private String frontUrlHttps;
-
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http,
                                    Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter,
@@ -137,7 +134,7 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of(frontUrl, frontUrlHttps));
+        config.setAllowedOriginPatterns(List.of(frontUrl));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
