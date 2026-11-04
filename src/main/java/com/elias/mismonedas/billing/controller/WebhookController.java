@@ -14,10 +14,10 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Endpoint de webhooks de proveedores de pago.
  * <p>
- * Solo se registra cuando {@code app.billing.webhooks.enabled=true}. Con el gateway manual
- * no existe ningun proveedor que pueda enviar webhooks y el adaptador rechaza todo, asi que
- * por defecto el endpoint no se expone (404). Al integrar un proveedor real hay que
- * implementar {@code PaymentPort.verifyWebhookSignature} y {@code parseWebhookPayload}.
+ * Solo se registra cuando {@code app.billing.webhooks.enabled=true}. Mientras no exista
+ * un adaptador real de proveedor, el endpoint no se expone (404). Al integrar un proveedor
+ * hay que implementar {@code PaymentPort.verifyWebhookSignature} y
+ * {@code parseWebhookPayload}.
  */
 @Slf4j
 @RestController

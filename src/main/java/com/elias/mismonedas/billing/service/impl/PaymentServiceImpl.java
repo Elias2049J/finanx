@@ -33,6 +33,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
@@ -60,7 +61,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final WebhookEventRepository webhookEventRepository;
     private final UserRepository userRepository;
     private final PaymentMapper paymentMapper;
-    private final PaymentPort paymentPort;
+    private final ObjectProvider<PaymentPort> paymentPortProvider;
     private final PaymentWebhookPublisher webhookPublisher;
     private final SecurityService securityService;
     private final SubscriptionRepository subscriptionRepository;
@@ -99,7 +100,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment saved;
         try {
-            // The provider needs the persisted id; persisting first also avoids references like MANUAL-null-<millis>.
+            // The provider needs the persisted id; persisting first also avoids references with a null id.
             saved = paymentRepository.saveAndFlush(payment);
         } catch (DataIntegrityViolationException race) {
             Payment existing = paymentRepository.findByIdempotencyKey(payment.getIdempotencyKey())
@@ -113,7 +114,7 @@ public class PaymentServiceImpl implements PaymentService {
             return paymentMapper.toResponse(existing);
         }
 
-        String externalReference = paymentPort.createPaymentIntent(saved);
+        String externalReference = requirePaymentPort().createPaymentIntent(saved);
         saved.setExternalReference(externalReference);
         saved = paymentRepository.save(saved);
 
@@ -196,7 +197,7 @@ public class PaymentServiceImpl implements PaymentService {
         // Validar la transicion antes de tocar al proveedor: un pago PENDING no debe
         // disparar un reembolso real que despues se rechace con 409.
         payment.transitionTo(PaymentState.REFUNDED);
-        paymentPort.refund(payment);
+        requirePaymentPort().refund(payment);
         Payment saved = paymentRepository.save(payment);
         if (saved.getSubscription() != null) {
             billingService.cancelForRefund(saved.getSubscription().getId());
@@ -207,6 +208,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public void receiveWebhookEvent(PaymentProvider provider, String rawPayload, String signatureHeader) {
+        PaymentPort paymentPort = requirePaymentPort();
         if (!paymentPort.verifyWebhookSignature(rawPayload, signatureHeader)) {
             log.warn("Rejected webhook from provider={} due to invalid signature", provider);
             throw new InvalidWebhookSignatureException("Invalid webhook signature for provider " + provider);
@@ -258,7 +260,7 @@ public class PaymentServiceImpl implements PaymentService {
             return;
         }
 
-        PaymentWebhookNotification notification = paymentPort.parseWebhookPayload(event.getRawPayload());
+        PaymentWebhookNotification notification = requirePaymentPort().parseWebhookPayload(event.getRawPayload());
         applyWebhookEvent(event, notification);
     }
 
@@ -467,6 +469,14 @@ public class PaymentServiceImpl implements PaymentService {
             case "in_process", "processing" -> PaymentState.PROCESSING;
             default -> null;
         };
+    }
+
+    private PaymentPort requirePaymentPort() {
+        PaymentPort paymentPort = paymentPortProvider.getIfAvailable();
+        if (paymentPort == null) {
+            throw new ConflictException("No hay un proveedor de pagos configurado");
+        }
+        return paymentPort;
     }
 
     private Payment getPaymentOrThrow(Long id) {

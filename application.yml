@@ -83,6 +83,17 @@ app:
     payment-expiration:
       pending-minutes: ${APP_BILLING_PAYMENT_EXPIRATION_PENDING_MINUTES:1440}
       processing-minutes: ${APP_BILLING_PAYMENT_EXPIRATION_PROCESSING_MINUTES:60}
+    # Verificacion de compras de Google Play.
+    # disabled: no permite verificar (produccion hasta tener service account).
+    # fake: acepta tokens test-valid-* y no llama a Google (solo desarrollo).
+    google-play:
+      mode: ${APP_BILLING_GOOGLE_PLAY_MODE:disabled}
+      package-name: ${APP_BILLING_GOOGLE_PLAY_PACKAGE_NAME:com.elias.mismonedas}
+      monthly-product-id: ${APP_BILLING_GOOGLE_PLAY_MONTHLY_PRODUCT_ID:premium_monthly_test}
+      annual-product-id: ${APP_BILLING_GOOGLE_PLAY_ANNUAL_PRODUCT_ID:premium_annual_test}
+      monthly-price: ${APP_BILLING_GOOGLE_PLAY_MONTHLY_PRICE:19.90}
+      annual-price: ${APP_BILLING_GOOGLE_PLAY_ANNUAL_PRICE:199.00}
+      currency: ${APP_BILLING_GOOGLE_PLAY_CURRENCY:PEN}
   ai:
     max-user-prompt-length: 500
     max-output-tokens: 1024

@@ -6,5 +6,5 @@ public enum PaymentProvider {
     MERCADO_PAGO,
     CULQI,
     STRIPE,
-    MANUAL_TRANSFER
+    GOOGLE_PLAY
 }

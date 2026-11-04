@@ -251,7 +251,7 @@ class AccountDeletionCoreDataIntegrationTest {
                 .subscription(subscription)
                 .amount(BigDecimal.ZERO)
                 .currencyCode("PEN")
-                .provider(PaymentProvider.MANUAL_TRANSFER)
+                .provider(PaymentProvider.MERCADO_PAGO)
                 .state(PaymentState.PENDING)
                 .createdAt(now)
                 .build());

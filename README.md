@@ -16,10 +16,13 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-El esquema de PostgreSQL no se actualiza automáticamente (`ddl-auto: none`).
-Antes de desplegar esta versión sobre una base existente, aplica
-`database/manual/20261023_add_locale_to_user_preferences.sql` y
-`database/manual/20261023_add_locale_to_notifications.sql`.
+El esquema de PostgreSQL se versiona con Flyway y `ddl-auto: none`; al arrancar,
+Spring ejecuta las migraciones pendientes. `V1__init.sql` contiene el esquema
+completo, así que una base vacía se inicializa sin pasos manuales. Las
+siguientes migraciones deben empezar en `V2`.
+
+Si una base ya tenía el historial antiguo V1..V22, hay que re-basearla una vez
+(o recrearla) antes de arrancar esta versión.
 
 ### Idiomas
 

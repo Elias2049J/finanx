@@ -45,7 +45,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void shouldReturnUnauthorizedForInvalidWebhookSignature() {
-        HttpServletRequest request = new MockHttpServletRequest("POST", "/webhooks/MANUAL_TRANSFER");
+        HttpServletRequest request = new MockHttpServletRequest("POST", "/webhooks/MERCADO_PAGO");
 
         var response = handler.handleAuthentication(
                 new InvalidWebhookSignatureException("Invalid signature"),

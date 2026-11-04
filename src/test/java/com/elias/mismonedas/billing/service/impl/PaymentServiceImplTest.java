@@ -32,6 +32,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.AmqpException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 
@@ -53,6 +54,7 @@ class PaymentServiceImplTest {
     @Mock private UserRepository userRepository;
     @Mock private PaymentMapper paymentMapper;
     @Mock private PaymentPort paymentPort;
+    @Mock private ObjectProvider<PaymentPort> paymentPortProvider;
     @Mock private PaymentWebhookPublisher webhookPublisher;
     @Mock private SecurityService securityService;
     @Mock private SubscriptionRepository subscriptionRepository;
@@ -64,9 +66,10 @@ class PaymentServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(paymentPortProvider.getIfAvailable()).thenReturn(paymentPort);
         service = new PaymentServiceImpl(
-                paymentRepository, webhookEventRepository, userRepository, paymentMapper, paymentPort, webhookPublisher,
-                securityService, subscriptionRepository, billingService);
+                paymentRepository, webhookEventRepository, userRepository, paymentMapper, paymentPortProvider,
+                webhookPublisher, securityService, subscriptionRepository, billingService);
     }
 
     private PaymentWebhookNotification notification(String externalEventId, String externalReference, String status) {
@@ -77,7 +80,7 @@ class PaymentServiceImplTest {
             String externalEventId, String externalReference, String status,
             java.math.BigDecimal amount, String currency) {
         return PaymentWebhookNotification.builder()
-                .provider(PaymentProvider.MANUAL_TRANSFER)
+                .provider(PaymentProvider.MERCADO_PAGO)
                 .externalEventId(externalEventId)
                 .externalReference(externalReference)
                 .eventType("payment.updated")
@@ -425,9 +428,9 @@ class PaymentServiceImplTest {
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-1", "REF-1", "approved"));
             when(webhookEventRepository.findByProviderAndExternalEventId(
-                    PaymentProvider.MANUAL_TRANSFER, "EVT-1")).thenReturn(Optional.of(existing));
+                    PaymentProvider.MERCADO_PAGO, "EVT-1")).thenReturn(Optional.of(existing));
 
-            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.receiveWebhookEvent(PaymentProvider.MERCADO_PAGO, "{}", "sig");
 
             verify(webhookEventRepository, never()).saveAndFlush(any());
             verify(webhookPublisher, never()).publish(any());
@@ -440,10 +443,10 @@ class PaymentServiceImplTest {
             when(webhookEventRepository.saveAndFlush(any()))
                     .thenThrow(new DataIntegrityViolationException("uq id_evento_externo"));
             when(webhookEventRepository.findByProviderAndExternalEventId(
-                    PaymentProvider.MANUAL_TRANSFER, "EVT-1"))
+                    PaymentProvider.MERCADO_PAGO, "EVT-1"))
                     .thenReturn(Optional.empty(), Optional.of(WebhookEvent.builder().id(1L).build()));
 
-            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.receiveWebhookEvent(PaymentProvider.MERCADO_PAGO, "{}", "sig");
 
             verify(webhookEventRepository, never()).save(any());
             verify(webhookPublisher, never()).publish(any());
@@ -454,14 +457,14 @@ class PaymentServiceImplTest {
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-2", "REF-2", "approved"));
             when(webhookEventRepository.findByProviderAndExternalEventId(
-                    PaymentProvider.MANUAL_TRANSFER, "EVT-2")).thenReturn(Optional.empty());
+                    PaymentProvider.MERCADO_PAGO, "EVT-2")).thenReturn(Optional.empty());
             when(webhookEventRepository.saveAndFlush(any())).thenAnswer(invocation -> {
                 WebhookEvent event = invocation.getArgument(0);
                 event.setId(2L);
                 return event;
             });
 
-            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.receiveWebhookEvent(PaymentProvider.MERCADO_PAGO, "{}", "sig");
 
             verify(webhookEventRepository).saveAndFlush(eventCaptor.capture());
             assertThat(eventCaptor.getValue().getState()).isEqualTo(WebhookEventState.RECEIVED);
@@ -474,7 +477,7 @@ class PaymentServiceImplTest {
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-2B", "REF-2B", "approved"));
             when(webhookEventRepository.findByProviderAndExternalEventId(
-                    PaymentProvider.MANUAL_TRANSFER, "EVT-2B")).thenReturn(Optional.empty());
+                    PaymentProvider.MERCADO_PAGO, "EVT-2B")).thenReturn(Optional.empty());
             when(webhookEventRepository.saveAndFlush(any())).thenAnswer(invocation -> {
                 WebhookEvent event = invocation.getArgument(0);
                 event.setId(22L);
@@ -482,7 +485,7 @@ class PaymentServiceImplTest {
             });
             doThrow(new AmqpException("broker unavailable")).when(webhookPublisher).publish(22L);
 
-            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.receiveWebhookEvent(PaymentProvider.MERCADO_PAGO, "{}", "sig");
 
             verify(webhookEventRepository).saveAndFlush(eventCaptor.capture());
             assertThat(eventCaptor.getValue().getState()).isEqualTo(WebhookEventState.RECEIVED);
@@ -494,17 +497,17 @@ class PaymentServiceImplTest {
             when(paymentPort.verifyWebhookSignature(any(), any())).thenReturn(true);
             when(paymentPort.parseWebhookPayload(any())).thenReturn(notification("EVT-SHARED", "REF-S", "approved"));
             when(webhookEventRepository.findByProviderAndExternalEventId(
-                    PaymentProvider.MANUAL_TRANSFER, "EVT-SHARED")).thenReturn(Optional.empty());
+                    PaymentProvider.MERCADO_PAGO, "EVT-SHARED")).thenReturn(Optional.empty());
             when(webhookEventRepository.saveAndFlush(any())).thenAnswer(invocation -> {
                 WebhookEvent event = invocation.getArgument(0);
                 event.setId(33L);
                 return event;
             });
 
-            service.receiveWebhookEvent(PaymentProvider.MANUAL_TRANSFER, "{}", "sig");
+            service.receiveWebhookEvent(PaymentProvider.MERCADO_PAGO, "{}", "sig");
 
             verify(webhookEventRepository).findByProviderAndExternalEventId(
-                    PaymentProvider.MANUAL_TRANSFER, "EVT-SHARED");
+                    PaymentProvider.MERCADO_PAGO, "EVT-SHARED");
             verify(webhookEventRepository).saveAndFlush(any());
         }
 
@@ -514,7 +517,7 @@ class PaymentServiceImplTest {
 
             org.assertj.core.api.Assertions
                     .assertThatThrownBy(() -> service.receiveWebhookEvent(
-                            PaymentProvider.MANUAL_TRANSFER, "{}", "sig"))
+                            PaymentProvider.MERCADO_PAGO, "{}", "sig"))
                     .isInstanceOf(InvalidWebhookSignatureException.class);
 
             verify(webhookEventRepository, never()).saveAndFlush(any());
@@ -527,7 +530,7 @@ class PaymentServiceImplTest {
 
             org.assertj.core.api.Assertions
                     .assertThatThrownBy(() -> service.receiveWebhookEvent(
-                            PaymentProvider.MANUAL_TRANSFER, "{}", "sig"))
+                            PaymentProvider.MERCADO_PAGO, "{}", "sig"))
                     .isInstanceOf(IllegalArgumentException.class);
 
             verify(webhookEventRepository, never()).saveAndFlush(any());
@@ -719,7 +722,7 @@ class PaymentServiceImplTest {
         void shouldRepublishStaleReceivedEventWithoutProcessingInline() {
             WebhookEvent received = WebhookEvent.builder()
                     .id(50L)
-                    .provider(PaymentProvider.MANUAL_TRANSFER)
+                    .provider(PaymentProvider.MERCADO_PAGO)
                     .externalEventId("EVT-9")
                     .rawPayload("{}")
                     .state(WebhookEventState.RECEIVED)
@@ -740,7 +743,7 @@ class PaymentServiceImplTest {
         void shouldKeepReceivedEventWhenBrokerPublishFails() {
             WebhookEvent received = WebhookEvent.builder()
                     .id(51L)
-                    .provider(PaymentProvider.MANUAL_TRANSFER)
+                    .provider(PaymentProvider.MERCADO_PAGO)
                     .externalEventId("EVT-10")
                     .rawPayload("bad")
                     .state(WebhookEventState.RECEIVED)
