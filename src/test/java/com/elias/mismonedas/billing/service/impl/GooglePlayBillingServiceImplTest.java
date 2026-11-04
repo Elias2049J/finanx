@@ -278,6 +278,87 @@ class GooglePlayBillingServiceImplTest {
     }
 
     @Test
+    void shouldGenerateOrderIdAndKeepPurchaseTimeWhenVerifierHasNoOrderId() {
+        GooglePlayVerificationRequest request = request("test-valid-no-order");
+        OffsetDateTime purchasedAt = OffsetDateTime.now().minusDays(2);
+        VerifiedGooglePlayPurchase verified = new VerifiedGooglePlayPurchase(
+                "test-valid-no-order",
+                null,
+                "premium_monthly_test",
+                "monthly-test",
+                BillingCycle.MONTHLY,
+                new BigDecimal("19.90"),
+                "PEN",
+                GooglePlayPurchaseState.ACTIVE,
+                purchasedAt,
+                purchasedAt.plusMonths(1),
+                true,
+                true);
+
+        when(securityService.getCurrentUser()).thenReturn(user);
+        when(verifier.verify(request)).thenReturn(verified);
+        when(googlePlayPurchaseRepository.findByPurchaseToken("test-valid-no-order"))
+                .thenReturn(Optional.empty());
+        when(subscriptionRepository.findFirstByUser_IdAndStateOrderByCreatedAtDesc(1L, SubscriptionState.ACTIVE))
+                .thenReturn(Optional.empty());
+        when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(invocation -> {
+            Subscription subscription = invocation.getArgument(0);
+            subscription.setId(10L);
+            return subscription;
+        });
+        when(paymentRepository.findByExternalReference(anyString())).thenReturn(Optional.empty());
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment payment = invocation.getArgument(0);
+            payment.setId(20L);
+            return payment;
+        });
+        when(subscriptionMapper.toResponse(any(Subscription.class)))
+                .thenReturn(SubscriptionResponse.builder().id(10L).build());
+
+        GooglePlayVerificationResponse result = service.verify(request);
+
+        assertThat(result.isVerified()).isTrue();
+
+        ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentRepository).save(paymentCaptor.capture());
+        Payment savedPayment = paymentCaptor.getValue();
+        assertThat(savedPayment.getExternalReference()).startsWith("GPA.");
+        assertThat(savedPayment.getPaidAt()).isEqualTo(purchasedAt);
+
+        ArgumentCaptor<GooglePlayPurchase> purchaseCaptor =
+                ArgumentCaptor.forClass(GooglePlayPurchase.class);
+        verify(googlePlayPurchaseRepository).save(purchaseCaptor.capture());
+        assertThat(purchaseCaptor.getValue().getOrderId())
+                .isEqualTo(savedPayment.getExternalReference());
+    }
+
+    @Test
+    void shouldReplayExistingPurchaseWithoutSubscription() {
+        GooglePlayVerificationRequest request = request("test-valid-replay-no-subscription");
+        VerifiedGooglePlayPurchase verified =
+                purchase(GooglePlayPurchaseState.ACTIVE, "test-valid-replay-no-subscription");
+        GooglePlayPurchase existing = GooglePlayPurchase.builder()
+                .id(5L)
+                .user(user)
+                .purchaseToken("test-valid-replay-no-subscription")
+                .state(GooglePlayPurchaseState.ACTIVE)
+                .build();
+
+        when(securityService.getCurrentUser()).thenReturn(user);
+        when(verifier.verify(request)).thenReturn(verified);
+        when(googlePlayPurchaseRepository.findByPurchaseToken("test-valid-replay-no-subscription"))
+                .thenReturn(Optional.of(existing));
+
+        GooglePlayVerificationResponse result = service.verify(request);
+
+        assertThat(result.isVerified()).isTrue();
+        assertThat(result.getSubscription()).isNull();
+        assertThat(result.getMessage()).contains("ya estaba verificada");
+        verifyNoInteractions(subscriptionRepository, paymentRepository);
+        verify(googlePlayPurchaseRepository, never()).save(any());
+    }
+
+    @Test
     void shouldRejectWhenFakeModeIsDisabled() {
         when(securityService.getCurrentUser()).thenReturn(user);
         when(verifierProvider.getIfAvailable()).thenReturn(null);

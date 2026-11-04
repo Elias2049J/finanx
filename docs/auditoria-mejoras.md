@@ -10,6 +10,8 @@
 >
 > **Nota sobre fuentes.** La auditoría comparativa base de la sesión anterior no está versionada en el repositorio. Este documento sintetiza: (a) la segunda pasada de profundización, (b) la auditoría de rendimiento de esta sesión, y (c) los hallazgos QA ya registrados en `qa/e2e/KNOWN-ISSUES.md`. Donde una afirmación del informe recibido no se sostiene contra el código, se corrige explícitamente en la sección 7.
 
+> **Actualización (2026-11-03):** las referencias a `ManualPaymentGatewayAdapter` y al gateway manual son históricas. Ese adaptador se eliminó junto con el proveedor de transferencia manual; el flujo actual usa un `PaymentPort` opcional y un verificador fake de Google Play (`app.billing.google-play.mode=fake`). Los hallazgos P0-2, P0-6 y P2-15 se conservan como contexto de la auditoría original, no como descripción del flujo de pago actual.
+
 ---
 
 ## 1. Resumen ejecutivo
