@@ -99,8 +99,9 @@ app:
       pending-minutes: ${APP_BILLING_PAYMENT_EXPIRATION_PENDING_MINUTES:1440}
       processing-minutes: ${APP_BILLING_PAYMENT_EXPIRATION_PROCESSING_MINUTES:60}
     # Verificacion de compras de Google Play.
-    # disabled: no permite verificar (produccion hasta tener service account).
+    # disabled: no permite verificar (produccion hasta configurar credenciales).
     # fake: acepta tokens test-valid-* y no llama a Google (solo desarrollo).
+    # google: verifica contra Android Publisher API con un service account.
     google-play:
       mode: ${APP_BILLING_GOOGLE_PLAY_MODE:disabled}
       package-name: ${APP_BILLING_GOOGLE_PLAY_PACKAGE_NAME:com.elias.mismonedas}
@@ -109,6 +110,9 @@ app:
       monthly-price: ${APP_BILLING_GOOGLE_PLAY_MONTHLY_PRICE:19.90}
       annual-price: ${APP_BILLING_GOOGLE_PLAY_ANNUAL_PRICE:199.00}
       currency: ${APP_BILLING_GOOGLE_PLAY_CURRENCY:PEN}
+      # Solo obligatorias con mode=google. La ruta debe existir en el runtime.
+      service-account-credentials-path: ${APP_BILLING_GOOGLE_PLAY_SERVICE_ACCOUNT_PATH:}
+      api-base-url: ${APP_BILLING_GOOGLE_PLAY_API_BASE_URL:https://androidpublisher.googleapis.com/}
   ai:
     max-user-prompt-length: 500
     max-output-tokens: 1024

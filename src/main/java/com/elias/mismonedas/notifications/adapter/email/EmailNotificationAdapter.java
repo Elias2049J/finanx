@@ -57,6 +57,15 @@ public class EmailNotificationAdapter implements NotificationPort, EmailVerifica
         sendEmail(email, "Verifica tu correo de Finanx", text, null, null);
     }
 
+    @Override
+    @CircuitBreaker(name = "email")
+    public void sendPasswordResetCode(String email, String code, Duration validity) {
+        String text = "Tu código para restablecer la contraseña de Finanx es: " + code
+                + "\n\nEl código vence en " + validity.toMinutes()
+                + " minutos. Si no solicitaste este cambio, ignora este mensaje: tu contraseña no se modificará.";
+        sendEmail(email, "Restablece tu contraseña de Finanx", text, null, null);
+    }
+
     private String localizedTitle(NotificationDTO notification) {
         if (notification.getTitle() != null) {
             return notification.getTitle();

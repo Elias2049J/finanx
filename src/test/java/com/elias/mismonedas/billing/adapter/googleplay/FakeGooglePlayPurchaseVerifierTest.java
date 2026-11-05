@@ -27,7 +27,9 @@ class FakeGooglePlayPurchaseVerifierTest {
                 "premium_annual_test",
                 new BigDecimal("19.90"),
                 new BigDecimal("199.00"),
-                "PEN");
+                "PEN",
+                null,
+                null);
         verifier = new FakeGooglePlayPurchaseVerifier(properties);
     }
 

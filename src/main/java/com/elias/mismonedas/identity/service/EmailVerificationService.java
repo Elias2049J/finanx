@@ -26,7 +26,11 @@ public class EmailVerificationService {
         Long challengeId = challengeManager.persistChallenge(email, purpose, codeHash);
 
         try {
-            emailSender.sendVerificationCode(email, code, EmailVerificationPolicy.CODE_TTL);
+            if (purpose == EmailVerificationPurpose.PASSWORD_RESET) {
+                emailSender.sendPasswordResetCode(email, code, EmailVerificationPolicy.CODE_TTL);
+            } else {
+                emailSender.sendVerificationCode(email, code, EmailVerificationPolicy.CODE_TTL);
+            }
         } catch (RuntimeException deliveryFailure) {
             try {
                 challengeManager.invalidateIfCurrent(challengeId, codeHash);

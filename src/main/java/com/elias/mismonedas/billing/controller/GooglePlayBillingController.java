@@ -3,8 +3,11 @@ package com.elias.mismonedas.billing.controller;
 import com.elias.mismonedas.billing.dto.googleplay.GooglePlayVerificationRequest;
 import com.elias.mismonedas.billing.dto.googleplay.GooglePlayVerificationResponse;
 import com.elias.mismonedas.billing.service.GooglePlayBillingService;
+import com.elias.mismonedas.shared.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +31,14 @@ public class GooglePlayBillingController {
             tags = {"Subscriptions"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "Purchase verified or pending"),
-                    @ApiResponse(responseCode = "400", description = "Invalid request"),
-                    @ApiResponse(responseCode = "409", description = "Purchase rejected, revoked, expired or already owned by another user")
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid request",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "Purchase rejected, revoked, expired or already owned by another user",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
             }
     )
     @PostMapping("/verify")

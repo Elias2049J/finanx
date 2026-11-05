@@ -7,11 +7,15 @@ import com.elias.mismonedas.identity.domain.enums.EmailVerificationPurpose;
 import com.elias.mismonedas.identity.domain.event.UserDeletedEvent;
 import com.elias.mismonedas.identity.dto.auth.EmailVerificationResendRequest;
 import com.elias.mismonedas.identity.dto.auth.LoginRequest;
+import com.elias.mismonedas.identity.dto.auth.PasswordResetConfirmRequest;
+import com.elias.mismonedas.identity.dto.auth.PasswordResetRequest;
 import com.elias.mismonedas.identity.dto.auth.RegisterVerificationRequest;
 import com.elias.mismonedas.identity.repository.EmailVerificationChallengeRepository;
 import com.elias.mismonedas.identity.repository.UserPreferencesRepository;
 import com.elias.mismonedas.identity.repository.UserRepository;
+import com.elias.mismonedas.identity.service.AuthTokenService;
 import com.elias.mismonedas.identity.service.EmailVerificationEmailSender;
+import com.elias.mismonedas.shared.exception.InvalidRefreshTokenException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -36,8 +40,10 @@ import java.security.SecureRandom;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
@@ -67,6 +73,7 @@ class AuthEmailVerificationFlowIntegrationTest {
         public EmailVerificationEmailSender emailVerificationEmailSender() {
             EmailVerificationEmailSender mock = Mockito.mock(EmailVerificationEmailSender.class);
             doNothing().when(mock).sendVerificationCode(Mockito.anyString(), Mockito.anyString(), Mockito.any());
+            doNothing().when(mock).sendPasswordResetCode(Mockito.anyString(), Mockito.anyString(), Mockito.any());
             return mock;
         }
     }
@@ -93,6 +100,9 @@ class AuthEmailVerificationFlowIntegrationTest {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
+    private AuthTokenService authTokenService;
+
+    @Autowired
     private PlatformTransactionManager transactionManager;
 
     private String email;
@@ -103,6 +113,7 @@ class AuthEmailVerificationFlowIntegrationTest {
             new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
                 challengeRepository.deleteByEmailAndPurpose(email, EmailVerificationPurpose.REGISTRATION);
                 challengeRepository.deleteByEmailAndPurpose(email, EmailVerificationPurpose.EXISTING_ACCOUNT);
+                challengeRepository.deleteByEmailAndPurpose(email, EmailVerificationPurpose.PASSWORD_RESET);
                 userRepository.findByEmail(email).ifPresent(user -> {
                     preferencesRepository.deleteByUser_Id(user.getId());
                     eventPublisher.publishEvent(new UserDeletedEvent(user.getId()));
@@ -213,6 +224,85 @@ class AuthEmailVerificationFlowIntegrationTest {
         String body = result.getResponse().getContentAsString();
         JsonNode json = objectMapper.readTree(body);
         assertThat(json.path("code").asText()).isEqualTo("EMAIL_NOT_VERIFIED");
+    }
+
+    @Test
+    void passwordResetChangesPasswordAndRevokesExistingSessions() throws Exception {
+        email = "reset-" + UUID.randomUUID() + "@example.test";
+        User user = new User();
+        user.setName("Re");
+        user.setLastname("Set");
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode("OldPassw0rd!"));
+        user.setEmailVerified(true);
+        user.setAuthProvider(AuthProvider.LOCAL);
+        user.setRole(com.elias.mismonedas.identity.domain.enums.Role.USER);
+        userRepository.saveAndFlush(user);
+
+        String refreshToken = authTokenService.issue(user).getRefreshToken();
+
+        PasswordResetRequest request = new PasswordResetRequest();
+        request.setEmail(email);
+
+        mockMvc.perform(post("/api/v1/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted());
+
+        assertThat(challengeRepository.findByEmailAndPurposeForUpdate(
+                email, EmailVerificationPurpose.PASSWORD_RESET)).isPresent();
+
+        PasswordResetConfirmRequest confirm = new PasswordResetConfirmRequest();
+        confirm.setEmail(email);
+        confirm.setCode("000000");
+        confirm.setNewPassword("NewPassw0rd!");
+
+        mockMvc.perform(post("/api/v1/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(confirm)))
+                .andExpect(status().isNoContent());
+
+        User updated = userRepository.findByEmail(email).orElseThrow();
+        assertThat(passwordEncoder.matches("NewPassw0rd!", updated.getPassword())).isTrue();
+        assertThat(passwordEncoder.matches("OldPassw0rd!", updated.getPassword())).isFalse();
+        assertThatThrownBy(() -> authTokenService.refresh(refreshToken))
+                .isInstanceOf(InvalidRefreshTokenException.class);
+    }
+
+    @Test
+    void passwordResetWithWrongCodeKeepsPasswordAndReportsStatus() throws Exception {
+        email = "bad-reset-" + UUID.randomUUID() + "@example.test";
+        User user = new User();
+        user.setName("Bad");
+        user.setLastname("Reset");
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode("OldPassw0rd!"));
+        user.setEmailVerified(true);
+        user.setAuthProvider(AuthProvider.LOCAL);
+        user.setRole(com.elias.mismonedas.identity.domain.enums.Role.USER);
+        userRepository.saveAndFlush(user);
+
+        PasswordResetRequest request = new PasswordResetRequest();
+        request.setEmail(email);
+
+        mockMvc.perform(post("/api/v1/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted());
+
+        PasswordResetConfirmRequest confirm = new PasswordResetConfirmRequest();
+        confirm.setEmail(email);
+        confirm.setCode("999999");
+        confirm.setNewPassword("NewPassw0rd!");
+
+        mockMvc.perform(post("/api/v1/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(confirm)))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string("X-Password-Reset-Status", "INVALID_CODE"));
+
+        User unchanged = userRepository.findByEmail(email).orElseThrow();
+        assertThat(passwordEncoder.matches("OldPassw0rd!", unchanged.getPassword())).isTrue();
     }
 
     // Code fixed to 000000 via mocked SecureRandom and known HMAC context in tests.

@@ -20,7 +20,7 @@ APP_BILLING_AUTO_PREMIUM=false
 APP_BILLING_WEBHOOKS_ENABLED=false
 APP_BILLING_GOOGLE_PLAY_MODE=disabled
 SPRINGDOC_ENABLED=false
-APP_FRONT_URL=https://app.mis-monedas.com
+APP_FRONT_URL=https://mis-monedas.com
 SEAWEEDFS_PUBLIC_ENDPOINT=https://storage.mis-monedas.com
 JWT_SECRET=<secreto-real-de-al-menos-32-caracteres>
 ```
@@ -30,10 +30,19 @@ Con `APP_ENV=production`, el backend falla al arrancar si detecta
 URLs locales/ngrok o un `JWT_SECRET` de ejemplo. El objetivo es que una
 configuracion insegura no llegue a produccion por olvido.
 
-`APP_BILLING_GOOGLE_PLAY_MODE=disabled` es el unico modo seguro hasta que
-existan los productos, el service account y la verificacion real de Play.
+`APP_BILLING_GOOGLE_PLAY_MODE=disabled` sigue siendo el valor por defecto. El
+modo `fake` solo se permite en desarrollo; `google` ya tiene verificador real,
+pero no debe activarse hasta completar la seccion 3.
 
 ## 2. Build y firma de la app Android
+
+El keystore de debug incluido en Android SDK **no sirve para publicar** en Play
+Console. Genera un upload keystore propio y guardalo fuera del repositorio:
+
+```powershell
+keytool -genkeypair -v -keystore "$HOME\upload-keystore.jks" -alias upload `
+  -keyalg RSA -keysize 4096 -validity 10000
+```
 
 La firma no se versiona. Crea `keystore.properties` a partir de
 `keystore.properties.example` o define estas variables de entorno:
@@ -50,6 +59,11 @@ Ademas, `local.properties` (o el entorno de CI) debe tener:
 ```properties
 API_BASE_URL=https://api.mis-monedas.com/
 GOOGLE_WEB_CLIENT_ID=<web-client-id>.apps.googleusercontent.com
+GOOGLE_PLAY_BILLING_MODE=disabled
+GOOGLE_PLAY_MONTHLY_PRODUCT_ID=<product-id-mensual>
+GOOGLE_PLAY_ANNUAL_PRODUCT_ID=<product-id-anual>
+GOOGLE_PLAY_MONTHLY_BASE_PLAN_ID=<base-plan-mensual>
+GOOGLE_PLAY_ANNUAL_BASE_PLAN_ID=<base-plan-anual>
 ```
 
 Genera el artefacto:
@@ -69,20 +83,31 @@ $apksigner = "$env:LOCALAPPDATA\Android\Sdk\build-tools\36.0.0\apksigner.bat"
 & $apksigner verify --verbose app\build\outputs\apk\release\app-release.apk
 ```
 
-## 3. Google Play Billing real (bloqueado)
+## 3. Google Play Billing real (implementado, pendiente de consola)
 
-El flujo actual es solo de prueba y no debe publicarse como compra real. Para
-habilitarlo hacen falta acciones externas:
+El backend ya incluye un verificador real contra Android Publisher
+`purchases.subscriptionsv2.get`, y Android ya usa `billing-ktx` en modo
+`google`. La compra se verifica en el backend antes de activar Premium y se
+reconoce en Play despues de verificar. Sin embargo, no se puede activar hasta
+completar estas acciones externas:
 
-1. Crear los productos de suscripcion en Play Console y decidir precios.
-2. Crear un service account con acceso a Play Developer API.
-3. Configurar el backend con las credenciales del service account.
-4. Implementar el verificador real de compras y el manejo de RTDN.
-5. Probar con licencias de test en una pista interna.
-6. Cambiar `APP_BILLING_GOOGLE_PLAY_MODE` de `disabled` a `google` cuando el
-   adaptador real exista (hoy no existe).
+1. Crear los productos y base plans de suscripcion en Play Console y decidir
+   precios reales.
+2. Crear un service account con acceso a Play Developer API y descargar su JSON.
+3. Montar el JSON en el servidor, fuera del repositorio, y configurar:
+   `APP_BILLING_GOOGLE_PLAY_MODE=google`,
+   `APP_BILLING_GOOGLE_PLAY_SERVICE_ACCOUNT_PATH=/ruta/al/service-account.json`,
+   `APP_BILLING_GOOGLE_PLAY_MONTHLY_PRODUCT_ID`,
+   `APP_BILLING_GOOGLE_PLAY_ANNUAL_PRODUCT_ID`.
+4. Configurar RTDN para renovaciones, cancelaciones, reembolsos y cuenta en
+   espera. Hoy el backend verifica bajo demanda; sin RTDN no hay reconciliacion
+   automatica de eventos posteriores a la compra.
+5. Probar con licencias de test en una pista interna antes de produccion.
+6. Solo entonces cambiar el modo en `local.properties`/entorno y publicar.
 
-Hasta entonces, la app de release mantiene el flujo de compra deshabilitado.
+La app de release mantiene `GOOGLE_PLAY_BILLING_MODE=disabled` por defecto. El
+modo `google` se usa en builds de prueba internos; el modo `local`/`backend`
+sigue disponible para desarrollo sin Play Console.
 
 ## 4. Backups
 
@@ -136,7 +161,7 @@ Usa esa URL en Play Console. Si cambias el correo de soporte, actualiza
 - [ ] Pagina de eliminacion de cuenta publicada y accesible sin login.
 - [ ] Politica de privacidad, terminos y Data Safety revisados legalmente.
 - [ ] UMP/consentimiento de anuncios configurado en AdMob si aplica.
-- [ ] Google Play Billing real solo cuando existan productos y verificador.
+- [ ] Google Play Billing real solo cuando existan productos, service account y RTDN.
 
 ## 8. Pendientes que requieren intervencion externa
 

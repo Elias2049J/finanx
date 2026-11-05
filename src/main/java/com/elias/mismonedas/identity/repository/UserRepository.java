@@ -20,6 +20,11 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     Optional<User> findByIdForUpdate(@Param("userId") Long userId);
 
     Optional<User> findByEmail(String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.email = :email")
+    Optional<User> findByEmailForUpdate(@Param("email") String email);
+
     boolean existsByEmail(String email);
     Optional<User> findByAuthProviderAndProviderUserId(AuthProvider authProvider, String providerUserId);
 
