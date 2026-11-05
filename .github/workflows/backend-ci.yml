@@ -77,7 +77,7 @@ jobs:
       FCM_PROJECT_ID: ci-project
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
