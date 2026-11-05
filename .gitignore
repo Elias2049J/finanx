@@ -36,6 +36,7 @@ build/
 
 /secrets/
 /backups/
+/certs/
 
 src/main/resources/application.yml
 application-dev.yml

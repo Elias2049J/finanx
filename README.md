@@ -13,6 +13,7 @@ plantilla versionada es **`.env.example`**, y solo contiene valores de ejemplo.
 cp .env.example .env
 # rellena los valores marcados como REEMPLAZAR
 # crea secrets/seaweedfs_access_key y secrets/seaweedfs_secret_key
+./mvnw -B -ntp -DskipTests package
 docker compose up -d --build
 ```
 

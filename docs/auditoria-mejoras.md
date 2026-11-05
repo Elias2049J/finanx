@@ -11,6 +11,8 @@
 > **Nota sobre fuentes.** La auditoría comparativa base de la sesión anterior no está versionada en el repositorio. Este documento sintetiza: (a) la segunda pasada de profundización, (b) la auditoría de rendimiento de esta sesión, y (c) los hallazgos QA ya registrados en `qa/e2e/KNOWN-ISSUES.md`. Donde una afirmación del informe recibido no se sostiene contra el código, se corrige explícitamente en la sección 7.
 
 > **Actualización (2026-11-03):** las referencias a `ManualPaymentGatewayAdapter` y al gateway manual son históricas. Ese adaptador se eliminó junto con el proveedor de transferencia manual; el flujo actual usa un `PaymentPort` opcional y un verificador fake de Google Play (`app.billing.google-play.mode=fake`). Los hallazgos P0-2, P0-6 y P2-15 se conservan como contexto de la auditoría original, no como descripción del flujo de pago actual.
+>
+> **Actualización (2026-11-04):** P0-1 quedó corregido. `POST /subscriptions/{id}/activate` y `/{id}/renew` exigen `ROLE_SYSTEM` a nivel de filtro y de método; un usuario normal ya no puede autoactivar PREMIUM. La activación de usuarios debe pasar por un pago verificado. También se añadieron validaciones de arranque para producción, Play Billing deshabilitado por defecto y documentación en `docs/production-runbook.md`.
 
 ---
 
@@ -103,6 +105,13 @@ Veredictos: **CONFIRMADO** (el código hace lo descrito), **PARCIAL** (el hecho 
 ## 3. P0 — Detalle y parche recomendado
 
 ### P0-1 · Activación self-service de suscripciones
+
+> **Estado (2026-11-04): corregido.** `activate` y `renew` ahora tienen
+> `@PreAuthorize("hasRole('SYSTEM')")` y una regla equivalente en
+> `WebSecurityConfig`. El test
+> `SubscriptionControllerSecurityTest` verifica que `ROLE_USER` recibe 403 y
+> que solo `ROLE_SYSTEM` puede invocarlos. La creación de suscripciones sigue
+> siendo pública, pero ya no permite activar el plan sin un pago verificado.
 
 ```java
 // BillingServiceImpl.java:108-123

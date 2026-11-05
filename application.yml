@@ -1,11 +1,22 @@
 server:
   port: ${SERVER_PORT}
+  # Detras de nginx: respeta X-Forwarded-Proto/Host para URLs absolutas.
+  forward-headers-strategy: framework
+  # Apagado ordenado: deja terminar peticiones en vuelo.
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-exception: false
 
 spring:
   application:
     name: "mis-monedas"
   config:
     import: "optional:file:./.env[.properties]"
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
   threads:
     virtual:
@@ -71,6 +82,10 @@ logging:
     com.zaxxer.hikari: INFO
 
 app:
+  # Entorno logico: development | production. En production el backend falla
+  # al arrancar si detecta configuracion insegura (auto-premium, Play Billing
+  # fake, Swagger abierto, URLs locales o JWT de ejemplo).
+  environment: ${APP_ENV:development}
   time:
     default-zone: ${APP_TIME_DEFAULT_ZONE}
   billing:
@@ -130,9 +145,11 @@ app:
       api-url: ${CURRENCYBEACON_API_URL}
 
 springdoc:
-  api-docs.enabled: true
+  # La documentacion interactiva queda apagada por defecto. En desarrollo local
+  # se puede habilitar con SPRINGDOC_ENABLED=true.
+  api-docs.enabled: ${SPRINGDOC_ENABLED:false}
   api-docs.version: openapi_3_0
-  swagger-ui.enabled: true
+  swagger-ui.enabled: ${SPRINGDOC_ENABLED:false}
 
   model-converters.polymorphic-converter.enabled: false
   override-with-generic-response: false

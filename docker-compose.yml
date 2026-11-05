@@ -26,15 +26,18 @@ services:
       SPRING_RABBITMQ_PUBLISHER_RETURNS: "true"
       SPRING_RABBITMQ_TEMPLATE_MANDATORY: "true"
       APP_STORAGE_SEAWEEDFS_INTERNAL_ENDPOINT: http://seaweedfs:8333
-      APP_STORAGE_SEAWEEDFS_PUBLIC_ENDPOINT: ${SEAWEEDFS_PUBLIC_ENDPOINT:-http://localhost:8081}
+      APP_STORAGE_SEAWEEDFS_PUBLIC_ENDPOINT: ${SEAWEEDFS_PUBLIC_ENDPOINT:-https://storage.mis-monedas.com}
       APP_STORAGE_SEAWEEDFS_BUCKET: ${SEAWEEDFS_BUCKET:-finanx-images}
       APP_STORAGE_SEAWEEDFS_ACCESS_KEY_FILE: /run/secrets/seaweedfs_access_key
       APP_STORAGE_SEAWEEDFS_SECRET_KEY_FILE: /run/secrets/seaweedfs_secret_key
       APP_STORAGE_SEAWEEDFS_PRESIGNED_URL_TTL: 5m
       FCM_CREDENTIALS_PATH: /run/secrets/firebase-sa
-      # Solo en el compose de desarrollo: asigna PREMIUM a cada registro.
-      APP_BILLING_AUTO_PREMIUM: "true"
-      APP_BILLING_WEBHOOKS_ENABLED: "false"
+      # Valores seguros por defecto. Para desarrollo local se pueden
+      # sobreescribir en .env (por ejemplo APP_BILLING_AUTO_PREMIUM=true).
+      APP_BILLING_AUTO_PREMIUM: ${APP_BILLING_AUTO_PREMIUM:-false}
+      APP_BILLING_WEBHOOKS_ENABLED: ${APP_BILLING_WEBHOOKS_ENABLED:-false}
+      APP_BILLING_GOOGLE_PLAY_MODE: ${APP_BILLING_GOOGLE_PLAY_MODE:-disabled}
+      SPRINGDOC_ENABLED: ${SPRINGDOC_ENABLED:-false}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 30s

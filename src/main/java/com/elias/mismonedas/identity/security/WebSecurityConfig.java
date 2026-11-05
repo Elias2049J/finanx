@@ -6,6 +6,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -62,7 +63,9 @@ public class WebSecurityConfig {
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout",
                                 "/v3/api-docs.yaml",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+                                "/account-deletion.html",
+                                "/favicon.ico"
                         ).permitAll()
 
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
@@ -84,6 +87,13 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/v1/wallets/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/api/v1/categories/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/api/v1/payments/**").hasAnyRole("USER", "SYSTEM")
+                        // La activacion y renovacion manuales solo las puede ejecutar el sistema.
+                        // Los usuarios activan su plan exclusivamente mediante un pago verificado.
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v1/subscriptions/{id}/activate",
+                                "/api/v1/subscriptions/{id}/renew"
+                        ).hasRole("SYSTEM")
                         .requestMatchers("/api/v1/subscriptions/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/api/v1/reports/**").hasAnyRole("USER", "SYSTEM")
                         .requestMatchers("/api/v1/notifications/**").hasAnyRole("USER", "SYSTEM")

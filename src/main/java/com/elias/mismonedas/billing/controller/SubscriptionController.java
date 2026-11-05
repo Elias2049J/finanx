@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -105,6 +106,7 @@ public class SubscriptionController {
             }
     )
     @PostMapping("/{id}/activate")
+    @PreAuthorize("hasRole('SYSTEM')")
     public ResponseEntity<SubscriptionResponse> activate(
             @Parameter(description = "Subscription id") @PathVariable Long id) {
         return ResponseEntity.ok(billingService.activate(id));
@@ -121,6 +123,7 @@ public class SubscriptionController {
             }
     )
     @PostMapping("/{id}/renew")
+    @PreAuthorize("hasRole('SYSTEM')")
     public ResponseEntity<SubscriptionResponse> renew(
             @Parameter(description = "Subscription id") @PathVariable Long id) {
         return ResponseEntity.ok(billingService.renew(id));

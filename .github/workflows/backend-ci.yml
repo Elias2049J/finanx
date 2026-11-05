@@ -1,0 +1,93 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: db_mismonedas
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d db_mismonedas"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      rabbitmq:
+        image: rabbitmq:4-management
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      SERVER_PORT: 8080
+      APP_TIME_DEFAULT_ZONE: America/Lima
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/db_mismonedas
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      DB_PASSWORD: postgres
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 10
+      SPRING_RABBITMQ_HOST: localhost
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      JWT_SECRET: ci-only-jwt-secret-with-at-least-32-bytes
+      JWT_ISSUER: ci
+      JWT_AUDIENCES: ci
+      GOOGLE_CLIENT_ID: ci-google-client-id
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      GOOGLE_ISSUER_URI: https://accounts.google.com
+      GOOGLE_JWKS_URI: https://www.googleapis.com/oauth2/v3/certs
+      MAX_FILE_SIZE: 20MB
+      MAX_REQUEST_SIZE: 20MB
+      APP_FRONT_URL: http://localhost:4200
+      APP_BILLING_AUTO_PREMIUM: "false"
+      APP_BILLING_WEBHOOKS_ENABLED: "false"
+      APP_BILLING_GOOGLE_PLAY_MODE: disabled
+      SPRINGDOC_ENABLED: "false"
+      GEMINI_API_KEY: ci-gemini-key
+      APP_GEMINI_BASE_URL: https://generativelanguage.googleapis.com/v1beta
+      APP_GEMINI_MODEL_PRIMARY: gemini-2.5-flash
+      CURRENCYBEACON_API_KEY: ci-currencybeacon-key
+      CURRENCYBEACON_API_URL: https://api.currencybeacon.com/v1
+      APP_NOTIFICATIONS_EMAIL_HOST: smtp.example.com
+      APP_NOTIFICATIONS_EMAIL_PORT: 465
+      APP_NOTIFICATIONS_EMAIL_FROM: ci@example.com
+      APP_NOTIFICATIONS_EMAIL_USERNAME: ci@example.com
+      EMAIL_APP_PASSWORD: ci-email-password
+      FCM_CREDENTIALS_PATH: missing-ci-firebase-service-account.json
+      FCM_PROJECT_ID: ci-project
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Make Maven wrapper executable
+        run: chmod +x mvnw
+
+      - name: Run backend tests
+        run: ./mvnw -B -ntp test
