@@ -88,6 +88,13 @@ app:
   environment: ${APP_ENV:development}
   time:
     default-zone: ${APP_TIME_DEFAULT_ZONE}
+  # Usuario de desarrollo creado al arrancar. Solo para desarrollo; en produccion
+  # debe permanecer desactivado.
+  dev:
+    seed-user:
+      enabled: ${APP_DEV_SEED_USER_ENABLED:false}
+      email: ${APP_DEV_SEED_USER_EMAIL:}
+      password: ${APP_DEV_SEED_USER_PASSWORD:}
   billing:
     # Regala PREMIUM a cada registro. Solo para desarrollo; por defecto off.
     auto-premium: ${APP_BILLING_AUTO_PREMIUM:false}

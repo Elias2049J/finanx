@@ -31,6 +31,7 @@ public class ProductionSafetyValidator implements ApplicationRunner {
     private final boolean springdocEnabled;
     private final String storageEndpoint;
     private final String jwtSecret;
+    private final boolean devSeedUserEnabled;
 
     public ProductionSafetyValidator(
             Environment environment,
@@ -40,7 +41,8 @@ public class ProductionSafetyValidator implements ApplicationRunner {
             @Value("${app.front-url:}") String frontUrl,
             @Value("${springdoc.api-docs.enabled:false}") boolean springdocEnabled,
             @Value("${app.storage.seaweedfs.public-endpoint:}") String storageEndpoint,
-            @Value("${spring.security.jwt.secret:}") String jwtSecret) {
+            @Value("${spring.security.jwt.secret:}") String jwtSecret,
+            @Value("${app.dev.seed-user.enabled:false}") boolean devSeedUserEnabled) {
         this.environment = environment;
         this.appEnvironment = appEnvironment;
         this.autoPremium = autoPremium;
@@ -49,6 +51,7 @@ public class ProductionSafetyValidator implements ApplicationRunner {
         this.springdocEnabled = springdocEnabled;
         this.storageEndpoint = storageEndpoint;
         this.jwtSecret = jwtSecret;
+        this.devSeedUserEnabled = devSeedUserEnabled;
     }
 
     @Override
@@ -63,6 +66,9 @@ public class ProductionSafetyValidator implements ApplicationRunner {
         }
         if ("fake".equalsIgnoreCase(googlePlayMode)) {
             violations.add("APP_BILLING_GOOGLE_PLAY_MODE no puede ser fake en produccion.");
+        }
+        if (devSeedUserEnabled) {
+            violations.add("APP_DEV_SEED_USER_ENABLED debe ser false en produccion.");
         }
         if (springdocEnabled) {
             violations.add("SPRINGDOC_ENABLED debe ser false en produccion.");

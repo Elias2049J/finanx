@@ -21,7 +21,7 @@ class ProductionSafetyValidatorTest {
         ProductionSafetyValidator validator = validator(
                 environment, "development", true, "fake",
                 "http://localhost:4200", true,
-                "http://localhost:8081", "short");
+                "http://localhost:8081", "short", false);
 
         assertThatCode(() -> validator.run(arguments)).doesNotThrowAnyException();
     }
@@ -32,7 +32,7 @@ class ProductionSafetyValidatorTest {
         ProductionSafetyValidator validator = validator(
                 environment, "production", true, "fake",
                 "http://localhost:4200", true,
-                "http://localhost:8081", "short");
+                "http://localhost:8081", "short", true);
 
         assertThatThrownBy(() -> validator.run(arguments))
                 .isInstanceOf(IllegalStateException.class)
@@ -41,7 +41,8 @@ class ProductionSafetyValidatorTest {
                 .hasMessageContaining("SPRINGDOC_ENABLED")
                 .hasMessageContaining("APP_FRONT_URL")
                 .hasMessageContaining("SEAWEEDFS_PUBLIC_ENDPOINT")
-                .hasMessageContaining("JWT_SECRET");
+                .hasMessageContaining("JWT_SECRET")
+                .hasMessageContaining("APP_DEV_SEED_USER_ENABLED");
     }
 
     @Test
@@ -50,7 +51,7 @@ class ProductionSafetyValidatorTest {
         ProductionSafetyValidator validator = validator(
                 environment, "production", false, "disabled",
                 "https://app.mis-monedas.com", false,
-                "https://storage.mis-monedas.com", SAFE_JWT_SECRET);
+                "https://storage.mis-monedas.com", SAFE_JWT_SECRET, false);
 
         assertThatCode(() -> validator.run(arguments)).doesNotThrowAnyException();
     }
@@ -62,7 +63,7 @@ class ProductionSafetyValidatorTest {
         ProductionSafetyValidator validator = validator(
                 environment, "development", true, "disabled",
                 "https://app.mis-monedas.com", false,
-                "https://storage.mis-monedas.com", SAFE_JWT_SECRET);
+                "https://storage.mis-monedas.com", SAFE_JWT_SECRET, false);
 
         assertThatThrownBy(() -> validator.run(arguments))
                 .isInstanceOf(IllegalStateException.class)
@@ -77,7 +78,8 @@ class ProductionSafetyValidatorTest {
             String frontUrl,
             boolean springdocEnabled,
             String storageEndpoint,
-            String jwtSecret) {
+            String jwtSecret,
+            boolean devSeedUserEnabled) {
         return new ProductionSafetyValidator(
                 environment,
                 appEnvironment,
@@ -86,6 +88,7 @@ class ProductionSafetyValidatorTest {
                 frontUrl,
                 springdocEnabled,
                 storageEndpoint,
-                jwtSecret);
+                jwtSecret,
+                devSeedUserEnabled);
     }
 }
